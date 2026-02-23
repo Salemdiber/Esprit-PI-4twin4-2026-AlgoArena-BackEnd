@@ -23,5 +23,9 @@ export class CreateUserDto {
 	@IsOptional()
 	@IsEnum(Role)
 	role?: Role;
+
+	@IsOptional()
+	@IsString()
+	recaptchaToken?: string;
 }
 

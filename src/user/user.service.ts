@@ -44,6 +44,12 @@ export class UserService {
     return this.userModel.find().lean().exec();
   }
 
+  async findLatestByUsernameOrEmail(identifier: string) {
+    return this.userModel.findOne({
+      $or: [{ username: identifier }, { email: identifier }]
+    }).sort({ createdAt: -1 }).lean().exec();
+  }
+
   async findOne(id: string) {
     this.ensureValidObjectId(id);
     const user = await this.userModel.findById(id).lean().exec();
@@ -203,4 +209,42 @@ export class UserService {
     await this.userModel.findByIdAndDelete(userId).exec();
     return { message: 'Account deleted successfully' };
   }
+
+  // ── Password Reset ───────────────────────────────────────────────────────
+
+  async findByEmail(email: string) {
+    return this.userModel.findOne({ email }).sort({ createdAt: -1 }).exec();
+  }
+
+  async findByUsername(username: string) {
+    return this.userModel.findOne({ username }).sort({ createdAt: -1 }).exec();
+  }
+
+  async setResetPasswordToken(email: string, tokenHash: string, expires: Date) {
+    return this.userModel.findOneAndUpdate(
+      { email },
+      { resetPasswordToken: tokenHash, resetPasswordExpires: expires },
+      { new: true, sort: { createdAt: -1 } },
+    ).exec();
+  }
+
+  async findByResetPasswordToken(tokenHash: string) {
+    return this.userModel.findOne({
+      resetPasswordToken: tokenHash,
+      resetPasswordExpires: { $gt: new Date() },
+    }).exec();
+  }
+
+  async updatePasswordAndClearToken(userId: string, passwordHash: string) {
+    return this.userModel.findByIdAndUpdate(
+      userId,
+      {
+        passwordHash,
+        resetPasswordToken: null,
+        resetPasswordExpires: null,
+      },
+      { new: true },
+    ).exec();
+  }
 }
+

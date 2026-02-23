@@ -7,6 +7,8 @@ import { UserModule } from '../user/user.module';
 import { JwtStrategy } from './jwt.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { GithubStrategy } from './strategies/github.strategy';
+import { RecaptchaService } from './recaptcha.service';
+import { EmailService } from './email.service';
 
 @Module({
   imports: [
@@ -17,7 +19,7 @@ import { GithubStrategy } from './strategies/github.strategy';
     }),
     UserModule,
   ],
-  providers: [AuthService, JwtStrategy, GoogleStrategy, GithubStrategy],
+  providers: [AuthService, JwtStrategy, GoogleStrategy, GithubStrategy, RecaptchaService, EmailService],
   controllers: [AuthController],
   exports: [AuthService],
 })

@@ -37,4 +37,10 @@ export class User {
 
   @Column({ default: true })
   status: boolean;
+
+  @Column({ nullable: true })
+  resetPasswordToken: string | null;
+
+  @Column({ nullable: true })
+  resetPasswordExpires: Date | null;
 }
