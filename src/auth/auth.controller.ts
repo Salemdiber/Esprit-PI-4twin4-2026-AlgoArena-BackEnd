@@ -1,5 +1,4 @@
 import { Body, Controller, Post, Get, Req, Res, UnauthorizedException, BadRequestException, UseGuards, HttpCode } from '@nestjs/common';
-import { Body, Controller, Post, Get, Req, Res, UnauthorizedException, BadRequestException, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { IsString } from 'class-validator';
 import { AuthService } from './auth.service';
@@ -21,28 +20,6 @@ class LoginDto {
 
 @Controller('auth')
 export class AuthController {
-	constructor(private readonly authService: AuthService) { }
-
-	@Post('register')
-	async register(@Body() dto: CreateUserDto) {
-		return this.authService.register(dto);
-	}
-
-	@Post('login')
-	async login(@Body() body: LoginDto, @Res() res: Response) {
-		if (!body || !body.username || !body.password) throw new BadRequestException('username and password are required');
-		const user = await this.authService.validateUser(body.username, body.password);
-		if (!user) throw new UnauthorizedException('Invalid credentials');
-		const tokens = await this.authService.login(user);
-		// set refresh token as HttpOnly cookie
-		res.cookie('refresh_token', tokens.refresh_token, {
-			httpOnly: true,
-			path: '/auth',
-			maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-			sameSite: 'lax',
-			secure: process.env.NODE_ENV === 'production',
-		});
-		return res.json({ access_token: tokens.access_token });
 	constructor(
 		private readonly authService: AuthService,
 		private readonly users: UserService,
@@ -93,10 +70,8 @@ export class AuthController {
 	async googleAuthRedirect(@Req() req, @Res() res: Response) {
 		const tokens = await this.authService.login(req.user);
 		res.cookie('refresh_token', tokens.refresh_token, { path: '/auth', maxAge: 7 * 24 * 60 * 60 * 1000, httpOnly: true, sameSite: 'lax' });
-		return res.redirect('http://localhost:5173/?access_token=' + tokens.access_token);
-		const { access_token } = await this.authService.login(req.user);
-		res.cookie('access_token', access_token, { path: '/', maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: 'lax' });
-		return res.redirect('http://localhost:5173/');
+		res.cookie('access_token', tokens.access_token, { path: '/', maxAge: 15 * 60 * 1000, sameSite: 'lax' });
+		return res.redirect('http://localhost:5173/auth/callback');
 	}
 
 	@Get('github')
@@ -110,7 +85,8 @@ export class AuthController {
 	async githubAuthRedirect(@Req() req, @Res() res: Response) {
 		const tokens = await this.authService.login(req.user);
 		res.cookie('refresh_token', tokens.refresh_token, { path: '/auth', maxAge: 7 * 24 * 60 * 60 * 1000, httpOnly: true, sameSite: 'lax' });
-		return res.redirect('http://localhost:5173/?access_token=' + tokens.access_token);
+		res.cookie('access_token', tokens.access_token, { path: '/', maxAge: 15 * 60 * 1000, sameSite: 'lax' });
+		return res.redirect('http://localhost:5173/auth/callback');
 	}
 
 	@Post('refresh')
@@ -136,9 +112,6 @@ export class AuthController {
 		if (refreshToken) await this.authService.logout(refreshToken);
 		res.clearCookie('refresh_token', { path: '/auth' });
 		return res.json({ ok: true });
-		const { access_token } = await this.authService.login(req.user);
-		res.cookie('access_token', access_token, { path: '/', maxAge: 7 * 24 * 60 * 60 * 1000, sameSite: 'lax' });
-		return res.redirect('http://localhost:5173/');
 	}
 
 	@Post('forgot-password')

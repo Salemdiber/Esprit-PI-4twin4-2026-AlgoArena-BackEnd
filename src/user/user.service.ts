@@ -214,7 +214,6 @@ export class UserService {
     await this.userModel.findByIdAndDelete(userId).exec();
     return { message: 'Account deleted successfully' };
   }
-}
 
   // ── Password Reset ───────────────────────────────────────────────────────
 

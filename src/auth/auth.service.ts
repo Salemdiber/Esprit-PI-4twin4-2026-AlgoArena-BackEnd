@@ -1,6 +1,3 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { UserService } from '../user/user.service';
 import { Injectable, UnauthorizedException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UserService } from '../user/user.service';
@@ -10,21 +7,6 @@ import * as crypto from 'crypto';
 
 @Injectable()
 export class AuthService {
-	constructor(private readonly users: UserService, private readonly jwtService: JwtService) { }
-
-	async register(dto: any) {
-		return this.users.create(dto);
-	}
-
-	async validateUser(username: string, password: string) {
-		if (!password) return null;
-		const crypto = require('crypto');
-		const passwordHash = crypto.createHash('sha256').update(password).digest('hex');
-		const users = await this.users.findAll();
-		// Find the most recently created account in case of duplicates
-		const user = users.reverse().find((u) => u.username === username);
-		if (user && user.passwordHash === passwordHash) {
-			const { passwordHash: _ph, ...rest } = user as any;
 	constructor(
 		private readonly users: UserService,
 		private readonly jwtService: JwtService,
@@ -142,7 +124,7 @@ export class AuthService {
 		} catch (e) {
 			// ignore invalid token
 		}
-		return { access_token: this.jwtService.sign(payload) };
+		return { ok: true };
 	}
 
 	async requestPasswordReset(email: string, recaptchaToken: string) {

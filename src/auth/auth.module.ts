@@ -20,8 +20,7 @@ import { EmailService } from './email.service';
     }),
     UserModule,
   ],
-  providers: [AuthService, JwtStrategy, GoogleStrategy, GithubStrategy, RolesGuard],
-  providers: [AuthService, JwtStrategy, GoogleStrategy, GithubStrategy, RecaptchaService, EmailService],
+  providers: [AuthService, JwtStrategy, GoogleStrategy, GithubStrategy, RolesGuard, RecaptchaService, EmailService],
   controllers: [AuthController],
   exports: [AuthService],
 })
