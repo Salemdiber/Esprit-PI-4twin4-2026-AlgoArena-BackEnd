@@ -7,7 +7,8 @@ export class RecaptchaService {
             throw new UnauthorizedException('reCAPTCHA token is missing');
         }
 
-        const secret = process.env.RECAPTCHA_SECRET || '6LdKIHMsAAAAAMVX_6-yG6iNW1dcocjH-ktJZC2b';
+        const secret = process.env.RECAPTCHA_SECRET;
+        if (!secret) throw new UnauthorizedException('reCAPTCHA secret key not configured');
         const response = await fetch('https://www.google.com/recaptcha/api/siteverify', {
             method: 'POST',
             headers: {
@@ -17,9 +18,17 @@ export class RecaptchaService {
         });
 
         const data = await response.json();
+        // Pour reCAPTCHA v3 : vérifier le score et l'action
         if (!data.success) {
             throw new UnauthorizedException('reCAPTCHA validation failed');
         }
+        if (data.score !== undefined && data.score < 0.5) {
+            throw new UnauthorizedException('reCAPTCHA score too low');
+        }
+        // Optionnel : vérifier l'action si vous l'utilisez côté frontend
+        // if (data.action !== 'signup') {
+        //     throw new UnauthorizedException('reCAPTCHA action mismatch');
+        // }
         return true;
     }
 }
