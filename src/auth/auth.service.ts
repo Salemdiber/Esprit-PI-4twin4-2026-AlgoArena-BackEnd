@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { UserService } from '../user/user.service';
 import { RecaptchaService } from './recaptcha.service';
 import { EmailService } from './email.service';
+import { SettingsService } from '../settings/settings.service';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -12,9 +13,14 @@ export class AuthService {
 		private readonly jwtService: JwtService,
 		private readonly recaptchaService: RecaptchaService,
 		private readonly emailService: EmailService,
+		private readonly settingsService: SettingsService,
 	) { }
 
 	async register(dto: any) {
+		const settings: any = await this.settingsService.getSettings();
+		if (settings && !settings.userRegistration) {
+			throw new BadRequestException('Registration is disabled');
+		}
 		if (!dto.recaptchaToken) throw new UnauthorizedException('reCAPTCHA token is required');
 		await this.recaptchaService.validate(dto.recaptchaToken);
 		return this.users.create(dto);

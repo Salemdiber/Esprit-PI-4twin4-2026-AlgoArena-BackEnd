@@ -10,6 +10,7 @@ import { GithubStrategy } from './strategies/github.strategy';
 import { RolesGuard } from './roles.guard';
 import { RecaptchaService } from './recaptcha.service';
 import { EmailService } from './email.service';
+import { SettingsModule } from '../settings/settings.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { EmailService } from './email.service';
       signOptions: { expiresIn: '1h' },
     }),
     UserModule,
+    SettingsModule,
   ],
   providers: [AuthService, JwtStrategy, GoogleStrategy, GithubStrategy, RolesGuard, RecaptchaService, EmailService],
   controllers: [AuthController],
