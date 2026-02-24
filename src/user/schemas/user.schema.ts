@@ -11,6 +11,9 @@ export const UserSchema = new Schema(
     status: { type: Boolean, default: true },
     googleId: { type: String, default: null },
     githubId: { type: String, default: null },
+    refreshTokenHash: { type: String, default: null },
+    resetPasswordToken: { type: String, default: null },
+    resetPasswordExpires: { type: Date, default: null },
   },
   { timestamps: true },
 );

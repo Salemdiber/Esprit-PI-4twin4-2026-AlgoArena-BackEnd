@@ -17,8 +17,10 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
-import { mkdirSync } from 'fs';
+import { mkdirSync, appendFileSync } from 'fs';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Roles } from '../auth/roles.decorator';
+import { RolesGuard } from '../auth/roles.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -66,11 +68,21 @@ const imageFileFilter = (
 export class UserController {
 	constructor(private readonly userService: UserService) { }
 
+	private safeDebugLog(obj: any) {
+		try {
+			appendFileSync(join(process.cwd(), 'debug_nest.log'), JSON.stringify(obj) + '\n');
+		} catch (e) {
+			// Don't throw - logging failure must not crash the app
+			console.error('Failed to write debug_nest.log', e?.message || e);
+		}
+	}
+
 	// ── Account Settings (must be declared before /:id routes) ───────────────
 
 	@UseGuards(JwtAuthGuard)
 	@Get('me')
 	async getMyProfile(@CurrentUser() user: { userId: string }) {
+		this.safeDebugLog({ hit: 'me', user });
 		return this.userService.getMyProfile(user?.userId);
 	}
 
@@ -123,6 +135,8 @@ export class UserController {
 
 	// ── Existing CRUD endpoints ───────────────────────────────────────────────
 
+	@UseGuards(JwtAuthGuard, RolesGuard)
+	@Roles('Admin')
 	@UseGuards(JwtAuthGuard)
 	@Post('admin')
 	async createAdmin(@Body() dto: CreateUserDto) {
@@ -150,6 +164,7 @@ export class UserController {
 
 	@Get(':id')
 	async findOne(@Param('id') id: string) {
+		this.safeDebugLog({ hit: ':id', id });
 		require('fs').appendFileSync('d:/4TWIN/Pi-JS/Next_Gen_Back/AlgoArenaBackEnd/debug_nest.log', JSON.stringify({ hit: ':id', id }) + '\n');
 		return await this.userService.findOne(id);
 	}
