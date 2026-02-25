@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UserModule } from './user/user.module';
@@ -8,6 +9,8 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { SystemHealthModule } from './system-health/system-health.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { SessionsModule } from './sessions/sessions.module';
+import { SettingsModule } from './settings/settings.module';
+import { MaintenanceGuard } from './settings/guards/maintenance.guard';
 
 @Module({
   imports: [
@@ -20,8 +23,15 @@ import { SessionsModule } from './sessions/sessions.module';
     SystemHealthModule,
     AnalyticsModule,
     SessionsModule,
+    SettingsModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: MaintenanceGuard,
+    },
+  ],
 })
 export class AppModule { }
