@@ -133,10 +133,7 @@ export class AuthService {
 		return { ok: true };
 	}
 
-	async requestPasswordReset(email: string, recaptchaToken: string) {
-		if (!recaptchaToken) throw new UnauthorizedException('reCAPTCHA token is required');
-		await this.recaptchaService.validate(recaptchaToken);
-
+	async requestPasswordReset(email: string) {
 		const user = await this.users.findByEmail(email);
 		if (!user) return { message: 'If email exists, a reset link was sent' };
 
@@ -150,10 +147,7 @@ export class AuthService {
 		return { message: 'Reset email sent' };
 	}
 
-	async resetPassword(token: string, newPassword: string, confirmPassword: string, recaptchaToken: string) {
-		if (!recaptchaToken) throw new UnauthorizedException('reCAPTCHA token is required');
-		await this.recaptchaService.validate(recaptchaToken);
-
+	async resetPassword(token: string, newPassword: string, confirmPassword: string) {
 		if (newPassword !== confirmPassword) throw new BadRequestException('Passwords do not match');
 
 		const tokenHash = crypto.createHash('sha256').update(token).digest('hex');

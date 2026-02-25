@@ -115,17 +115,16 @@ export class AuthController {
 	}
 
 	@Post('forgot-password')
-	async forgotPassword(@Body() body: { email: string; recaptchaToken: string }) {
+	async forgotPassword(@Body() body: { email: string }) {
 		if (!body.email) throw new BadRequestException('email is required');
-		if (!body.recaptchaToken) throw new BadRequestException('recaptchaToken is required');
-		return this.authService.requestPasswordReset(body.email, body.recaptchaToken);
+		return this.authService.requestPasswordReset(body.email);
 	}
 
 	@Post('reset-password')
 	async resetPassword(@Body() body: any) {
-		if (!body.token || !body.newPassword || !body.confirmPassword || !body.recaptchaToken) {
+		if (!body.token || !body.newPassword || !body.confirmPassword) {
 			throw new BadRequestException('Missing required fields');
 		}
-		return this.authService.resetPassword(body.token, body.newPassword, body.confirmPassword, body.recaptchaToken);
+		return this.authService.resetPassword(body.token, body.newPassword, body.confirmPassword);
 	}
 }
