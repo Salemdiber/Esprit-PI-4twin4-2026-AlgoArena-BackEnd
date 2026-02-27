@@ -16,6 +16,8 @@ export class EmailService {
         });
     }
 
+
+    
     async sendPasswordResetEmail(email: string, token: string) {
         // Updated to match React Router: /reset-password/:token
         const resetLink = `http://localhost:5173/reset-password/${token}`;
