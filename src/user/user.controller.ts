@@ -28,6 +28,8 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { DeleteAccountDto } from './dto/delete-account.dto';
 import { UpdateStatusDto } from './dto/update-status.dto';
+import { UpdatePlacementDto } from './dto/update-placement.dto';
+
 
 const ALLOWED_IMAGE_TYPES = ['.jpg', '.jpeg', '.png', '.webp'];
 const ALLOWED_IMAGE_MIME_TYPES = [
@@ -113,6 +115,16 @@ export class UserController {
 		@Body() dto: ChangePasswordDto,
 	) {
 		return this.userService.changePassword(user.userId, dto);
+	}
+
+	@UseGuards(JwtAuthGuard)
+	@Patch('me/placement')
+	@HttpCode(HttpStatus.OK)
+	async updatePlacement(
+		@CurrentUser() user: { userId: string },
+		@Body() dto: UpdatePlacementDto,
+	) {
+		return this.userService.updatePlacement(user.userId, dto);
 	}
 
 	@UseGuards(JwtAuthGuard)

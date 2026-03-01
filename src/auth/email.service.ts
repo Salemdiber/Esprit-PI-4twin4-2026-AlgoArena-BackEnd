@@ -8,7 +8,7 @@ export class EmailService {
 
   constructor() {}
 
-  async sendPasswordResetEmail(email: string, token: string) {
+  async sendPasswordResetEmail(email: string, token: string, confirmationCode: string) {
     const brevoKey = process.env.BREVO_API_KEY;
     if (!brevoKey) {
       this.logger.error('BREVO_API_KEY not configured');
@@ -21,7 +21,7 @@ export class EmailService {
     // Reset link (frontend route)
     const resetLink = `http://localhost:5173/reset-password/${token}`;
 
-    const htmlTemplate = resetPasswordEmailTemplate(resetLink);
+    const htmlTemplate = resetPasswordEmailTemplate(resetLink, undefined, confirmationCode);
 
     // If the key looks like an SMTP key (xsmtpsib-...), send via SMTP
     if (brevoKey.startsWith('xsmtpsib-') || brevoKey.startsWith('xsmtp')) {

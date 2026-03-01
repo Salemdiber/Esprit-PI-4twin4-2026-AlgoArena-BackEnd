@@ -15,6 +15,8 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { DeleteAccountDto } from './dto/delete-account.dto';
+import { UpdatePlacementDto } from './dto/update-placement.dto';
+
 
 @Injectable()
 export class UserService {
@@ -159,6 +161,37 @@ export class UserService {
     await this.userModel.findByIdAndUpdate(userId, { refreshTokenHash: hash }).exec();
   }
 
+  // ── Speed Challenge Placement ─────────────────────────────────────────────
+
+  /**
+   * Set rank / xp / level from the Speed Challenge placement test.
+   * Only applies once (if rank is still null); subsequent calls are ignored
+   * unless force=true is passed (reserved for admin resets).
+   */
+  async updatePlacement(userId: string, dto: UpdatePlacementDto, force = false): Promise<any> {
+    this.ensureValidObjectId(userId);
+    const user = await this.userModel.findById(userId).lean().exec() as any;
+    if (!user) throw new NotFoundException('User not found');
+
+    // Prevent overwriting an existing rank unless forced
+    if (user.rank && !force) {
+      const { passwordHash: _omit, ...rest } = user;
+      return rest;
+    }
+
+    const updated = await this.userModel
+      .findByIdAndUpdate(
+        userId,
+        { rank: dto.rank, xp: dto.xp, level: dto.level ?? dto.rank },
+        { new: true },
+      )
+      .lean()
+      .exec() as any;
+
+    const { passwordHash: _omit, ...rest } = updated;
+    return rest;
+  }
+
   async changePassword(userId: string, dto: ChangePasswordDto): Promise<{ message: string }> {
     this.ensureValidObjectId(userId);
     const user = await this.userModel.findById(userId).lean().exec();
@@ -225,19 +258,51 @@ export class UserService {
     return this.userModel.findOne({ username }).sort({ createdAt: -1 }).exec();
   }
 
-  async setResetPasswordToken(email: string, tokenHash: string, expires: Date) {
+
+  /**
+   * Sets the reset password token and a confirmation code (6 digits) for the user.
+   * The confirmation code is required to complete the password reset.
+   */
+  async setResetPasswordToken(email: string, tokenHash: string, expires: Date, confirmationCode?: string) {
+    // Generate a 6-digit code if not provided
+    const code = confirmationCode || Math.floor(100000 + Math.random() * 900000).toString();
     return this.userModel.findOneAndUpdate(
       { email },
-      { resetPasswordToken: tokenHash, resetPasswordExpires: expires },
+      {
+        resetPasswordToken: tokenHash,
+        resetPasswordExpires: expires,
+        resetPasswordCode: code,
+        resetPasswordCodeVerified: false,
+      },
       { new: true, sort: { createdAt: -1 } },
     ).exec();
   }
+
 
   async findByResetPasswordToken(tokenHash: string) {
     return this.userModel.findOne({
       resetPasswordToken: tokenHash,
       resetPasswordExpires: { $gt: new Date() },
     }).exec();
+  }
+
+  async findByEmailAndResetCode(email: string, code: string) {
+    const c = String(code).trim();
+    return this.userModel.findOne({
+      email,
+      resetPasswordCode: c,
+      resetPasswordExpires: { $gt: new Date() },
+      resetPasswordToken: { $ne: null },
+      resetPasswordCodeVerified: false,
+    }).exec();
+  }
+
+  async verifyResetPasswordCode(email: string, code: string) {
+    // Mark the code as verified if it matches and is not expired
+    const user = await this.findByEmailAndResetCode(email, String(code).trim());
+    if (!user) return null;
+    await this.userModel.findByIdAndUpdate(user._id, { resetPasswordCodeVerified: true }).exec();
+    return user;
   }
 
   async updatePasswordAndClearToken(userId: string, passwordHash: string) {
@@ -247,6 +312,8 @@ export class UserService {
         passwordHash,
         resetPasswordToken: null,
         resetPasswordExpires: null,
+        resetPasswordCode: null,
+        resetPasswordCodeVerified: false,
       },
       { new: true },
     ).exec();

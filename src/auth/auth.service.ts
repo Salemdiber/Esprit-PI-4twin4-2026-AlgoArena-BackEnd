@@ -133,6 +133,7 @@ export class AuthService {
 		return { ok: true };
 	}
 
+
 	async requestPasswordReset(email: string) {
 		const user = await this.users.findByEmail(email);
 		if (!user) return { message: 'If email exists, a reset link was sent' };
@@ -140,11 +141,21 @@ export class AuthService {
 		const plainToken = crypto.randomBytes(32).toString('hex');
 		const tokenHash = crypto.createHash('sha256').update(plainToken).digest('hex');
 		const expires = new Date(Date.now() + 3600000); // 1 hour
+		const confirmationCode = Math.floor(100000 + Math.random() * 900000).toString();
 
-		await this.users.setResetPasswordToken(email, tokenHash, expires);
-		await this.emailService.sendPasswordResetEmail(email, plainToken);
+		await this.users.setResetPasswordToken(email, tokenHash, expires, confirmationCode);
+		await this.emailService.sendPasswordResetEmail(email, plainToken, confirmationCode);
 
 		return { message: 'Reset email sent' };
+	}
+
+	/**
+	 * Verifies the confirmation code sent to the user's email for password reset.
+	 */
+	async verifyResetPasswordCode(email: string, code: string) {
+		const user = await this.users.verifyResetPasswordCode(email, code);
+		if (!user) throw new BadRequestException('Invalid or expired confirmation code');
+		return { message: 'Code verified. You may now reset your password.' };
 	}
 
 	async resetPassword(token: string, newPassword: string, confirmPassword: string) {
@@ -154,6 +165,9 @@ export class AuthService {
 		const user = await this.users.findByResetPasswordToken(tokenHash);
 
 		if (!user) throw new BadRequestException('Invalid or expired token');
+		if (!user.resetPasswordCodeVerified) {
+			throw new BadRequestException('Confirmation code not verified');
+		}
 
 		const passwordHash = crypto.createHash('sha256').update(newPassword).digest('hex');
 

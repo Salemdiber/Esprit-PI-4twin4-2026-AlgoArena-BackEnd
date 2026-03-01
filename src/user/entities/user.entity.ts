@@ -43,4 +43,10 @@ export class User {
 
   @Column({ nullable: true })
   resetPasswordExpires: Date | null;
+
+  @Column({ nullable: true })
+  resetPasswordCode: string | null;
+
+  @Column({ default: false })
+  resetPasswordCodeVerified: boolean;
 }
