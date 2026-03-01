@@ -120,6 +120,12 @@ export class AuthController {
 		return this.authService.requestPasswordReset(body.email);
 	}
 
+	@Post('verify-reset-code')
+	async verifyResetCode(@Body() body: { email: string; code: string }) {
+		if (!body.email || !body.code) throw new BadRequestException('Missing email or code');
+		return this.authService.verifyResetPasswordCode(body.email, body.code);
+	}
+
 	@Post('reset-password')
 	async resetPassword(@Body() body: any) {
 		if (!body.token || !body.newPassword || !body.confirmPassword) {

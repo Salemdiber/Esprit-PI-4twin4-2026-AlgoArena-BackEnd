@@ -14,6 +14,14 @@ export const UserSchema = new Schema(
     refreshTokenHash: { type: String, default: null },
     resetPasswordToken: { type: String, default: null },
     resetPasswordExpires: { type: Date, default: null },
+    resetPasswordCode: { type: String, default: null },
+    resetPasswordCodeVerified: { type: Boolean, default: false },
+
+    // ── Speed Challenge Placement ──────────────────────────────────
+    rank: { type: String, enum: ['BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND', null], default: null },
+    xp: { type: Number, default: 0 },
+    level: { type: String, default: null },
   },
   { timestamps: true },
 );
+
