@@ -74,13 +74,6 @@ export class UserService {
     return updated;
   }
 
-  async remove(id: string) {
-    this.ensureValidObjectId(id);
-    const deleted = await this.userModel.findByIdAndDelete(id).exec();
-    if (!deleted) throw new NotFoundException('User not found');
-    return { removed: true };
-  }
-
   // ── Account Settings ─────────────────────────────────────────────────────
 
   async getMyProfile(userId: string): Promise<any> {

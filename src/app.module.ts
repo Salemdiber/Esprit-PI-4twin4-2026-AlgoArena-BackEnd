@@ -10,6 +10,7 @@ import { SystemHealthModule } from './system-health/system-health.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { SessionsModule } from './sessions/sessions.module';
 import { SettingsModule } from './settings/settings.module';
+import { AuditLogModule } from './audit-logs/audit-log.module';
 import { MaintenanceGuard } from './settings/guards/maintenance.guard';
 
 @Module({
@@ -24,6 +25,7 @@ import { MaintenanceGuard } from './settings/guards/maintenance.guard';
     AnalyticsModule,
     SessionsModule,
     SettingsModule,
+    AuditLogModule,
   ],
   controllers: [AppController],
   providers: [
