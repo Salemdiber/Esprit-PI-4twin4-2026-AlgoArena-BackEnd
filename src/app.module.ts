@@ -12,8 +12,9 @@ import { AnalyticsModule } from './analytics/analytics.module';
 import { SessionsModule } from './sessions/sessions.module';
 import { SettingsModule } from './settings/settings.module';
 import { AuditLogModule } from './audit-logs/audit-log.module';
+import { AiModule } from './ai/ai.module';
+import { ChallengeModule } from './challenges/challenge.module';
 import { MaintenanceGuard } from './settings/guards/maintenance.guard';
-import { ChallengesModule } from './challenges/challenges.module';
 
 @Module({
   imports: [
@@ -29,7 +30,8 @@ import { ChallengesModule } from './challenges/challenges.module';
     SettingsModule,
     OnboardingModule,
     AuditLogModule,
-    ChallengesModule,
+    AiModule,
+    ChallengeModule,
   ],
   controllers: [AppController],
   providers: [

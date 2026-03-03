@@ -23,6 +23,8 @@ export const AuditLogSchema = new Schema(
                 'PERMISSION_CHANGED',
                 // Challenge events
                 'CHALLENGE_CREATED',
+                'CHALLENGE_PUBLISHED',
+                'CHALLENGE_UNPUBLISHED',
                 'CHALLENGE_EDITED',
                 'CHALLENGE_DELETED',
                 'DIFFICULTY_CHANGED',
