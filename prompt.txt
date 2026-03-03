@@ -1,0 +1,19 @@
+Generate 3 distinct programming "speed challenge" problems in plain English.
+Output must be a JSON array with 3 objects. For each object include these fields:
+- "title": short unique title
+- "difficulty": "Easy" | "Medium" | "Hard"
+- "estimated_time_minutes": integer (target solve time)
+- "statement": full problem description
+- "input": description of input format
+- "output": description of output format
+- "constraints": numeric limits and complexity hints
+- "time_limit_seconds": integer
+- "memory_limit_mb": integer
+- "samples": array of 3 sample test cases; each sample is { "input": "...", "output": "...", "explanation": "..." }
+- "tags": array of short tags (e.g., "greedy", "graph", "strings")
+Requirements:
+- Provide only the JSON array (no extra commentary).
+- Do NOT provide solutions or code.
+- Make challenges appropriate for speed-solving (target short implementations).
+- Ensure inputs/outputs are precise and tests are runnable.
+Generate three problems with varied topics and difficulties.

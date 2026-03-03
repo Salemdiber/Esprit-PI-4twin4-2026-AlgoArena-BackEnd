@@ -185,6 +185,12 @@ export class UserService {
     return rest;
   }
 
+  // Store generated placement problems for a user
+  async setPlacementProblems(userId: string, problems: any[]) {
+    this.ensureValidObjectId(userId);
+    await this.userModel.findByIdAndUpdate(userId, { placementProblems: problems }, { new: true }).exec();
+  }
+
   async changePassword(userId: string, dto: ChangePasswordDto): Promise<{ message: string }> {
     this.ensureValidObjectId(userId);
     const user = await this.userModel.findById(userId).lean().exec();

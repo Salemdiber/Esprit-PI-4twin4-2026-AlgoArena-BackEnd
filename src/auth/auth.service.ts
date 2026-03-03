@@ -5,6 +5,9 @@ import { RecaptchaService } from './recaptcha.service';
 import { EmailService } from './email.service';
 import { SettingsService } from '../settings/settings.service';
 import * as crypto from 'crypto';
+import { spawn } from 'child_process';
+import * as fs from 'fs';
+import { join } from 'path';
 
 @Injectable()
 export class AuthService {
@@ -23,7 +26,70 @@ export class AuthService {
 		}
 		if (!dto.recaptchaToken) throw new UnauthorizedException('reCAPTCHA token is required');
 		await this.recaptchaService.validate(dto.recaptchaToken);
-		return this.users.create(dto);
+		const created = await this.users.create(dto);
+
+		// Generate placement problems synchronously at registration (blocking, with timeout)
+		try {
+			const generated = await this.generateChallenges();
+			if (generated && Array.isArray(generated) && generated.length) {
+				await this.users.setPlacementProblems((created as any)._id.toString(), generated);
+			}
+		} catch (e) {
+			// ignore generation errors — registration should succeed regardless
+		}
+
+		return created;
+	}
+
+	private generateChallenges(timeoutMs = 15000): Promise<any[] | null> {
+		const model = process.env.OLLAMA_MODEL || 'deepseek-coder:6.7b-instruct-q4_K_M';
+		const promptPath = join(process.cwd(), 'prompt.txt');
+		let prompt = '';
+		if (fs.existsSync(promptPath)) {
+			try { prompt = fs.readFileSync(promptPath, 'utf8'); } catch { prompt = ''; }
+		}
+		if (!prompt) {
+			// fallback prompt
+			prompt = `Generate 3 distinct programming "speed challenge" problems in plain English.\nOutput must be a JSON array with 3 objects. For each object include these fields:\n- \"title\": short unique title\n- \"difficulty\": \"Easy\" | \"Medium\" | \"Hard\"\n- \"estimated_time_minutes\": integer\n- \"statement\": full problem description\n- \"input\": description of input format\n- \"output\": description of output format\n- \"constraints\": numeric limits and complexity hints\n- \"time_limit_seconds\": integer\n- \"memory_limit_mb\": integer\n- \"samples\": array of 3 sample test cases; each sample is { \"input\": \"...\", \"output\": \"...\", \"explanation\": \"...\" }\n- \"tags\": array of short tags\nRequirements:\n- Provide only the JSON array (no extra commentary).\n- Do NOT provide solutions or code.\n- Make challenges appropriate for speed-solving (target short implementations).\n- Ensure inputs/outputs are precise and tests are runnable.`;
+		}
+
+		return new Promise((resolve) => {
+			let finished = false;
+			try {
+				const proc = spawn('ollama', ['run', model], { stdio: ['pipe', 'pipe', 'pipe'] });
+				let out = '';
+				proc.stdout.on('data', (c) => out += c.toString());
+				proc.stderr.on('data', () => { /* ignore stderr */ });
+				proc.on('error', () => { if (!finished) { finished = true; resolve(null); } });
+
+				// timeout safety
+				const timer = setTimeout(() => {
+					try { proc.kill(); } catch { }
+					if (!finished) { finished = true; resolve(null); }
+				}, timeoutMs);
+
+				proc.on('close', () => {
+					clearTimeout(timer);
+					if (finished) return;
+					finished = true;
+					try {
+						const parsed = JSON.parse(out);
+						resolve(parsed);
+					} catch (e) {
+						resolve(null);
+					}
+				});
+
+				try {
+					proc.stdin.write(prompt);
+					proc.stdin.end();
+				} catch (e) {
+					// ignore
+				}
+			} catch (e) {
+				if (!finished) { finished = true; resolve(null); }
+			}
+		});
 	}
 
 	async validateUser(username: string, password: string, recaptchaToken?: string) {
