@@ -11,7 +11,9 @@ import { SystemHealthModule } from './system-health/system-health.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { SessionsModule } from './sessions/sessions.module';
 import { SettingsModule } from './settings/settings.module';
+import { AuditLogModule } from './audit-logs/audit-log.module';
 import { MaintenanceGuard } from './settings/guards/maintenance.guard';
+import { ChallengesModule } from './challenges/challenges.module';
 
 @Module({
   imports: [
@@ -26,6 +28,8 @@ import { MaintenanceGuard } from './settings/guards/maintenance.guard';
     SessionsModule,
     SettingsModule,
     OnboardingModule,
+    AuditLogModule,
+    ChallengesModule,
   ],
   controllers: [AppController],
   providers: [

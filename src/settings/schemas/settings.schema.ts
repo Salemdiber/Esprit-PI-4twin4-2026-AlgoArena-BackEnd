@@ -2,6 +2,8 @@ import { Schema } from 'mongoose';
 
 export const SettingsSchema = new Schema(
   {
+    platformName: { type: String, default: 'AlgoArena' },
+    supportEmail: { type: String, default: 'support@algoarena.com' },
     userRegistration: { type: Boolean, default: true },
     aiBattles: { type: Boolean, default: true },
     maintenanceMode: { type: Boolean, default: false },

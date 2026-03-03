@@ -1,6 +1,14 @@
-import { IsBoolean, IsNumber, IsOptional, Min } from 'class-validator';
+import { IsBoolean, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 export class UpdateSettingsDto {
+  @IsOptional()
+  @IsString()
+  platformName?: string;
+
+  @IsOptional()
+  @IsString()
+  supportEmail?: string;
+
   @IsOptional()
   @IsBoolean()
   userRegistration?: boolean;

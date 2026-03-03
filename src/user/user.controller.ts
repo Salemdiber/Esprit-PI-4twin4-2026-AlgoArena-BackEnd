@@ -29,6 +29,7 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { DeleteAccountDto } from './dto/delete-account.dto';
 import { UpdateStatusDto } from './dto/update-status.dto';
 import { UpdatePlacementDto } from './dto/update-placement.dto';
+import { AuditLogService } from '../audit-logs/audit-log.service';
 
 
 const ALLOWED_IMAGE_TYPES = ['.jpg', '.jpeg', '.png', '.webp'];
@@ -68,7 +69,10 @@ const imageFileFilter = (
 
 @Controller('user')
 export class UserController {
-	constructor(private readonly userService: UserService) { }
+	constructor(
+		private readonly userService: UserService,
+		private readonly auditLogService: AuditLogService,
+	) { }
 
 	private safeDebugLog(obj: any) {
 		try {
@@ -151,10 +155,21 @@ export class UserController {
 	@Roles('Admin')
 	@UseGuards(JwtAuthGuard)
 	@Post('admin')
-	async createAdmin(@Body() dto: CreateUserDto) {
+	async createAdmin(@Body() dto: CreateUserDto, @CurrentUser() actor: { userId: string; username?: string }) {
 		try {
-			// Ensure role is forced to Admin if creating through this privileged route
-			return await this.userService.create({ ...dto, role: 'Admin' as any });
+			const result = await this.userService.create({ ...dto, role: 'Admin' as any });
+			await this.auditLogService.create({
+				actionType: 'ADMIN_ADDED',
+				actor: actor?.username || 'System',
+				actorId: actor?.userId,
+				entityType: 'admin',
+				targetId: result._id?.toString(),
+				targetLabel: dto.username,
+				newState: { username: dto.username, email: dto.email, role: 'Admin' },
+				description: `Admin "${actor?.username || 'System'}" created new admin "${dto.username}"`,
+				status: 'active',
+			});
+			return result;
 		} catch (err) {
 			throw new HttpException('Failed to create admin', HttpStatus.BAD_REQUEST);
 		}
@@ -215,19 +230,63 @@ export class UserController {
 	async updateStatus(
 		@Param('id') id: string,
 		@Body() dto: UpdateStatusDto,
+		@CurrentUser() actor: { userId: string; username?: string },
 	) {
-		return this.userService.updateStatus(id, dto.status);
+		const previous = await this.userService.findOne(id).catch(() => null) as any;
+		const result = await this.userService.updateStatus(id, dto.status);
+
+		const isDisabling = previous?.status === true && dto.status === false;
+		const isReactivating = previous?.status === false && dto.status === true;
+
+		await this.auditLogService.create({
+			actionType: isDisabling ? 'USER_DISABLED' : isReactivating ? 'USER_REACTIVATED' : 'USER_ROLE_CHANGED',
+			actor: actor?.username || 'System',
+			actorId: actor?.userId,
+			entityType: 'user',
+			targetId: id,
+			targetLabel: result.username,
+			previousState: { status: previous?.status },
+			newState: { status: dto.status },
+			description: isDisabling
+				? `Admin "${actor?.username || 'System'}" disabled account "${result.username}"`
+				: isReactivating
+					? `Admin "${actor?.username || 'System'}" reactivated account "${result.username}"`
+					: `Admin "${actor?.username || 'System'}" updated status of "${result.username}"`,
+			status: 'active',
+		});
+
+		return result;
 	}
 
 	@UseGuards(JwtAuthGuard)
 	@Patch(':id')
-	async update(@Param('id') id: string, @Body() dto: Partial<CreateUserDto>) {
-		return await this.userService.update(id, dto);
-	}
+	async update(@Param('id') id: string, @Body() dto: Partial<CreateUserDto>, @CurrentUser() actor: { userId: string; username?: string }) {
+		const previous = await this.userService.findOne(id).catch(() => null) as any;
+		const result = await this.userService.update(id, dto) as any;
 
-	@UseGuards(JwtAuthGuard)
-	@Delete(':id')
-	async remove(@Param('id') id: string) {
-		return await this.userService.remove(id);
+		// Determine action type
+		let actionType = 'USER_ROLE_CHANGED';
+		let description = `User "${result.username}" was updated`;
+		if (dto.role && dto.role !== previous?.role) {
+			description = `Admin "${actor?.username || 'System'}" changed role of "${result.username}" from "${previous?.role}" to "${dto.role}"`;
+		} else {
+			actionType = 'USER_ROLE_CHANGED';
+			description = `Admin "${actor?.username || 'System'}" updated user "${result.username}"`;
+		}
+
+		await this.auditLogService.create({
+			actionType,
+			actor: actor?.username || 'System',
+			actorId: actor?.userId,
+			entityType: 'user',
+			targetId: id,
+			targetLabel: result.username,
+			previousState: previous ? { role: previous.role, username: previous.username, email: previous.email, bio: previous.bio } : undefined,
+			newState: { role: result.role, username: result.username, email: result.email, bio: result.bio },
+			description,
+			status: 'active',
+		});
+
+		return result;
 	}
 }
