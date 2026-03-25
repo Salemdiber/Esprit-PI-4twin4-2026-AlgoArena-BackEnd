@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SettingsService } from '../settings/settings.service';
+import { CacheService } from '../cache/cache.service';
+import * as crypto from 'crypto';
 
 // ─── DTOs ─────────────────────────────────────────────────────────────────────
 
@@ -69,13 +71,17 @@ const STARTER_TOKENS = [
 @Injectable()
 export class OnboardingService {
   private readonly logger = new Logger(OnboardingService.name);
-  private readonly ollamaUrl = process.env.OLLAMA_URL || 'http://localhost:11434';
-  private readonly model = process.env.OLLAMA_MODEL || 'deepseek-coder:6.7b-instruct-q4_K_M';
-  private readonly ollamaTimeout: number;
+  private readonly groqApiKey = process.env.GROQ_API_KEY;
+  private readonly groqModel = 'llama-3.1-8b-instant'; // Fast, cost-effective
 
-  constructor(private readonly settingsService: SettingsService, private readonly configService: ConfigService) {
-    const timeoutEnv = this.configService.get<string>('OLLAMA_TIMEOUT');
-    this.ollamaTimeout = timeoutEnv ? parseInt(timeoutEnv, 10) : 300000; // Default to 5 min
+  constructor(
+    private readonly settingsService: SettingsService,
+    private readonly configService: ConfigService,
+    private readonly cacheService: CacheService,
+  ) {
+    if (!this.groqApiKey) {
+      this.logger.warn('GROQ_API_KEY not set — AI scoring will be disabled');
+    }
   }
 
   // ── Public entry point ──────────────────────────────────────────────────────
@@ -84,16 +90,16 @@ export class OnboardingService {
     solutions: SolutionInput[],
     totalSeconds: number,
   ): Promise<ClassificationResult> {
-    // Check if Ollama is enabled in platform settings
+    // Check if AI classification is enabled in platform settings
     const settings = await this.settingsService.getSettings() as any;
-    const ollamaEnabled = settings?.ollamaEnabled !== false; // default true
+    const aiEnabled = settings?.ollamaEnabled !== false; // default true (backward compat: ollamaEnabled controls AI)
 
-    if (!ollamaEnabled) {
-      this.logger.log('Ollama is disabled — using rule-based placement only');
+    if (!aiEnabled || !this.groqApiKey) {
+      this.logger.log('AI classification disabled or Groq API not configured — using rule-based placement');
       return this.ruleBased(solutions, totalSeconds);
     }
 
-    // Score each problem with AI (in sequence to avoid hammering Ollama)
+    // Score each problem with AI (in sequence to avoid rate limiting)
     const breakdown: ProblemScore[] = [];
     for (const sol of solutions) {
       const score = await this.scoreSolution(sol);
@@ -142,7 +148,7 @@ export class OnboardingService {
     };
   }
 
-  // ── Rule-based fallback (no Ollama) ────────────────────────────────────────
+  // ── Rule-based fallback (no AI) ───────────────────────────────────────────
 
   private ruleBased(solutions: SolutionInput[], totalSeconds: number): ClassificationResult {
     const solvedIds = solutions.filter((s) => s.solved).map((s) => s.problemId);
@@ -166,7 +172,7 @@ export class OnboardingService {
       complexity: s.solved ? 50 : 0,
       style: s.solved ? 50 : 0,
       composite: s.solved ? baseScore : 0,
-      notes: s.solved ? 'Rule-based estimate (Ollama disabled).' : 'Not solved.',
+      notes: s.solved ? 'Rule-based estimate (AI classification disabled).' : 'Not solved.',
     }));
 
     return {
@@ -196,7 +202,7 @@ export class OnboardingService {
 
     try {
       const prompt = this.buildPrompt(sol);
-      const raw = await this.callOllama(prompt);
+      const raw = await this.callGroq(prompt);
       const parsed = this.extractJson(raw);
 
       const exactitude = this.clamp(Number(parsed.exactitude) || 50);
@@ -232,7 +238,7 @@ export class OnboardingService {
     }
   }
 
-  // ── Ollama interaction ───────────────────────────────────────────────────────
+  // ── Groq API interaction ────────────────────────────────────────────────────
 
   private buildPrompt(sol: SolutionInput): string {
     return `You are a senior software engineer evaluating a coding interview submission.
@@ -250,52 +256,118 @@ Score this solution on three axes, each from 0 to 100:
 - complexity: Is the time/space complexity optimal or near-optimal for this problem? (0 = brute force, 100 = optimal)
 - style: Is the code readable, clean, idiomatic for the language? (0 = very messy, 100 = exemplary)
 
-Respond ONLY with valid JSON — no markdown, no explanation:
-{"exactitude": <0-100>, "complexity": <0-100>, "style": <0-100>, "notes": "<one concise sentence>"}`;
+Output ONLY the JSON object below with no additional text, markdown, or explanation:
+START_JSON_RESPONSE
+{"exactitude": <0-100>, "complexity": <0-100>, "style": <0-100>, "notes": "<one sentence>"}
+END_JSON_RESPONSE`;
   }
 
-  private async callOllama(prompt: string): Promise<string> {
-    const res = await fetch(`${this.ollamaUrl}/api/generate`, {
+  private async callGroq(prompt: string): Promise<string> {
+    if (!this.groqApiKey) {
+      throw new Error('GROQ_API_KEY not configured');
+    }
+
+    // Cache key derived from prompt
+    try {
+      const promptHash = crypto.createHash('sha256').update(prompt).digest('hex');
+      const cacheKey = `groq:${promptHash}`;
+      const cached = await this.cacheService.get(cacheKey);
+      if (cached) {
+        this.logger.log('Groq cache hit');
+        return cached;
+      }
+    } catch (e) {
+      // cache failures should not block the request
+      this.logger.warn('Groq cache check failed: ' + (e as Error).message);
+    }
+
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.groqApiKey}`,
+      },
       body: JSON.stringify({
-        model: this.model,
-        prompt,
-        stream: false,
-        options: { temperature: 0.1, num_predict: 256 },
+        model: this.groqModel,
+        messages: [
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+        temperature: 0.1,
+        max_tokens: 256,
       }),
-      signal: AbortSignal.timeout(this.ollamaTimeout),
     });
 
-    if (!res.ok) throw new Error(`Ollama HTTP ${res.status}: ${await res.text()}`);
-    const data = await res.json() as { response: string };
-    return data.response ?? '';
+    if (!res.ok) {
+      const error = await res.text();
+      throw new Error(`Groq API ${res.status}: ${error}`);
+    }
+
+    const data = await res.json() as { choices: Array<{ message: { content: string } }> };
+    const content = data.choices[0]?.message?.content ?? '';
+
+    // Save to cache (7 days)
+    try {
+      const promptHash = crypto.createHash('sha256').update(prompt).digest('hex');
+      const cacheKey = `groq:${promptHash}`;
+      await this.cacheService.set(cacheKey, content, 60 * 60 * 24 * 7);
+    } catch (e) {
+      this.logger.warn('Groq cache save failed: ' + (e as Error).message);
+    }
+    return content;
   }
 
   private extractJson(raw: string): Record<string, unknown> {
-    // Try to find JSON with proper brace matching
-    const startIdx = raw.indexOf('{');
-    if (startIdx === -1) throw new Error('No JSON object found in Ollama response');
+    // First, try to extract content between delimiters
+    const delimiterStart = 'START_JSON_RESPONSE';
+    const delimiterEnd = 'END_JSON_RESPONSE';
+    
+    let jsonStr: string | null = null;
+    const startIdx = raw.indexOf(delimiterStart);
+    const endIdx = raw.indexOf(delimiterEnd);
+    
+    if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+      // Extract between delimiters
+      jsonStr = raw.substring(startIdx + delimiterStart.length, endIdx).trim();
+    } else {
+      // Fallback: find JSON object with brace matching, but validate structure
+      const braceStart = raw.indexOf('{');
+      if (braceStart === -1) throw new Error('No JSON object found in AI response');
 
-    let braceCount = 0;
-    let endIdx = -1;
-    for (let i = startIdx; i < raw.length; i++) {
-      if (raw[i] === '{') braceCount++;
-      if (raw[i] === '}') braceCount--;
-      if (braceCount === 0) {
-        endIdx = i;
-        break;
+      let braceCount = 0;
+      let braceEnd = -1;
+      for (let i = braceStart; i < raw.length; i++) {
+        if (raw[i] === '{') braceCount++;
+        if (raw[i] === '}') braceCount--;
+        if (braceCount === 0) {
+          braceEnd = i;
+          break;
+        }
       }
+
+      if (braceEnd === -1) throw new Error('Malformed JSON in AI response: unmatched braces');
+      jsonStr = raw.substring(braceStart, braceEnd + 1);
     }
 
-    if (endIdx === -1) throw new Error('Malformed JSON in Ollama response: unmatched braces');
+    if (!jsonStr.trim()) throw new Error('No JSON content found in AI response');
 
-    const jsonStr = raw.substring(startIdx, endIdx + 1);
     try {
-      return JSON.parse(jsonStr);
+      const parsed = JSON.parse(jsonStr);
+      
+      // Validate that the JSON has expected fields
+      if (typeof parsed !== 'object' || parsed === null) {
+        throw new Error('Expected JSON object');
+      }
+      if (!('exactitude' in parsed) || !('complexity' in parsed) || !('style' in parsed)) {
+        throw new Error('Missing required fields: exactitude, complexity, style');
+      }
+      
+      return parsed;
     } catch (e) {
       this.logger.error(`Failed to parse JSON: ${jsonStr}`);
-      throw new Error(`Invalid JSON in Ollama response: ${(e as Error).message}`);
+      throw new Error(`Invalid JSON in AI response: ${(e as Error).message}`);
     }
   }
 
