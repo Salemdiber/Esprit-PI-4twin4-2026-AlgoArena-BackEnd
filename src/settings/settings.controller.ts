@@ -329,9 +329,9 @@ Content-Type: application/json
     return result;
   }
 
-  // PATCH /settings/ollama-enabled → Toggle Ollama AI classification on/off (admin only)
+  // PATCH /settings/ai-enabled → Toggle AI classification on/off (admin only)
           @ApiOperation({
-        summary: 'Patch_ollama_enabled_6 operation',
+        summary: 'Patch_ai_enabled operation',
         description: `
 ### Required Permissions
 - Public or authenticated User
