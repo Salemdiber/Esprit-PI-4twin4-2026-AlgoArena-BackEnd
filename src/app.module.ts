@@ -17,6 +17,8 @@ import { ChallengeModule } from './challenges/challenge.module';
 import { MaintenanceGuard } from './settings/guards/maintenance.guard';
 import { ChallengesModule } from './challenges/challenges.module';
 import { CacheModule } from './cache/cache.module';
+import { JudgeModule } from './judge/judge.module';
+
 
 @Module({
   imports: [
@@ -36,6 +38,7 @@ import { CacheModule } from './cache/cache.module';
     CacheModule,
     AiModule,
     ChallengeModule,
+    JudgeModule,
   ],
   controllers: [AppController],
   providers: [

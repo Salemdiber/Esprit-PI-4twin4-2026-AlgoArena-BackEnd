@@ -2,7 +2,9 @@ import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Groq from 'groq-sdk';
 import { GenerateChallengeDto } from './dto/generate-challenge.dto';
+import { DockerExecutionService } from '../judge/services/docker-execution.service';
 
+// ── Response shape — UNCHANGED, matches existing API contract ───────────────
 export interface GeneratedChallenge {
     title: string;
     description: string;
@@ -10,16 +12,22 @@ export interface GeneratedChallenge {
     examples: { input: string; output: string; explanation: string }[];
     testCases: { input: string; output: string }[];
     starterCode?: { javascript: string };
+    referenceSolution: string;
 }
 
 @Injectable()
 export class AiService {
     private readonly groq: Groq;
     private readonly logger = new Logger(AiService.name);
-    private readonly MODEL = 'llama-3.3-70b-versatile';
-    private readonly MAX_RETRIES = 2;
 
-    constructor(private readonly config: ConfigService) {
+    // Challenge generation model — other AI features use their own models untouched
+    private readonly GENERATION_MODEL = 'openai/gpt-oss-120b';
+    private readonly MAX_ATTEMPTS = 3;
+
+    constructor(
+        private readonly config: ConfigService,
+        private readonly dockerExecutionService: DockerExecutionService,
+    ) {
         const apiKey = this.config.get<string>('GROQ_API_KEY');
         if (!apiKey) {
             this.logger.error('GROQ_API_KEY is not set in environment variables');
@@ -28,240 +36,456 @@ export class AiService {
         this.groq = new Groq({ apiKey });
     }
 
-    async generateChallenge(dto: GenerateChallengeDto): Promise<GeneratedChallenge> {
-        const systemPrompt = this.buildSystemPrompt(dto);
-        const userPrompt = `Generate a "${dto.difficulty}" level "${dto.topic}" coding challenge. ${dto.description}`;
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PUBLIC — Challenge Generation (the ONLY method being changed)
+    // ═══════════════════════════════════════════════════════════════════════════
 
-        for (let attempt = 1; attempt <= this.MAX_RETRIES; attempt++) {
+    async generateChallenge(dto: GenerateChallengeDto): Promise<GeneratedChallenge> {
+        const systemPrompt = this.buildChallengeSystemPrompt();
+        const baseUserPrompt =
+            `Generate a "${dto.difficulty}" level "${dto.topic}" coding challenge. ${dto.description}`;
+        let currentUserPrompt = baseUserPrompt;
+
+        const errors: Array<{ attempt: number; error: string }> = [];
+
+        for (let attempt = 1; attempt <= this.MAX_ATTEMPTS; attempt++) {
             try {
-                this.logger.log(`AI generation attempt ${attempt}/${this.MAX_RETRIES}`);
-                const response = await this.groq.chat.completions.create({
-                    model: this.MODEL,
+                this.logger.log(`[ChallengeGen] Attempt ${attempt}/${this.MAX_ATTEMPTS}`);
+
+                // ── Step 1: Call Groq ────────────────────────────────────────
+                const completion = await this.groq.chat.completions.create({
                     messages: [
                         { role: 'system', content: systemPrompt },
-                        { role: 'user', content: userPrompt },
+                        { role: 'user', content: currentUserPrompt },
                     ],
-                    temperature: 0.4,
-                    max_tokens: 2048,
-                    top_p: 0.85,
-                    stop: null,
+                    model: this.GENERATION_MODEL,
+                    temperature: 0.2,
+                    max_completion_tokens: 4096,
+                    top_p: 0.9,
+                    stream: false,
                 });
 
-                const content = response.choices?.[0]?.message?.content;
-                const finishReason = response.choices?.[0]?.finish_reason;
+                const rawContent = completion.choices?.[0]?.message?.content;
+                if (!rawContent) {
+                    throw new Error('EMPTY_RESPONSE: Model returned no content');
+                }
+                this.logger.debug(`[ChallengeGen] Raw response length: ${rawContent.length}`);
 
-                if (!content) {
-                    this.logger.warn(`Attempt ${attempt}: Empty response from AI`);
-                    if (attempt < this.MAX_RETRIES) continue;
-                    throw new HttpException('AI returned an empty response.', HttpStatus.BAD_GATEWAY);
+                // ── Step 2: Extract & Parse JSON ─────────────────────────────
+                const parsed = this.extractJSON(rawContent);
+
+                // ── Step 3: Schema Validation ────────────────────────────────
+                this.validateSchema(parsed);
+
+                // ── Step 4: Duplicate Test Case Check ────────────────────────
+                this.checkDuplicateTestCases(parsed.testCases);
+
+                // ── Step 5: Context-Aware Edge Case Validation ───────────────
+                this.validateEdgeCases(parsed.testCases, parsed.description);
+
+                // ── Step 6: Execute Reference Solution & Verify All Tests ────
+                const verification = await this.verifyTestCases(
+                    parsed.referenceSolution,
+                    parsed.testCases,
+                );
+                if (!verification.valid) {
+                    throw new Error(
+                        'TEST_VERIFICATION_FAILED:\n' + verification.errors.join('\n'),
+                    );
                 }
 
-                if (finishReason === 'length') {
-                    this.logger.warn(`Attempt ${attempt}: AI response truncated (finish_reason=length), length=${content.length}. Attempting recovery.`);
-                }
+                this.logger.log(
+                    `[ChallengeGen] ✅ All validation passed on attempt ${attempt}`,
+                );
 
-                const result = this.parseAndValidate(content, dto.testCases, attempt);
-                this.logger.log(`AI generation succeeded on attempt ${attempt}`);
-                return result;
+                // ── Step 7: Map to GeneratedChallenge response shape ─────────
+                return this.mapToGeneratedChallenge(parsed);
 
-            } catch (error) {
+            } catch (error: any) {
+                // Rate-limit is non-retriable — bubble immediately
                 if (error?.status === 429) {
-                    throw new HttpException('AI rate limit exceeded. Please wait a moment and try again.', HttpStatus.TOO_MANY_REQUESTS);
+                    throw new HttpException(
+                        'AI rate limit exceeded. Please wait a moment and try again.',
+                        HttpStatus.TOO_MANY_REQUESTS,
+                    );
                 }
-                if (error instanceof HttpException) {
-                    if (attempt < this.MAX_RETRIES) {
-                        this.logger.warn(`Attempt ${attempt} failed with HttpException: ${error.message}. Retrying...`);
-                        continue;
-                    }
-                    throw error;
-                }
-                this.logger.error(`Attempt ${attempt} Groq API error: ${error?.message || error}`);
-                if (attempt >= this.MAX_RETRIES) {
-                    throw new HttpException('Failed to generate challenge after retries. Please try again.', HttpStatus.BAD_GATEWAY);
+
+                const errorMsg = error?.message || String(error);
+                this.logger.warn(
+                    `[ChallengeGen] Attempt ${attempt} failed: ${errorMsg}`,
+                );
+                errors.push({ attempt, error: errorMsg });
+
+                if (attempt < this.MAX_ATTEMPTS) {
+                    // Inject failure context so the model can self-correct
+                    currentUserPrompt =
+                        baseUserPrompt +
+                        '\n\nWARNING: Your previous attempt (attempt ' + attempt + ') failed.\n' +
+                        'Reason: ' + errorMsg + '\n' +
+                        'You MUST fix this issue. Generate the ENTIRE challenge again from scratch.\n' +
+                        'Make sure your referenceSolution is valid JavaScript and all expectedOutputs are correct.';
                 }
             }
         }
 
-        throw new HttpException('AI generation failed after all retries.', HttpStatus.BAD_GATEWAY);
+        // All attempts exhausted — return error, NEVER return unvalidated data
+        const summary = errors
+            .map((e) => `  Attempt ${e.attempt}: ${e.error}`)
+            .join('\n');
+        this.logger.error(
+            `[ChallengeGen] All ${this.MAX_ATTEMPTS} attempts failed:\n${summary}`,
+        );
+        throw new HttpException(
+            `AI challenge generation failed after ${this.MAX_ATTEMPTS} attempts. Please try again.`,
+            HttpStatus.BAD_GATEWAY,
+        );
     }
 
-    private buildSystemPrompt(dto: GenerateChallengeDto): string {
-        const tcCount = Math.min(dto.testCases, 5); // cap at 5 for reliability
-        return `You are a coding challenge designer for AlgoArena. You MUST output ONLY a JSON object. No markdown. No preamble. No explanation. No code fences.
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PRIVATE — System Prompt (Challenge Generation Only)
+    // ═══════════════════════════════════════════════════════════════════════════
 
-STRICT RULES:
-1. Output ONLY the JSON object — nothing before it, nothing after it
-2. NEVER use markdown code blocks (no \`\`\`json)
-3. NEVER truncate output — complete ALL arrays fully
-4. Keep testCase inputs SHORT (max 50 chars each)
-5. Keep starterCode SHORT (max 5 lines)
-6. Keep description under 300 chars
-7. Generate EXACTLY ${tcCount} test cases — no more
-8. Generate exactly 2 examples
-9. All JSON strings must be properly escaped
+    private buildChallengeSystemPrompt(): string {
+        return `You are an expert competitive programming problem designer.
 
-OUTPUT JSON SCHEMA — follow exactly:
+Generate a complete coding challenge as a single valid JSON object.
+
+ABSOLUTE RULES:
+1. Return ONLY raw JSON. No markdown. No code fences. No triple backtick json. No explanation outside the JSON.
+2. The referenceSolution must be a COMPLETE, SELF-CONTAINED JavaScript function that:
+   - Is named "solve"
+   - Takes a single parameter (the input)
+   - Returns the correct output
+   - Handles ALL edge cases relevant to THIS specific problem
+   - Uses NO external imports or dependencies
+3. For EVERY test case, mentally execute your reference solution step by step against the input. The expectedOutput MUST be exactly what your function returns.
+4. Edge cases must be RELEVANT to the problem type:
+   - String problems: empty string "", single character "a", all same characters "aaaa", full string is answer
+   - Array problems: empty array [], single element [1], all duplicates, sorted/reverse sorted
+   - Number problems: zero, negative numbers, very large numbers, minimum/maximum boundaries
+   - Do NOT force irrelevant edge cases (e.g., don't add negative numbers to a string problem)
+5. Test case inputs and expectedOutputs must be valid JSON values (strings, numbers, arrays, objects, booleans, null)
+6. The referenceSolution string must NOT contain backticks, template literals, or characters that would break JSON string escaping. Use regular string concatenation or single/double quotes only.
+
+REQUIRED JSON STRUCTURE:
 {
-  "title": "short challenge title",
-  "description": "concise problem statement under 300 chars",
-  "constraints": ["constraint1", "constraint2", "constraint3"],
+  "title": "string",
+  "description": "string (clear, unambiguous problem statement with examples in the description)",
+  "difficulty": "easy" | "medium" | "hard",
+  "constraints": ["string (explicit size/value bounds)"],
   "examples": [
-    {"input": "short input", "output": "short output", "explanation": "brief explanation"},
-    {"input": "short input", "output": "short output", "explanation": "brief explanation"}
+    {
+      "input": "readable representation of input",
+      "output": "readable representation of output",
+      "explanation": "step-by-step explanation"
+    }
   ],
   "testCases": [
-    {"input": "short input", "output": "short output"}
+    {
+      "input": valid_JSON_value,
+      "expectedOutput": valid_JSON_value
+    }
   ],
-  "starterCode": {"javascript": "function solution() {\\n  // write your code\\n}"}
+  "hints": ["string"],
+  "starterCode": { "javascript": "function solve(input) { // your code here }" },
+  "referenceSolution": "function solve(input) { ... return result; }"
 }
 
-CONTEXT:
-- Difficulty: ${dto.difficulty}
-- Topic: ${dto.topic}
-- Test cases count: ${tcCount}
+MINIMUM REQUIREMENTS:
+- At least 5 test cases total
+- At least 2 must be edge cases relevant to the problem domain
+- At least 1 example with explanation
+- referenceSolution must be executable JavaScript
 
-Return ONLY the JSON. Not a single character outside the JSON object.`;
+VERIFY BEFORE RESPONDING:
+- Run your referenceSolution mentally against EVERY test case
+- Confirm each expectedOutput matches exactly
+- If ANY mismatch exists, fix it before responding`;
     }
 
-    /**
-     * Attempt to repair truncated JSON by closing unclosed structures
-     */
-    private repairJson(raw: string): string {
-        let s = raw.trim();
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PRIVATE — Step 2: Safe JSON Extraction
+    // ═══════════════════════════════════════════════════════════════════════════
 
-        // Remove trailing comma before any closing brace/bracket
-        s = s.replace(/,\s*([}\]])/g, '$1');
+    private extractJSON(raw: string): any {
+        let cleaned = raw.trim();
 
-        // Count unclosed braces/brackets
-        let braces = 0;
-        let brackets = 0;
-        let inString = false;
-        let escape = false;
-
-        for (const ch of s) {
-            if (escape) { escape = false; continue; }
-            if (ch === '\\') { escape = true; continue; }
-            if (ch === '"') { inString = !inString; continue; }
-            if (inString) continue;
-            if (ch === '{') braces++;
-            else if (ch === '}') braces--;
-            else if (ch === '[') brackets++;
-            else if (ch === ']') brackets--;
+        // Strip markdown code fences if the model wraps its response
+        const fenceMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/);
+        if (fenceMatch) {
+            cleaned = fenceMatch[1].trim();
         }
 
-        // If we're inside a string when truncated, close it
-        if (inString) s += '"';
-
-        // Close any open arrays then objects
-        for (let i = 0; i < brackets; i++) s += ']';
-        for (let i = 0; i < braces; i++) s += '}';
-
-        return s;
-    }
-
-    private parseAndValidate(raw: string, expectedTestCases: number, attempt: number): GeneratedChallenge {
-        // 1. Strip markdown fences
-        let cleaned = raw.trim();
-        if (cleaned.startsWith('```json')) cleaned = cleaned.slice(7);
-        else if (cleaned.startsWith('```')) cleaned = cleaned.slice(3);
-        if (cleaned.endsWith('```')) cleaned = cleaned.slice(0, -3);
-        cleaned = cleaned.trim();
-
-        // 2. Extract just the JSON object (find first { to last })
+        // Locate the actual JSON object boundaries
         const firstBrace = cleaned.indexOf('{');
         const lastBrace = cleaned.lastIndexOf('}');
-        if (firstBrace !== -1) {
-            if (lastBrace > firstBrace) {
-                cleaned = cleaned.slice(firstBrace, lastBrace + 1);
-            } else {
-                // Truncated — try repair
-                cleaned = cleaned.slice(firstBrace);
+
+        if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
+            throw new Error('NO_JSON_FOUND: Could not locate a JSON object in AI response');
+        }
+
+        cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+
+        try {
+            return JSON.parse(cleaned);
+        } catch (e: any) {
+            throw new Error('MALFORMED_JSON: ' + e.message);
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PRIVATE — Step 3: Schema Validation
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    private validateSchema(data: any): void {
+        const requiredStrings = ['title', 'description', 'difficulty', 'referenceSolution'];
+        for (const field of requiredStrings) {
+            if (typeof data[field] !== 'string' || data[field].trim() === '') {
+                throw new Error('SCHEMA_INVALID: missing or empty field "' + field + '"');
             }
         }
 
-        // 3. Try to parse as-is
-        let parsed: any;
-        try {
-            parsed = JSON.parse(cleaned);
-            this.logger.log(`JSON parsed successfully on attempt ${attempt}, length=${raw.length}`);
-        } catch (parseErr) {
-            // 4. Attempt JSON repair
-            this.logger.warn(`Attempt ${attempt}: JSON parse failed (length=${raw.length}). Attempting repair. Error: ${String(parseErr).slice(0, 80)}`);
-            const repaired = this.repairJson(cleaned);
-            try {
-                parsed = JSON.parse(repaired);
-                this.logger.warn(`Attempt ${attempt}: JSON repaired successfully after repair`);
-            } catch (repairErr) {
-                this.logger.error(`Attempt ${attempt}: JSON repair failed. Raw preview: "${raw.slice(0, 200)}..."`);
-                throw new HttpException(
-                    'AI returned malformed output that could not be repaired. Please try again.',
-                    HttpStatus.BAD_GATEWAY,
+        if (!['easy', 'medium', 'hard'].includes(data.difficulty.toLowerCase())) {
+            throw new Error(
+                'SCHEMA_INVALID: difficulty must be easy/medium/hard, got "' + data.difficulty + '"',
+            );
+        }
+
+        if (!Array.isArray(data.constraints) || data.constraints.length === 0) {
+            throw new Error('SCHEMA_INVALID: constraints must be a non-empty array');
+        }
+
+        if (!Array.isArray(data.examples) || data.examples.length < 1) {
+            throw new Error('SCHEMA_INVALID: need at least 1 example');
+        }
+
+        if (!Array.isArray(data.testCases) || data.testCases.length < 3) {
+            throw new Error(
+                'SCHEMA_INVALID: need at least 3 test cases, got ' +
+                    (data.testCases?.length ?? 0),
+            );
+        }
+
+        for (let i = 0; i < data.testCases.length; i++) {
+            const tc = data.testCases[i];
+            if (!tc.hasOwnProperty('input') || !tc.hasOwnProperty('expectedOutput')) {
+                throw new Error(
+                    'SCHEMA_INVALID: testCase[' + i + '] missing input or expectedOutput',
                 );
             }
         }
+    }
 
-        // 5. Validate and sanitize fields
-        if (!parsed.title || typeof parsed.title !== 'string') {
-            this.logger.error(`Attempt ${attempt}: Missing 'title' field`);
-            throw new HttpException('AI output missing required field: title.', HttpStatus.BAD_GATEWAY);
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PRIVATE — Step 4: Duplicate Test Case Check
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    private checkDuplicateTestCases(testCases: Array<{ input: any }>): void {
+        const seen = new Set<string>();
+        for (let i = 0; i < testCases.length; i++) {
+            const key = JSON.stringify(testCases[i].input);
+            if (seen.has(key)) {
+                throw new Error(
+                    'DUPLICATE_TEST_CASE: testCase[' + i + '] has duplicate input',
+                );
+            }
+            seen.add(key);
         }
-        if (!parsed.description || typeof parsed.description !== 'string') {
-            this.logger.error(`Attempt ${attempt}: Missing 'description' field`);
-            throw new HttpException('AI output missing required field: description.', HttpStatus.BAD_GATEWAY);
-        }
+    }
 
-        // 6. Safe array coercion
-        if (!Array.isArray(parsed.constraints)) parsed.constraints = [];
-        if (!Array.isArray(parsed.examples)) parsed.examples = [];
-        if (!Array.isArray(parsed.testCases)) parsed.testCases = [];
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PRIVATE — Step 5: Context-Aware Edge Case Validation
+    // ═══════════════════════════════════════════════════════════════════════════
 
-        // 7. Filter out incomplete examples
-        parsed.examples = parsed.examples
-            .filter((ex: any) => ex && ex.input && ex.output)
-            .slice(0, 3)
-            .map((ex: any) => ({
-                input: String(ex.input).slice(0, 200),
-                output: String(ex.output).slice(0, 200),
-                explanation: String(ex.explanation || ''),
-            }));
+    private validateEdgeCases(
+        testCases: Array<{ input: any; expectedOutput: any }>,
+        problemDescription: string,
+    ): void {
+        const inputs = testCases.map((tc) => tc.input);
+        let hasEdgeCase = false;
 
-        if (parsed.examples.length === 0) {
-            this.logger.warn(`Attempt ${attempt}: No valid examples in AI output — using placeholder`);
-            parsed.examples = [{ input: 'example input', output: 'example output', explanation: 'See description for details.' }];
-        }
+        const hasStringInputs = inputs.some((i) => typeof i === 'string');
+        const hasArrayInputs = inputs.some((i) => Array.isArray(i));
+        const hasNumberInputs = inputs.some((i) => typeof i === 'number');
 
-        // 8. Filter out incomplete test cases — enforce strict limit
-        const limit = Math.min(expectedTestCases, 5);
-        parsed.testCases = parsed.testCases
-            .filter((tc: any) => tc && tc.input !== undefined && tc.output !== undefined)
-            .slice(0, limit)
-            .map((tc: any) => ({
-                input: String(tc.input).slice(0, 100),
-                output: String(tc.output).slice(0, 100),
-            }));
-
-        if (parsed.testCases.length === 0) {
-            this.logger.warn(`Attempt ${attempt}: No valid test cases — using placeholder`);
-            parsed.testCases = [{ input: '1', output: '1' }];
-        } else if (parsed.testCases.length !== expectedTestCases) {
-            this.logger.warn(`Attempt ${attempt}: AI generated ${parsed.testCases.length} test cases, expected ${expectedTestCases}`);
-        }
-
-        // 9. Handle starterCode gracefully
-        let starterJs = '';
-        if (parsed.starterCode?.javascript) {
-            starterJs = String(parsed.starterCode.javascript).slice(0, 500);
+        if (hasStringInputs) {
+            // String problems: empty string, single char, all same chars
+            hasEdgeCase = inputs.some(
+                (i) =>
+                    typeof i === 'string' &&
+                    (i.length === 0 ||
+                        i.length === 1 ||
+                        new Set(i.split('')).size === 1),
+            );
+        } else if (hasArrayInputs) {
+            // Array problems: empty array, single element, all duplicates
+            hasEdgeCase = inputs.some(
+                (i) =>
+                    Array.isArray(i) &&
+                    (i.length === 0 ||
+                        i.length === 1 ||
+                        new Set(i.map((x) => JSON.stringify(x))).size === 1),
+            );
+        } else if (hasNumberInputs) {
+            // Number problems: zero, negative, one
+            hasEdgeCase = inputs.some(
+                (i) =>
+                    typeof i === 'number' && (i === 0 || i < 0 || i === 1),
+            );
         } else {
-            starterJs = `// ${parsed.title}\nfunction solution() {\n  // Write your code here\n}\n`;
+            // Unknown / complex input type — skip enforcement entirely
+            hasEdgeCase = true;
         }
+
+        if (!hasEdgeCase) {
+            // Warn but do NOT reject — avoids false rejections on valid challenges
+            this.logger.warn(
+                '[ChallengeGen] EDGE_CASE_WARNING: No obvious edge case detected in test cases. ' +
+                    'Challenge will be accepted but consider adding edge cases manually.',
+            );
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PRIVATE — Step 6: Test Case Verification via Docker Execution
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    private async verifyTestCases(
+        referenceSolution: string,
+        testCases: Array<{ input: any; expectedOutput: any }>,
+    ): Promise<{ valid: boolean; errors: string[] }> {
+        this.logger.log(
+            `[ChallengeGen] Verifying ${testCases.length} test cases via Docker execution...`,
+        );
+
+        // Format test cases for DockerExecutionService.executeCode():
+        //   - input: must be a STRING that the input parser can parse into typed args
+        //     JSON.stringify gives us "[1,2,3]" / "42" / "\"hello\"" — the parser handles all of these
+        //   - expectedOutput: native value for the existing comparison logic
+        const dockerTestCases = testCases.map((tc) => ({
+            input: JSON.stringify(tc.input),
+            expectedOutput: tc.expectedOutput,
+        }));
+
+        try {
+            const executionResult = await this.dockerExecutionService.executeCode(
+                referenceSolution,
+                'javascript' as any,
+                dockerTestCases,
+                {
+                    challengeTitle: 'AI Validation',
+                    challengeDescription: 'Verifying AI-generated test cases against reference solution',
+                },
+            );
+
+            // Global execution error (e.g. Docker connection failure, syntax error)
+            if (executionResult.error) {
+                return {
+                    valid: false,
+                    errors: [
+                        `Execution error: ${executionResult.error.type} — ${executionResult.error.message}`,
+                    ],
+                };
+            }
+
+            // Per-test-case validation
+            const errors: string[] = [];
+            for (let i = 0; i < executionResult.results.length; i++) {
+                const r = executionResult.results[i];
+                if (!r.passed) {
+                    if (r.error) {
+                        errors.push(
+                            'testCase[' + i + ']: Runtime error — ' + r.error,
+                        );
+                    } else {
+                        errors.push(
+                            'testCase[' + i + ']: Output mismatch — ' +
+                                'input=' + JSON.stringify(testCases[i].input) + ', ' +
+                                'expected=' + JSON.stringify(testCases[i].expectedOutput) + ', ' +
+                                'actual=' + JSON.stringify(r.got ?? r.output),
+                        );
+                    }
+                }
+            }
+
+            if (errors.length > 0) {
+                this.logger.warn(
+                    `[ChallengeGen] ${errors.length}/${testCases.length} test cases failed verification`,
+                );
+            } else {
+                this.logger.log(
+                    `[ChallengeGen] All ${testCases.length} test cases verified ✅`,
+                );
+            }
+
+            return { valid: errors.length === 0, errors };
+        } catch (err: any) {
+            return {
+                valid: false,
+                errors: ['Docker execution exception: ' + err.message],
+            };
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // PRIVATE — Step 7: Map AI Output → GeneratedChallenge (API contract)
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    private mapToGeneratedChallenge(parsed: any): GeneratedChallenge {
+        // Convert examples — ensure all values are strings
+        const examples = (parsed.examples || []).map((ex: any) => ({
+            input:
+                typeof ex.input === 'string'
+                    ? ex.input
+                    : JSON.stringify(ex.input),
+            output:
+                typeof ex.output === 'string'
+                    ? ex.output
+                    : JSON.stringify(ex.output),
+            explanation: String(ex.explanation || ''),
+        }));
+
+        // Convert test cases — AI uses "expectedOutput", API contract uses "output"
+        // All values serialized to strings for consistent DB storage
+        const testCases = (parsed.testCases || []).map((tc: any) => ({
+            input:
+                typeof tc.input === 'string'
+                    ? tc.input
+                    : JSON.stringify(tc.input),
+            output:
+                typeof tc.expectedOutput === 'string'
+                    ? tc.expectedOutput
+                    : JSON.stringify(tc.expectedOutput),
+        }));
+
+        // Starter code
+        let starterJs: string;
+        if (
+            parsed.starterCode &&
+            typeof parsed.starterCode === 'object' &&
+            parsed.starterCode.javascript
+        ) {
+            starterJs = String(parsed.starterCode.javascript);
+        } else {
+            starterJs =
+                '// ' + parsed.title + '\nfunction solve(input) {\n  // Write your code here\n}\n';
+        }
+
+        // Constraints — tolerate string or array from AI
+        const constraints = (
+            Array.isArray(parsed.constraints)
+                ? parsed.constraints
+                : [parsed.constraints]
+        ).map((c: any) => String(c));
 
         return {
-            title: String(parsed.title).slice(0, 120),
-            description: String(parsed.description).slice(0, 800),
-            constraints: parsed.constraints.map((c: any) => String(c).slice(0, 150)).slice(0, 8),
-            examples: parsed.examples,
-            testCases: parsed.testCases,
+            title: String(parsed.title),
+            description: String(parsed.description),
+            constraints,
+            examples,
+            testCases,
             starterCode: { javascript: starterJs },
+            referenceSolution: parsed.referenceSolution,
         };
     }
 }

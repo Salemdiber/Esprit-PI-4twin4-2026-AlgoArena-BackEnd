@@ -1,0 +1,58 @@
+{
+    "title": "Valid Palindrome",
+    "description": "Given a string s, return true if it is a palindrome, or false otherwise. A palindrome is a string that reads the same forward and backward after converting all uppercase letters to lowercase and removing all non-alphanumeric characters.",
+    "difficulty": "Easy",
+    "topic": "Strings",
+    "xpReward": 60,
+    "estimatedTime": 15,
+    "constraints": [
+        "1 <= s.length <= 2 * 10^5",
+        "s consists of printable ASCII characters"
+    ],
+    "examples": [
+        {
+            "input": "s = \"A man, a plan, a canal: Panama\"",
+            "output": "true",
+            "explanation": "After cleaning, it becomes \"amanaplanacanalpanama\", which is a palindrome."
+        },
+        {
+            "input": "s = \"race a car\"",
+            "output": "false",
+            "explanation": "After cleaning, it becomes \"raceacar\", which is not a palindrome."
+        }
+    ],
+    "testCases": [
+        {
+            "input": "\"A man, a plan, a canal: Panama\"",
+            "output": "true"
+        },
+        {
+            "input": "\"race a car\"",
+            "output": "false"
+        },
+        {
+            "input": "\" \"",
+            "output": "true"
+        },
+        {
+            "input": "\"0P\"",
+            "output": "false"
+        },
+        {
+            "input": "\"madam\"",
+            "output": "true"
+        },
+        {
+            "input": "\"No lemon, no melon\"",
+            "output": "true"
+        }
+    ],
+    "hints": [
+        "Ignore non-alphanumeric characters.",
+        "Convert all letters to lowercase before checking.",
+        "Use two pointers: one at the start and one at the end."
+    ],
+    "starterCode": {
+        "javascript": "/**\n * @param {string} s\n * @return {boolean}\n */\nfunction solution(s) {\n  // Write your solution here\n}\n"
+    }
+}

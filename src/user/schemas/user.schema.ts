@@ -24,18 +24,43 @@ export const UserSchema = new Schema(
     streak: { type: Number, default: 0 },
     // Generated placement problems (stored at registration)
     placementProblems: { type: Array, default: [] },
-    // Whether the user has completed the speed challenge (onboarding)
-    speedChallengeCompleted: { type: Boolean, default: false },
-    // Ongoing test session - stores progress if user leaves mid-test
-    speedTestSession: {
-      phase: { type: String, enum: [null, 'INTRO', 'CHALLENGE', 'RESULT'], default: null },
-      secondsLeft: { type: Number, default: null },
-      currentIndex: { type: Number, default: null },
-      solvedIds: { type: Array, default: [] },
-      codes: { type: Object, default: {} },
-      languages: { type: Object, default: {} },
-      elapsedSeconds: { type: Number, default: null },
-      savedAt: { type: Date, default: null },
+    challengeProgress: {
+      type: [
+        {
+          challengeId: { type: String, required: true },
+          status: { type: String, enum: ['UNSOLVED', 'ATTEMPTED', 'SOLVED'], default: 'UNSOLVED' },
+          failedAttempts: { type: Number, default: 0 },
+          solveTimeSeconds: { type: Number, default: null },
+          xpAwarded: { type: Number, default: 0 },
+          solvedAt: { type: Date, default: null },
+          submissions: {
+            type: [
+              {
+                submittedAt: { type: Date, default: Date.now },
+                language: { type: String, default: 'javascript' },
+                code: { type: String, default: '' },
+                passed: { type: Boolean, default: false },
+                passedCount: { type: Number, default: 0 },
+                total: { type: Number, default: 0 },
+                executionTime: { type: String, default: null },
+                executionTimeMs: { type: Number, default: null },
+                memoryAllocated: { type: String, default: null },
+                loadTime: { type: String, default: null },
+                timeComplexity: { type: String, default: 'Unknown' },
+                spaceComplexity: { type: String, default: 'Unknown' },
+                aiDetection: { type: String, enum: ['MANUAL', 'AI_SUSPECTED'], default: 'MANUAL' },
+                recommendations: { type: [String], default: [] },
+                aiAnalysis: { type: String, default: null },
+                results: { type: Array, default: [] },
+                error: { type: Object, default: null },
+                source: { type: String, default: 'docker' },
+              },
+            ],
+            default: [],
+          },
+        },
+      ],
+      default: [],
     },
 
   },
