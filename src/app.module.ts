@@ -13,15 +13,20 @@ import { MailerModule } from '@nestjs-modules/mailer';
       isGlobal: true,
     }),
     MongooseModule.forRoot(process.env.MONGO_URI || 'mongodb://localhost:27017/algoarena'),
-    // normalize SMTP host to avoid sandbox.* DNS issues
     MailerModule.forRoot({
       transport: (() => {
-        let host = process.env.SMTP_HOST || process.env.MAILTRAP_HOST || 'smtp.mailtrap.io';
-        if (host && host.startsWith('sandbox.')) host = host.replace('sandbox.', '');
+        const host = process.env.SMTP_HOST || process.env.MAILTRAP_HOST;
         const port = Number(process.env.SMTP_PORT || process.env.MAILTRAP_PORT || 2525);
-        const user = process.env.SMTP_USER || process.env.MAILTRAP_USER || '758cf6d1025805';
-        const pass = process.env.SMTP_PASS || process.env.MAILTRAP_PASS || '9ea78c0bf11184';
-        return { host, port, auth: { user, pass } };
+        const secure = (process.env.SMTP_SECURE ?? 'false') === 'true' || port === 465;
+        const user = process.env.SMTP_USER || process.env.MAILTRAP_USER;
+        const pass = process.env.SMTP_PASS || process.env.MAILTRAP_PASS;
+
+        return {
+          host,
+          port,
+          secure,
+          auth: user && pass ? { user, pass } : undefined,
+        };
       })(),
     }),
     UserModule,

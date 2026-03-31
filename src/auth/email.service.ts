@@ -1,13 +1,40 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { MailerService } from '@nestjs-modules/mailer';
+import * as nodemailer from 'nodemailer';
 
 @Injectable()
 export class EmailService {
   private fromAddress: string;
+  private transporter: nodemailer.Transporter;
   private readonly logger = new Logger(EmailService.name);
-  constructor(private readonly mailer: MailerService) {
-    this.fromAddress = process.env.SMTP_FROM || '"AlgoArena" <noreply@algoarena.com>';
-    this.logger.log(`EmailService initialized; from=${this.fromAddress}`);
+
+  constructor() {
+    this.fromAddress = process.env.SMTP_FROM || 'sa7bi200@gmail.com';
+
+    this.transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.GMAIL_USER || 'sa7bi200@gmail.com',
+        pass: process.env.GMAIL_PASSWORD || 'fmzvbuiltcibwpxl',
+      },
+    });
+
+    this.logger.log(`EmailService initialized with Gmail SMTP; from=${this.fromAddress}`);
+  }
+
+  private async sendEmail(to: string, subject: string, html: string) {
+    try {
+      const info = await this.transporter.sendMail({
+        from: this.fromAddress,
+        to,
+        subject,
+        html,
+      });
+      this.logger.log(`Email sent to ${to}; messageId=${info.messageId}`);
+      return info;
+    } catch (err) {
+      this.logger.error(`Error sending email to ${to}: ${err?.message || err}`);
+      throw err;
+    }
   }
 
   async sendPasswordResetEmail(email: string, token: string) {
@@ -55,12 +82,7 @@ export class EmailService {
     `;
 
         try {
-          await this.mailer.sendMail({
-            from: this.fromAddress,
-            to: email,
-            subject: 'Reset Your Password - AlgoArena',
-            html: htmlTemplate,
-          });
+          await this.sendEmail(email, 'Reset Your Password - AlgoArena', htmlTemplate);
         } catch (err) {
           this.logger.error(`Error sending reset email to ${email}: ${err?.message || err}`);
           this.logger.error(err?.stack || String(err));
@@ -71,12 +93,8 @@ export class EmailService {
       async sendTwoFactorCode(email: string, code: string) {
         const html = `Your AlgoArena verification code is: <b>${code}</b>. It expires in 10 minutes.`;
         try {
-          await this.mailer.sendMail({
-            from: this.fromAddress,
-            to: email,
-            subject: 'Your AlgoArena verification code',
-            html,
-          });
+          await this.sendEmail(email, 'Your AlgoArena verification code', html);
+          this.logger.log(`2FA email request accepted for ${email}`);
         } catch (err) {
           this.logger.error(`Error sending 2FA email to ${email}: ${err?.message || err}`);
           this.logger.error(err?.stack || String(err));

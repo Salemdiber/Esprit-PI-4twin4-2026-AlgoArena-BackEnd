@@ -4,6 +4,7 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
 import { join } from 'path';
+import { json, urlencoded } from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -21,6 +22,8 @@ async function bootstrap() {
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.use(cookieParser());
+  app.use(json({ limit: '1024mb' }));
+  app.use(urlencoded({ extended: true, limit: '1024mb' }));
   app.useStaticAssets(join(process.cwd(), 'uploads'), { prefix: '/uploads' });
   await app.listen(process.env.PORT ?? 3000);
 }

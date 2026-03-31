@@ -1,6 +1,6 @@
 import { Body, Controller, Post, Get, Req, Res, UnauthorizedException, BadRequestException, UseGuards, HttpCode } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { IsString } from 'class-validator';
+import { IsOptional, IsString } from 'class-validator';
 import { AuthService } from './auth.service';
 import { CreateUserDto } from '../user/dto/create-user.dto';
 import type { Response } from 'express';
@@ -27,6 +27,7 @@ class TwoFaSendDto {
 	method: string;
 
 	@IsString()
+	@IsOptional()
 	phone?: string;
 }
 
