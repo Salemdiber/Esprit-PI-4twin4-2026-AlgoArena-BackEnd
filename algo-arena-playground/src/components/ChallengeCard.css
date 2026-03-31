@@ -1,0 +1,103 @@
+.challenge-card {
+  position: relative;
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  overflow: hidden;
+  animation: fadeIn var(--transition-base) ease forwards;
+}
+
+.challenge-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(56,139,253,0.03), transparent);
+  opacity: 0;
+  transition: opacity var(--transition-base);
+}
+
+.challenge-card:hover {
+  border-color: var(--accent-blue);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-card), var(--shadow-glow-blue);
+}
+
+.challenge-card:hover::before {
+  opacity: 1;
+}
+
+.challenge-card--active {
+  border-color: var(--accent-blue);
+  background: rgba(56, 139, 253, 0.06);
+  box-shadow: var(--shadow-card), var(--shadow-glow-blue);
+}
+
+.challenge-card--active::before {
+  opacity: 1;
+}
+
+.card-active-indicator {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--gradient-btn);
+  border-radius: 0 2px 2px 0;
+}
+
+.card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
+
+.card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.4;
+  flex: 1;
+}
+
+.card-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: var(--space-md);
+}
+
+.card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+.card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.card-langs {
+  display: flex;
+  gap: 4px;
+}
+
+.lang-pill {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-pill);
+  padding: 1px 7px;
+  font-family: var(--font-mono);
+}

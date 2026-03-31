@@ -7,7 +7,7 @@ import {
 import { SettingsService } from '../settings.service';
 
 /** Route prefixes that are always allowed, even in maintenance mode */
-const ALLOWED_PREFIXES = ['/auth', '/settings'];
+const ALLOWED_PREFIXES = ['/auth', '/settings', '/playground'];
 /** Exact paths that are always allowed (e.g. profile fetch to identify user role) */
 const ALLOWED_EXACT = ['/user/me'];
 
