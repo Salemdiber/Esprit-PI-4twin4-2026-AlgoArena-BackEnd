@@ -274,6 +274,57 @@ export class UserService {
     await this.userModel.findByIdAndUpdate(userId, { placementProblems: problems }, { new: true }).exec();
   }
 
+  async completeSpeedChallenge(userId: string): Promise<void> {
+    this.ensureValidObjectId(userId);
+    await this.userModel.findByIdAndUpdate(userId, { speedChallengeCompleted: true }, { new: true }).exec();
+  }
+
+  async hasCompletedSpeedChallenge(userId: string): Promise<boolean> {
+    this.ensureValidObjectId(userId);
+    const user = await this.userModel.findById(userId).lean().exec();
+    return user ? (user as any).speedChallengeCompleted === true : false;
+  }
+
+  async saveSpeedTestSession(userId: string, sessionData: any): Promise<void> {
+    this.ensureValidObjectId(userId);
+    await this.userModel.findByIdAndUpdate(
+      userId,
+      {
+        speedTestSession: {
+          ...sessionData,
+          savedAt: new Date(),
+        },
+      },
+      { new: true }
+    ).exec();
+  }
+
+  async getSpeedTestSession(userId: string): Promise<any> {
+    this.ensureValidObjectId(userId);
+    const user = await this.userModel.findById(userId).lean().exec();
+    return user ? (user as any).speedTestSession : null;
+  }
+
+  async clearSpeedTestSession(userId: string): Promise<void> {
+    this.ensureValidObjectId(userId);
+    await this.userModel.findByIdAndUpdate(
+      userId,
+      {
+        speedTestSession: {
+          phase: null,
+          secondsLeft: null,
+          currentIndex: null,
+          solvedIds: [],
+          codes: {},
+          languages: {},
+          elapsedSeconds: null,
+          savedAt: null,
+        },
+      },
+      { new: true }
+    ).exec();
+  }
+
   async changePassword(userId: string, dto: ChangePasswordDto): Promise<{ message: string }> {
     this.ensureValidObjectId(userId);
     const user = await this.userModel.findById(userId).lean().exec();

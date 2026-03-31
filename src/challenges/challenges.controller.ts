@@ -8,10 +8,13 @@ import {
   Body,
   HttpCode,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
 import { ChallengesService } from './challenges.service';
 import { CreateChallengeDto } from './dto/create-challenge.dto';
 import { UpdateChallengeDto } from './dto/update-challenge.dto';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { SpeedChallengeGuard } from '../auth/speed-challenge.guard';
 
 @Controller('challenges')
 export class ChallengesController {
@@ -20,6 +23,7 @@ export class ChallengesController {
   // POST /challenges - Create a new challenge
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @UseGuards(JwtAuthGuard, SpeedChallengeGuard)
   create(@Body() dto: CreateChallengeDto) {
     return this.service.create(dto);
   }
@@ -45,12 +49,14 @@ export class ChallengesController {
 
   // GET /challenges/:id - Retrieve a specific challenge by id
   @Get(':id')
+  @UseGuards(JwtAuthGuard, SpeedChallengeGuard)
   findOne(@Param('id') id: string) {
     return this.service.findOne(id);
   }
 
   // PATCH /challenges/:id - Update a challenge by id
   @Patch(':id')
+  @UseGuards(JwtAuthGuard, SpeedChallengeGuard)
   update(@Param('id') id: string, @Body() dto: UpdateChallengeDto) {
     return this.service.update(id, dto);
   }
@@ -58,6 +64,7 @@ export class ChallengesController {
   // DELETE /challenges/:id - Remove a challenge by id
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(JwtAuthGuard, SpeedChallengeGuard)
   async remove(@Param('id') id: string) {
     await this.service.remove(id);
   }

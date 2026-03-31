@@ -23,6 +23,9 @@ const SETTING_LABELS: Record<string, string> = {
   userRegistration: 'User Registration',
   aiBattles: 'AI Battles',
   maintenanceMode: 'Maintenance Mode',
+  ollamaEnabled: 'AI Classification',
+  disableCopyPaste: 'Disable Copy/Paste',
+  disableTabSwitch: 'Disable Tab Switch',
   apiRateLimit: 'API Requests per Hour',
   codeExecutionLimit: 'Code Executions per Day',
 };
@@ -329,9 +332,9 @@ Content-Type: application/json
     return result;
   }
 
-  // PATCH /settings/ollama-enabled → Toggle Ollama AI classification on/off (admin only)
+  // PATCH /settings/ai-enabled → Toggle AI classification on/off (admin only)
           @ApiOperation({
-        summary: 'Patch_ollama_enabled_6 operation',
+        summary: 'Patch_ai_enabled operation',
         description: `
 ### Required Permissions
 - Public or authenticated User

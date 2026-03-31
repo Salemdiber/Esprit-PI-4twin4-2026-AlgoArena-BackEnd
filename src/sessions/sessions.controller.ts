@@ -11,3 +11,4 @@ export class SessionsController {
         return this.sessionsService.detectActiveSession(req);
     }
 }
+
