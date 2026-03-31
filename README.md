@@ -1,6 +1,6 @@
-<div align="center">
+ï»¿<div align="center">
   <img src="https://raw.githubusercontent.com/Salemdiber/Esprit-PI-4twin4-2026-AlgoArena-FrontEnd/main/public/logo_algoarena.png" alt="AlgoArena Logo" width="200" />
-  <h1>AlgoArena — Backend API</h1>
+  <h1>AlgoArena â€” Backend API</h1>
   <p><strong>A competitive programming platform where developers sharpen their algorithmic skills</strong></p>
 </div>
 
@@ -37,65 +37,65 @@ The backend integrates external services (Groq and Docker) to enable AI generati
 
 ## Key Features
 **Authentication And Identity**
-- ? Registration and login with reCAPTCHA validation
-- ? JWT-based auth and refresh token flow
-- ? Google and GitHub OAuth callbacks
-- ? Password reset and verification workflow
-- ? Role-based authorization using guards and roles decorator
+- [x] Registration and login with reCAPTCHA validation
+- [x] JWT-based auth and refresh token flow
+- [x] Google and GitHub OAuth callbacks
+- [x] Password reset and verification workflow
+- [x] Role-based authorization using guards and roles decorator
 
 **Challenge And Judge System**
-- ? Challenge CRUD and publish/unpublish endpoints
-- ? Public challenge browsing endpoints
-- ? Judge submission endpoint with per-test-case evaluation
-- ? Hint generation endpoint for challenge solving flow
-- ? Progress endpoints for challenge/user solve tracking
+- [x] Challenge CRUD and publish/unpublish endpoints
+- [x] Public challenge browsing endpoints
+- [x] Judge submission endpoint with per-test-case evaluation
+- [x] Hint generation endpoint for challenge solving flow
+- [x] Progress endpoints for challenge/user solve tracking
 
 **AI And Content Automation**
-- ? AI challenge generation endpoint under admin scope (`/admin/challenges/generate-ai`)
-- ? AI analysis service integration in judge flows
-- ? AI detection endpoint for challenge content (`/challenges/ai-detection/analyze`)
+- [x] AI challenge generation endpoint under admin scope (`/admin/challenges/generate-ai`)
+- [x] AI analysis service integration in judge flows
+- [x] AI detection endpoint for challenge content (`/challenges/ai-detection/analyze`)
 
 **Sandboxed Execution And Monitoring**
-- ? Docker sandbox execution service for JavaScript/Python code
-- ? Container naming pattern with `AlgoArenaSandbox-*`
-- ? Execution timeout/resource limits in container host config
-- ? Persistent sandbox metrics storage (`sandbox_metrics` collection)
-- ? Admin sandbox monitoring endpoint (`/admin/sandbox/status`)
+- [x] Docker sandbox execution service for JavaScript/Python code
+- [x] Container naming pattern with `AlgoArenaSandbox-*`
+- [x] Execution timeout/resource limits in container host config
+- [x] Persistent sandbox metrics storage (`sandbox_metrics` collection)
+- [x] Admin sandbox monitoring endpoint (`/admin/sandbox/status`)
 
 **Admin And Operations**
-- ? Admin analytics endpoints (`/admin/stats/*`)
-- ? Settings management endpoints
-- ? System health endpoint
-- ? Sessions endpoint
-- ? Audit log endpoints with confirm/rollback operations
+- [x] Admin analytics endpoints (`/admin/stats/*`)
+- [x] Settings management endpoints
+- [x] System health endpoint
+- [x] Sessions endpoint
+- [x] Audit log endpoints with confirm/rollback operations
 
 **Additional Platform Services**
-- ? User profile, rank stats, XP updates, avatar upload, and speed challenge session APIs
-- ? Plagiarism detection API namespace (`/api/plagiarism/*`)
-- ? Swagger docs setup (`/api/docs`) with production protection logic
+- [x] User profile, rank stats, XP updates, avatar upload, and speed challenge session APIs
+- [x] Plagiarism detection API namespace (`/api/plagiarism/*`)
+- [x] Swagger docs setup (`/api/docs`) with production protection logic
 
 ## Architecture Overview
 ```text
 +------------------------------------------------------------------------------+
-¦                               NestJS Backend                                ¦
-¦                                                                              ¦
-¦  +---------------+  +----------------+  +----------------+  +------------+  ¦
-¦  ¦ Auth Module   ¦  ¦ Challenges     ¦  ¦ Judge Module   ¦  ¦ User Module¦  ¦
-¦  ¦ OAuth + JWT   ¦  ¦ CRUD + Public  ¦  ¦ Docker Exec +  ¦  ¦ Profile +  ¦  ¦
-¦  ¦ + Password    ¦  ¦ listing + AI   ¦  ¦ AI Analysis    ¦  ¦ Rank/XP    ¦  ¦
-¦  +---------------+  +----------------+  +----------------+  +------------+  ¦
-¦         ¦                    ¦                   ¦                 ¦         ¦
-¦  +------------------------------------------------------------------------+  ¦
-¦  ¦                    Core Platform Services Layer                         ¦  ¦
-¦  ¦  Analytics  |  Settings  |  Sessions  |  Audit Logs  |  Onboarding     ¦  ¦
-¦  +--------------------------------------------------------------------------+  ¦
-¦                ¦                          ¦                          ¦         ¦
+|                               NestJS Backend                                |
+|                                                                              |
+|  +---------------+  +----------------+  +----------------+  +------------+  |
+|  | Auth Module   |  | Challenges     |  | Judge Module   |  | User Module|  |
+|  | OAuth + JWT   |  | CRUD + Public  |  | Docker Exec +  |  | Profile +  |  |
+|  | + Password    |  | listing + AI   |  | AI Analysis    |  | Rank/XP    |  |
+|  +---------------+  +----------------+  +----------------+  +------------+  |
+|         |                    |                   |                 |         |
+|  +------------------------------------------------------------------------+  |
+|  |                    Core Platform Services Layer                         |  |
+|  |  Analytics  |  Settings  |  Sessions  |  Audit Logs  |  Onboarding     |  |
+|  +--------------------------------------------------------------------------+  |
+|                |                          |                          |         |
 +----------------+--------------------------+--------------------------+---------+
-                 ¦                          ¦                          ¦
+                 |                          |                          |
                  ?                          ?                          ?
         +----------------+         +-----------------+         +-----------------+
-        ¦ MongoDB        ¦         ¦ Docker Engine   ¦         ¦ External AI APIs ¦
-        ¦ via Mongoose   ¦         ¦ sandbox runtime ¦         ¦ Groq / Anthropic ¦
+        | MongoDB        |         | Docker Engine   |         | External AI APIs |
+        | via Mongoose   |         | sandbox runtime |         | Groq / Anthropic |
         +----------------+         +-----------------+         +-----------------+
 ```
 
@@ -329,3 +329,4 @@ Contributors discovered from git history:
 
 ## License
 `UNLICENSED` (from `package.json`).
+
