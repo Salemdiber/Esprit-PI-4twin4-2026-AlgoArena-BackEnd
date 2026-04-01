@@ -26,6 +26,7 @@ const SETTING_LABELS: Record<string, string> = {
   ollamaEnabled: 'AI Classification',
   disableCopyPaste: 'Disable Copy/Paste',
   disableTabSwitch: 'Disable Tab Switch',
+  disableSpeedChallenges: 'Disable Speed Challenges',
   apiRateLimit: 'API Requests per Hour',
   codeExecutionLimit: 'Code Executions per Day',
 };
@@ -484,6 +485,70 @@ Content-Type: application/json
         previousState: { codeExecutionLimit: previous?.codeExecutionLimit },
         newState: { codeExecutionLimit: value },
         description: `Admin "${actor?.username || 'System'}" changed code execution limit from ${previous?.codeExecutionLimit} to ${value}`,
+        status: 'active',
+        metadata: { ip: req?.ip || null },
+      });
+    }
+
+    return result;
+  }
+
+  // PATCH /settings/disable-speed-challenges → Toggle speed challenges on/off (admin only)
+  @ApiOperation({
+    summary: 'Patch_disable_speed_challenges operation',
+    description: `
+### Required Permissions
+- Admin role
+
+### Example Request
+\`\`\`http
+PATCH /api/settings/disable-speed-challenges HTTP/1.1
+Content-Type: application/json
+
+{
+  "disableSpeedChallenges": true
+}
+\`\`\`
+
+### Example Response
+\`\`\`json
+{
+  "disableSpeedChallenges": true
+}
+\`\`\`
+
+### Test Cases (Working Examples)
+- **Valid Test Case**: Call \`PATCH /api/settings/disable-speed-challenges\` with valid data -> Returns \`200 OK\`.
+- **Invalid Test Case**: Call with malformed data -> Returns \`400 Bad Request\`.
+- **Authentication Test Case**: Call without token -> Returns \`401 Unauthorized\`.
+    `
+  })
+  @ApiResponse({ status: 200, description: 'Successful operation' })
+  @ApiResponse({ status: 400, description: 'Bad Request - Invalid parameters/body' })
+  @ApiResponse({ status: 401, description: 'Unauthorized - Missing or invalid token' })
+  @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
+  @Patch('disable-speed-challenges')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles('Admin')
+  async toggleSpeedChallenges(
+    @Body('disableSpeedChallenges') value: boolean,
+    @CurrentUser() actor: { userId: string; username?: string },
+    @Req() req: any,
+  ) {
+    const previous = await this.settingsService.getSettings() as any;
+    const result = await this.settingsService.updateSettings({ disableSpeedChallenges: value });
+
+    if (previous?.disableSpeedChallenges !== value) {
+      await this.auditLogService.create({
+        actionType: 'FEATURE_FLAG_CHANGED',
+        actor: actor?.username || 'System',
+        actorId: actor?.userId,
+        entityType: 'system',
+        targetId: 'settings',
+        targetLabel: 'Speed Challenges',
+        previousState: { disableSpeedChallenges: previous?.disableSpeedChallenges },
+        newState: { disableSpeedChallenges: value },
+        description: `Admin "${actor?.username || 'System'}" ${value ? 'disabled' : 'enabled'} Speed Challenges`,
         status: 'active',
         metadata: { ip: req?.ip || null },
       });

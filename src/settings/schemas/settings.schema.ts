@@ -10,6 +10,7 @@ export const SettingsSchema = new Schema(
     ollamaEnabled: { type: Boolean, default: true },
     disableCopyPaste: { type: Boolean, default: false },
     disableTabSwitch: { type: Boolean, default: false },
+    disableSpeedChallenges: { type: Boolean, default: false },
     apiRateLimit: { type: Number, default: 1000 },
     codeExecutionLimit: { type: Number, default: 100 },
   },

@@ -21,6 +21,37 @@ export interface ValidationResult {
 
 @Injectable()
 export class CodeExecutorService {
+    /**
+     * Execute code without test cases and return stdout (or error via reject).
+     * Useful for quick "Run" actions in the editor.
+     */
+    async executeRaw(code: string, language: string): Promise<string> {
+        if (!code) return '';
+        if (language === 'javascript') {
+            // Capture console.log output
+            let captured = '';
+            const sandbox: any = {
+                console: {
+                    log: (...args: any[]) => {
+                        captured += args.map((a) => String(a)).join(' ') + '\n';
+                    },
+                },
+            };
+            try {
+                const script = new vm.Script(code);
+                const context = vm.createContext(sandbox);
+                script.runInContext(context, { timeout: 5000 });
+                return captured.trim();
+            } catch (err) {
+                throw new Error(err instanceof Error ? err.message : String(err));
+            }
+        } else if (language === 'python') {
+            // For python, execute the code and return stdout
+            return this.executePythonCode(code);
+        } else {
+            throw new Error(`Language '${language}' is not supported for raw execution`);
+        }
+    }
     async validateCode(
         code: string,
         language: string,
