@@ -8,6 +8,7 @@ import { JwtStrategy } from './jwt.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { GithubStrategy } from './strategies/github.strategy';
 import { RolesGuard } from './roles.guard';
+import { SpeedChallengeGuard } from './speed-challenge.guard';
 import { RecaptchaService } from './recaptcha.service';
 import { EmailService } from './email.service';
 import { EmailDeliverabilityService } from './email-deliverability.service';
@@ -27,7 +28,7 @@ import { AiModule } from '../ai/ai.module';
     CacheModule,
     AiModule,
   ],
-  providers: [AuthService, JwtStrategy, GoogleStrategy, GithubStrategy, RolesGuard, RecaptchaService, EmailService, EmailDeliverabilityService],
+  providers: [AuthService, JwtStrategy, GoogleStrategy, GithubStrategy, RolesGuard, SpeedChallengeGuard, RecaptchaService, EmailService, EmailDeliverabilityService],
   controllers: [AuthController],
   exports: [AuthService],
 })

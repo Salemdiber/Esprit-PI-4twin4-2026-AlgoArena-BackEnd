@@ -17,8 +17,8 @@ import { ChallengeModule } from './challenges/challenge.module';
 import { MaintenanceGuard } from './settings/guards/maintenance.guard';
 import { ChallengesModule } from './challenges/challenges.module';
 import { CacheModule } from './cache/cache.module';
+import { BattlesModule } from './battles/battle.module';
 import { JudgeModule } from './judge/judge.module';
-
 
 @Module({
   imports: [
@@ -35,6 +35,7 @@ import { JudgeModule } from './judge/judge.module';
     OnboardingModule,
     AuditLogModule,
     ChallengesModule,
+    BattlesModule,
     CacheModule,
     AiModule,
     ChallengeModule,
@@ -49,4 +50,4 @@ import { JudgeModule } from './judge/judge.module';
     },
   ],
 })
-export class AppModule { }
+export class AppModule {}

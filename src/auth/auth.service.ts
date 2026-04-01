@@ -1,27 +1,33 @@
 import { Injectable, UnauthorizedException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { UserService } from '../user/user.service';
 import { RecaptchaService } from './recaptcha.service';
 import { EmailService } from './email.service';
 import { SettingsService } from '../settings/settings.service';
+import { CacheService } from '../cache/cache.service';
 import { EmailDeliverabilityService, EmailValidationResult } from './email-deliverability.service';
 import {
 	PASSWORD_SECURITY_MESSAGE,
 	passwordContainsIdentityData,
 } from './password-policy.util';
 import * as crypto from 'crypto';
-import { spawn } from 'child_process';
 import * as fs from 'fs';
 import { join } from 'path';
 
 @Injectable()
 export class AuthService {
+	private readonly groqApiKey = process.env.GROQ_API_KEY;
+	private readonly groqModel = 'llama-3.1-8b-instant';
+
 	constructor(
 		private readonly users: UserService,
 		private readonly jwtService: JwtService,
 		private readonly recaptchaService: RecaptchaService,
 		private readonly emailService: EmailService,
 		private readonly settingsService: SettingsService,
+		private readonly configService: ConfigService,
+		private readonly cacheService: CacheService,
 		private readonly emailDeliverabilityService: EmailDeliverabilityService,
 	) { }
 
@@ -64,7 +70,7 @@ export class AuthService {
 		}
 	}
 
-	private generateChallenges(timeoutMs = 15000): Promise<any[] | null> {
+	private async generateChallenges(timeoutMs = 15000): Promise<any[] | null> {
 		const model = process.env.OLLAMA_MODEL || 'deepseek-coder:6.7b-instruct-q4_K_M';
 		const promptPath = join(process.cwd(), 'prompt.txt');
 		let prompt = '';
@@ -76,43 +82,89 @@ export class AuthService {
 			prompt = `Generate 3 distinct programming "speed challenge" problems in plain English.\nOutput must be a JSON array with 3 objects. For each object include these fields:\n- \"title\": short unique title\n- \"difficulty\": \"Easy\" | \"Medium\" | \"Hard\"\n- \"estimated_time_minutes\": integer\n- \"statement\": full problem description\n- \"input\": description of input format\n- \"output\": description of output format\n- \"constraints\": numeric limits and complexity hints\n- \"time_limit_seconds\": integer\n- \"memory_limit_mb\": integer\n- \"samples\": array of 3 sample test cases; each sample is { \"input\": \"...\", \"output\": \"...\", \"explanation\": \"...\" }\n- \"tags\": array of short tags\nRequirements:\n- Provide only the JSON array (no extra commentary).\n- Do NOT provide solutions or code.\n- Make challenges appropriate for speed-solving (target short implementations).\n- Ensure inputs/outputs are precise and tests are runnable.`;
 		}
 
-		return new Promise((resolve) => {
-			let finished = false;
+		// Check cache first
+		try {
+			const promptHash = crypto.createHash('sha256').update(prompt).digest('hex');
+			const cacheKey = `groq:challenges:${promptHash}`;
+			const cached = await this.cacheService.get(cacheKey);
+			if (cached) {
+				try { return JSON.parse(cached); } catch { return null; }
+			}
+		} catch (e) {
+			console.warn('Groq challenge cache check error:', (e as Error).message);
+		}
+
+		try {
+			const controller = new AbortController();
+			const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+			const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'Authorization': `Bearer ${this.groqApiKey}`,
+				},
+				body: JSON.stringify({
+					model: this.groqModel,
+					messages: [
+						{
+							role: 'user',
+							content: prompt,
+						},
+					],
+					temperature: 0.7,
+					max_tokens: 2048,
+				}),
+				signal: controller.signal,
+			});
+
+			clearTimeout(timeoutId);
+
+			if (!response.ok) {
+				console.error(`Groq API error: ${response.status}`);
+				return null;
+			}
+
+			const data = await response.json() as { choices: Array<{ message: { content: string } }> };
+			const content = data.choices[0]?.message?.content ?? '';
+
+			// Try to extract JSON from the response
 			try {
-				const proc = spawn('ollama', ['run', model], { stdio: ['pipe', 'pipe', 'pipe'] });
-				let out = '';
-				proc.stdout.on('data', (c) => out += c.toString());
-				proc.stderr.on('data', () => { /* ignore stderr */ });
-				proc.on('error', () => { if (!finished) { finished = true; resolve(null); } });
-
-				// timeout safety
-				const timer = setTimeout(() => {
-					try { proc.kill(); } catch { }
-					if (!finished) { finished = true; resolve(null); }
-				}, timeoutMs);
-
-				proc.on('close', () => {
-					clearTimeout(timer);
-					if (finished) return;
-					finished = true;
-					try {
-						const parsed = JSON.parse(out);
-						resolve(parsed);
-					} catch (e) {
-						resolve(null);
+				const jsonMatch = content.match(/\[[\s\S]*\]/);
+				if (jsonMatch) {
+					const parsed = JSON.parse(jsonMatch[0]);
+					if (Array.isArray(parsed)) {
+						// Save to cache for 1 day
+						try {
+							const promptHash = crypto.createHash('sha256').update(prompt).digest('hex');
+							const cacheKey = `groq:challenges:${promptHash}`;
+							await this.cacheService.set(cacheKey, JSON.stringify(parsed), 60 * 60 * 24);
+						} catch (e) {
+							console.warn('Failed to cache generated challenges:', (e as Error).message);
+						}
+						return parsed;
 					}
-				});
-
-				try {
-					proc.stdin.write(prompt);
-					proc.stdin.end();
-				} catch (e) {
-					// ignore
+				}
+				// If no JSON array found, try parsing the whole response
+				const parsed = JSON.parse(content);
+				if (Array.isArray(parsed)) {
+					return parsed;
 				}
 			} catch (e) {
-				if (!finished) { finished = true; resolve(null); }
+				console.warn('Failed to parse Groq response as JSON:', (e as Error).message);
+				return null;
 			}
-		});
+
+
+			return null;
+		} catch (e) {
+			if ((e as Error).name === 'AbortError') {
+				console.warn('Challenge generation timed out');
+			} else {
+				console.warn('Challenge generation error:', (e as Error).message);
+			}
+			return null;
+		}
 	}
 
 	async validateUser(username: string, password: string, recaptchaToken?: string) {

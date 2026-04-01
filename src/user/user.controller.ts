@@ -30,6 +30,7 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { DeleteAccountDto } from './dto/delete-account.dto';
 import { UpdateStatusDto } from './dto/update-status.dto';
 import { UpdatePlacementDto } from './dto/update-placement.dto';
+import { SaveSpeedTestSessionDto } from './dto/save-speed-test-session.dto';
 import { AuditLogService } from '../audit-logs/audit-log.service';
 
 // Rank order for promo/demotion direction checks
@@ -279,6 +280,52 @@ Audit logs are created for every call:
 		@Body() dto: UpdatePlacementDto,
 	) {
 		return this.userService.updatePlacement(user.userId, dto);
+	}
+
+	@UseGuards(JwtAuthGuard)
+	@ApiBearerAuth()
+	@ApiOperation({ summary: 'Mark speed challenge as completed' })
+	@ApiResponse({ status: 200, description: 'Speed challenge marked as completed' })
+	@Post('me/speed-challenge/complete')
+	@HttpCode(HttpStatus.OK)
+	async completeSpeedChallenge(@CurrentUser() user: { userId: string }) {
+		await this.userService.completeSpeedChallenge(user.userId);
+		return { message: 'Speed challenge completed' };
+	}
+
+	@UseGuards(JwtAuthGuard)
+	@ApiBearerAuth()
+	@ApiOperation({ summary: 'Save ongoing speed test session (for resuming later)' })
+	@ApiResponse({ status: 200, description: 'Session saved successfully' })
+	@Post('me/speed-challenge/session/save')
+	@HttpCode(HttpStatus.OK)
+	async saveSpeedTestSession(
+		@CurrentUser() user: { userId: string },
+		@Body() sessionData: SaveSpeedTestSessionDto,
+	) {
+		await this.userService.saveSpeedTestSession(user.userId, sessionData);
+		return { message: 'Session saved' };
+	}
+
+	@UseGuards(JwtAuthGuard)
+	@ApiBearerAuth()
+	@ApiOperation({ summary: 'Get ongoing speed test session (for resuming)' })
+	@ApiResponse({ status: 200, description: 'Session retrieved' })
+	@Get('me/speed-challenge/session')
+	async getSpeedTestSession(@CurrentUser() user: { userId: string }) {
+		const session = await this.userService.getSpeedTestSession(user.userId);
+		return session || { message: 'No ongoing session' };
+	}
+
+	@UseGuards(JwtAuthGuard)
+	@ApiBearerAuth()
+	@ApiOperation({ summary: 'Clear ongoing speed test session' })
+	@ApiResponse({ status: 200, description: 'Session cleared' })
+	@Post('me/speed-challenge/session/clear')
+	@HttpCode(HttpStatus.OK)
+	async clearSpeedTestSession(@CurrentUser() user: { userId: string }) {
+		await this.userService.clearSpeedTestSession(user.userId);
+		return { message: 'Session cleared' };
 	}
 
 	@UseGuards(JwtAuthGuard)

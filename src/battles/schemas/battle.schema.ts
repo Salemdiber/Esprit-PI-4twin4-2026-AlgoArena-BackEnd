@@ -1,0 +1,43 @@
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { Document } from 'mongoose';
+import { BattleStatus, BattleType } from '../battle.enums';
+
+export type BattleDocument = Battle & Document;
+
+@Schema({ timestamps: true })
+export class Battle {
+  @Prop({ required: true, index: true })
+  idBattle: string;
+
+  @Prop({ required: true })
+  userId: string;
+
+  @Prop({ default: null })
+  opponentId: string;
+
+  @Prop({ required: true })
+  roundNumber: number;
+
+  @Prop({ required: true, enum: BattleStatus, default: BattleStatus.PENDING })
+  battleStatus: BattleStatus;
+
+  @Prop({ required: true })
+  challengeId: string;
+
+  @Prop({ required: true })
+  selectChallengeType: string;
+
+  @Prop({ default: null })
+  winnerUserId: string;
+
+  @Prop({ type: Date, default: Date.now })
+  startedAt: Date;
+
+  @Prop({ type: Date })
+  endedAt: Date;
+
+  @Prop({ required: true, enum: BattleType })
+  battleType: BattleType;
+}
+
+export const BattleSchema = SchemaFactory.createForClass(Battle);

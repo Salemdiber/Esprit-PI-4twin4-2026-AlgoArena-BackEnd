@@ -23,7 +23,20 @@ export class UpdateSettingsDto {
 
   @IsOptional()
   @IsBoolean()
+  // Backwards-compatible flag name kept for DB schema; represents AI classification toggle
   ollamaEnabled?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  disableCopyPaste?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  disableTabSwitch?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  disableSpeedChallenges?: boolean;
 
   @IsOptional()
   @IsNumber()
