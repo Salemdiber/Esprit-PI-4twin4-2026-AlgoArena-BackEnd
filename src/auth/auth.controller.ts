@@ -58,7 +58,7 @@ Content-Type: application/json
     @ApiResponse({ status: 401, description: 'Unauthorized - Missing or invalid token' })
     @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
 	@Post('register')
-	async register(@Body() dto: CreateUserDto) {
+        async register(@Body() dto: CreateUserDto, @Res({ passthrough: true }) res: Response) {
 		const existingUsername = await this.users.findByUsername(dto.username);
 		if (existingUsername) throw new BadRequestException('Username is already taken');
 
@@ -66,7 +66,22 @@ Content-Type: application/json
 		if (existingEmail) throw new BadRequestException('Email is already taken');
 		this.authService.ensurePasswordIsSafe(dto.password, dto.username, dto.email);
 
-		return this.authService.register(dto);
+                const created = await this.authService.register(dto);
+                const tokens = await this.authService.login(created);
+                res.cookie('refresh_token', tokens.refresh_token, {
+                        path: '/',
+                        maxAge: 7 * 24 * 60 * 60 * 1000,
+                        httpOnly: true,
+                        sameSite: 'lax',
+                        secure: process.env.NODE_ENV === 'production',
+                });
+                res.cookie('access_token', tokens.access_token, {
+                        path: '/',
+                        maxAge: 15 * 60 * 1000,
+                        sameSite: 'lax',
+                        secure: process.env.NODE_ENV === 'production',
+                });
+                return { access_token: tokens.access_token };
 	}
 
 	        @ApiOperation({
