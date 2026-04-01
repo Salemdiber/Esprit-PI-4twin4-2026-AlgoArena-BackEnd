@@ -58,6 +58,9 @@ export class Challenge {
 
     @Prop()
     createdBy: string;
+
+    @Prop({ type: String, default: '' })
+    referenceSolution: string;
 }
 
 export const ChallengeSchema = SchemaFactory.createForClass(Challenge);

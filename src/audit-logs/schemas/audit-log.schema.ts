@@ -27,6 +27,9 @@ export const AuditLogSchema = new Schema(
                 'CHALLENGE_UNPUBLISHED',
                 'CHALLENGE_EDITED',
                 'CHALLENGE_DELETED',
+                'CHALLENGE_STARTED',
+                'CHALLENGE_SUBMITTED',
+                'CHALLENGE_SOLVED',
                 'DIFFICULTY_CHANGED',
                 'TAGS_UPDATED',
                 // System events

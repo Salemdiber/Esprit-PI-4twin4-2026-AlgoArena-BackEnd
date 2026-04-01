@@ -274,4 +274,8 @@ export class ChallengeService {
 
         return this.challengeModel.find(filter).sort(sortObj).lean().exec() as Promise<ChallengeDocument[]>;
     }
+
+    async incrementSolvedCount(id: string): Promise<void> {
+        await this.challengeModel.updateOne({ _id: id }, { $inc: { solvedCount: 1 } }).exec();
+    }
 }

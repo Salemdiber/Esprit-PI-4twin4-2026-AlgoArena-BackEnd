@@ -21,37 +21,6 @@ export interface ValidationResult {
 
 @Injectable()
 export class CodeExecutorService {
-    /**
-     * Execute code without test cases and return stdout (or error via reject).
-     * Useful for quick "Run" actions in the editor.
-     */
-    async executeRaw(code: string, language: string): Promise<string> {
-        if (!code) return '';
-        if (language === 'javascript') {
-            // Capture console.log output
-            let captured = '';
-            const sandbox: any = {
-                console: {
-                    log: (...args: any[]) => {
-                        captured += args.map((a) => String(a)).join(' ') + '\n';
-                    },
-                },
-            };
-            try {
-                const script = new vm.Script(code);
-                const context = vm.createContext(sandbox);
-                script.runInContext(context, { timeout: 5000 });
-                return captured.trim();
-            } catch (err) {
-                throw new Error(err instanceof Error ? err.message : String(err));
-            }
-        } else if (language === 'python') {
-            // For python, execute the code and return stdout
-            return this.executePythonCode(code);
-        } else {
-            throw new Error(`Language '${language}' is not supported for raw execution`);
-        }
-    }
     async validateCode(
         code: string,
         language: string,
@@ -369,7 +338,6 @@ except Exception as e:
         if (actualTrimmed === expectedTrimmed) {
             return true;
         }
-
         // Try numeric comparison if both are numbers
         const actualNum = parseFloat(actualTrimmed);
         const expectedNum = parseFloat(expectedTrimmed);
@@ -380,5 +348,60 @@ except Exception as e:
         }
 
         return false;
+    }
+
+    async executeRaw(code: string, language: string): Promise<string> {
+        if (!code || !code.trim()) throw new Error('Code cannot be empty');
+        if (!language) throw new Error('Language must be specified');
+
+        if (language === 'javascript') {
+            // Run JS in a VM and capture console output or return function result
+            return new Promise<string>((resolve, reject) => {
+                try {
+                    let captured = '';
+                    const sandbox: any = {
+                        console: { log: (...args: any[]) => { captured += args.map(a => String(a)).join(' ') + '\n'; } },
+                    };
+                    const script = new vm.Script(code);
+                    const context = vm.createContext(sandbox);
+                    try {
+                        script.runInContext(context, { timeout: 5000 });
+                    } catch (err) {
+                        const msg = err instanceof Error ? err.message : String(err);
+                        reject(new Error(`JavaScript execution error: ${msg}`));
+                        return;
+                    }
+
+                    // If code defines a top-level function named solution/solve/main, try to call it
+                    const priority = ['solution', 'solve', 'main'];
+                    for (const name of priority) {
+                        if (typeof sandbox[name] === 'function') {
+                            try {
+                                const res = sandbox[name]();
+                                if (res !== undefined && res !== null) resolve(String(res).trim());
+                                else if (captured) resolve(captured.trim());
+                                else resolve('');
+                                return;
+                            } catch (callErr) {
+                                const msg = callErr instanceof Error ? callErr.message : String(callErr);
+                                reject(new Error(`Error calling function '${name}': ${msg}`));
+                                return;
+                            }
+                        }
+                    }
+
+                    // Otherwise prefer captured console output
+                    if (captured) resolve(captured.trim());
+                    else resolve('');
+                } catch (err) {
+                    reject(err);
+                }
+            });
+        } else if (language === 'python') {
+            // Execute raw python code and return stdout
+            return this.executePythonCode(code);
+        }
+
+        throw new Error(`Language '${language}' not supported for raw execution`);
     }
 }

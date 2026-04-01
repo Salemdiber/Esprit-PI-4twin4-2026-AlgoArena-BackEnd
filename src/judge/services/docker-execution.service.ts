@@ -173,10 +173,10 @@ export class DockerExecutionService implements OnModuleInit {
         },
       });
 
-      await container.start();
+      await container!.start();
       metricRecord.startedAt = new Date();
 
-      const sampling = this.startStatsSampler(container);
+      const sampling = this.startStatsSampler(container!);
       stopStatsSampler = sampling.stop;
       statsSamplerPromise = sampling.done;
 
@@ -190,7 +190,7 @@ export class DockerExecutionService implements OnModuleInit {
         }
       }, this.timeoutMs);
 
-      const waitResult = await container.wait();
+      const waitResult = await container!.wait();
       clearTimeout(timeoutHandle);
 
       if (stopStatsSampler) stopStatsSampler();
@@ -204,14 +204,14 @@ export class DockerExecutionService implements OnModuleInit {
         }
       }
 
-      const finalSnapshot = await this.collectContainerStatsSnapshot(container);
+      const finalSnapshot = await this.collectContainerStatsSnapshot(container!);
       metricRecord.peakCpuPercent = this.maxNullable(metricRecord.peakCpuPercent, finalSnapshot.cpuPercent);
       metricRecord.peakMemoryMb = this.maxNullable(metricRecord.peakMemoryMb, finalSnapshot.memoryMb);
       metricRecord.statsSamplesCount = Number(metricRecord.statsSamplesCount || 0) + (finalSnapshot.hadSample ? 1 : 0);
       snapshotMerged = true;
 
       try {
-        const inspect = await container.inspect();
+        const inspect = await container!.inspect();
         metricRecord.containerId = (inspect?.Id || '').slice(0, 12) || metricRecord.containerId;
         metricRecord.image = inspect?.Config?.Image || metricRecord.image;
         if (inspect?.State?.StartedAt) metricRecord.startedAt = new Date(inspect.State.StartedAt);
@@ -222,7 +222,7 @@ export class DockerExecutionService implements OnModuleInit {
         // Ignore inspect errors for rapidly exiting containers.
       }
 
-      const logs = (await container.logs({ stdout: true, stderr: true })) as unknown as Buffer;
+      const logs = (await container!.logs({ stdout: true, stderr: true })) as unknown as Buffer;
       const { stdout, stderr } = this.demultiplexLogs(logs);
 
       if (timedOut) {
