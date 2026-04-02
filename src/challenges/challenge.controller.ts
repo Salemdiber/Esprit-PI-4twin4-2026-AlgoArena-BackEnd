@@ -240,12 +240,16 @@ Content-Type: application/json
         @Body() dto: CreateChallengeDto,
         @CurrentUser() user: { userId: string; username?: string },
     ) {
-        const challenge = await this.challengeService.create(
+        const result = await this.challengeService.create(
             dto,
             user?.userId,
             user?.username || 'Admin',
         );
-        return { success: true, data: challenge };
+        return {
+            success: true,
+            data: result.challenge,
+            warnings: result.warnings || [],
+        };
     }
 
     /** PATCH /challenges/:id — Update challenge */

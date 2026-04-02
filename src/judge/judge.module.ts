@@ -9,6 +9,7 @@ import { UserModule } from '../user/user.module';
 import { AuditLogModule } from '../audit-logs/audit-log.module';
 import { SandboxAdminController } from './sandbox-admin.controller';
 import { SandboxMetricSchema } from './schemas/sandbox-metric.schema';
+import { ChallengeAttemptController } from './challenge-attempt.controller';
 
 @Module({
   imports: [
@@ -18,7 +19,7 @@ import { SandboxMetricSchema } from './schemas/sandbox-metric.schema';
     MongooseModule.forFeature([{ name: 'SandboxMetric', schema: SandboxMetricSchema }]),
   ],
   providers: [JudgeService, DockerExecutionService, AIAnalysisService],
-  controllers: [JudgeController, SandboxAdminController],
+  controllers: [JudgeController, SandboxAdminController, ChallengeAttemptController],
   exports: [JudgeService, DockerExecutionService],
 })
 export class JudgeModule {}

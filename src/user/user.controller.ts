@@ -156,6 +156,32 @@ Authenticated user (JWT required)
 	@UseGuards(JwtAuthGuard)
 	@ApiBearerAuth()
 	@ApiOperation({
+		summary: 'Get my daily streak',
+		description: 'Returns current streak, longest streak, last login date, motivational streak message, and 7-day activity markers.',
+	})
+	@ApiResponse({ status: 200, description: 'Streak returned successfully' })
+	@Get('me/streak')
+	async getMyStreak(@CurrentUser() user: { userId: string }) {
+		return this.userService.getStreak(user.userId);
+	}
+
+	@UseGuards(JwtAuthGuard)
+	@ApiBearerAuth()
+	@Get('streak')
+	async getStreak(@CurrentUser() user: { userId: string }) {
+		return this.userService.getStreak(user.userId);
+	}
+
+	@UseGuards(JwtAuthGuard)
+	@ApiBearerAuth()
+	@Get('attempts')
+	async getMyAttempts(@CurrentUser() user: { userId: string }) {
+		return this.userService.getUserAttempts(user.userId);
+	}
+
+	@UseGuards(JwtAuthGuard)
+	@ApiBearerAuth()
+	@ApiOperation({
 		summary: 'Update my XP (and auto-update rank)',
 		description: `
 Adds or subtracts XP from the authenticated user. Rank is automatically recalculated.

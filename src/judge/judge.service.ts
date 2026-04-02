@@ -17,6 +17,129 @@ export class JudgeService {
     private readonly auditLogService: AuditLogService,
   ) {}
 
+  async startChallengeAttempt(userId: string, challengeId: string, ipAddress?: string | null) {
+    const challenge = await this.challengeService.findById(challengeId);
+    const userProfile: any = await this.userService.findOne(userId).catch(() => null);
+    const actorName = userProfile?.username || `user:${userId}`;
+
+    const attempt = await this.userService.startChallengeAttempt(userId, challengeId);
+    await this.auditLogService.create({
+      actionType: 'CHALLENGE_STARTED',
+      actor: actorName,
+      actorId: userId,
+      entityType: 'challenge',
+      targetId: challengeId,
+      targetLabel: challenge.title,
+      description: `${actorName} started challenge "${challenge.title}" (${challenge.difficulty})`,
+      status: 'active',
+      metadata: {
+        difficulty: challenge.difficulty,
+        ipAddress: ipAddress || null,
+        attemptId: attempt.attemptId,
+      },
+    });
+    return attempt;
+  }
+
+  async leaveChallengeAttempt(
+    userId: string,
+    challengeId: string,
+    reason: 'left_page' | 'tab_closed' = 'left_page',
+    ipAddress?: string | null,
+  ) {
+    const challenge = await this.challengeService.findById(challengeId);
+    const userProfile: any = await this.userService.findOne(userId).catch(() => null);
+    const actorName = userProfile?.username || `user:${userId}`;
+
+    const result = await this.userService.leaveChallengeAttempt(userId, challengeId, reason);
+    await this.auditLogService.create({
+      actionType: 'CHALLENGE_ABANDONED',
+      actor: actorName,
+      actorId: userId,
+      entityType: 'challenge',
+      targetId: challengeId,
+      targetLabel: challenge.title,
+      description: `${actorName} left challenge "${challenge.title}" and entered grace period`,
+      status: 'active',
+      metadata: {
+        difficulty: challenge.difficulty,
+        ipAddress: ipAddress || null,
+        reason,
+        gracePeriodExpiresAt: result.gracePeriodExpiresAt,
+      },
+    });
+    return result;
+  }
+
+  async returnChallengeAttempt(userId: string, challengeId: string, ipAddress?: string | null) {
+    const challenge = await this.challengeService.findById(challengeId).catch(() => null);
+    const userProfile: any = await this.userService.findOne(userId).catch(() => null);
+    const actorName = userProfile?.username || `user:${userId}`;
+
+    const result = await this.userService.returnChallengeAttempt(userId, challengeId);
+    if (challenge) {
+      await this.auditLogService.create({
+        actionType: result.allowed ? 'CHALLENGE_STARTED' : 'CHALLENGE_ABANDONED',
+        actor: actorName,
+        actorId: userId,
+        entityType: 'challenge',
+        targetId: challengeId,
+        targetLabel: challenge.title,
+        description: result.allowed
+          ? `${actorName} returned to challenge "${challenge.title}" within grace period`
+          : `${actorName} failed to return to challenge "${challenge.title}" before grace period expiration`,
+        status: 'active',
+        metadata: {
+          difficulty: challenge.difficulty,
+          ipAddress: ipAddress || null,
+          allowed: result.allowed,
+          remainingTime: result.remainingTime,
+          status: result.status,
+        },
+      });
+    }
+
+    return {
+      ...result,
+      remainingSeconds: Number(result?.remainingTime || 0),
+    };
+  }
+
+  async expireChallengeAttempt(userId: string, challengeId: string) {
+    return this.userService.expireChallengeAttempt(userId, challengeId);
+  }
+
+  async abandonChallengeAttempt(
+    userId: string,
+    challengeId: string,
+    reason: 'timeout' | 'left_page' | 'tab_closed' = 'timeout',
+    ipAddress?: string | null,
+  ) {
+    const challenge = await this.challengeService.findById(challengeId).catch(() => null);
+    const userProfile: any = await this.userService.findOne(userId).catch(() => null);
+    const actorName = userProfile?.username || `user:${userId}`;
+    const result = await this.userService.abandonChallengeAttempt(userId, challengeId, reason);
+
+    if (challenge) {
+      await this.auditLogService.create({
+        actionType: 'CHALLENGE_ABANDONED',
+        actor: actorName,
+        actorId: userId,
+        entityType: 'challenge',
+        targetId: challengeId,
+        targetLabel: challenge.title,
+        description: `${actorName} abandoned challenge "${challenge.title}" (${challenge.difficulty})`,
+        status: 'active',
+        metadata: {
+          difficulty: challenge.difficulty,
+          reason,
+          ipAddress: ipAddress || null,
+        },
+      });
+    }
+    return result;
+  }
+
   async judgeSubmission(
     userId: string,
     challengeId: string,
@@ -365,6 +488,14 @@ export class JudgeService {
         solveTimeSeconds: entry.solveTimeSeconds ?? null,
         xpAwarded: Number(entry.xpAwarded || 0),
         solvedAt: entry.solvedAt || null,
+        attemptId: entry.attemptId || null,
+        attemptStatus: entry.attemptStatus || 'completed',
+        attemptStartedAt: entry.attemptStartedAt || null,
+        leftAt: entry.leftAt || null,
+        gracePeriodExpiresAt: entry.gracePeriodExpiresAt || null,
+        returnedAt: entry.returnedAt || null,
+        abandonmentReason: entry.abandonmentReason || null,
+        incompleteAttemptCount: Number(entry.incompleteAttemptCount || 0),
         latestSubmission: Array.isArray(entry.submissions) && entry.submissions.length
           ? entry.submissions[entry.submissions.length - 1]
           : null,
@@ -381,6 +512,7 @@ export class JudgeService {
     ipAddress?: string | null,
     logStart = false,
   ) {
+    await this.userService.expireChallengeAttempt(userId, challengeId);
     const challenge = await this.challengeService.findById(challengeId).catch(() => null);
     const userProfile: any = await this.userService.findOne(userId).catch(() => null);
     const actorName = userProfile?.username || `user:${userId}`;
@@ -421,6 +553,14 @@ export class JudgeService {
       solveTimeSeconds: entry.solveTimeSeconds ?? null,
       xpAwarded: Number(entry.xpAwarded || 0),
       solvedAt: entry.solvedAt || null,
+      attemptId: entry.attemptId || null,
+      attemptStatus: entry.attemptStatus || 'completed',
+      attemptStartedAt: entry.attemptStartedAt || null,
+      leftAt: entry.leftAt || null,
+      gracePeriodExpiresAt: entry.gracePeriodExpiresAt || null,
+      returnedAt: entry.returnedAt || null,
+      abandonmentReason: entry.abandonmentReason || null,
+      incompleteAttemptCount: Number(entry.incompleteAttemptCount || 0),
       submissions: Array.isArray(entry.submissions) ? entry.submissions : [],
     };
   }

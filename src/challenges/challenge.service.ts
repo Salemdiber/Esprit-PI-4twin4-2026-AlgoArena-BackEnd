@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Challenge, ChallengeDocument } from './schemas/challenge.schema';
@@ -12,10 +12,59 @@ export class ChallengeService {
         private readonly auditLogService: AuditLogService,
     ) { }
 
-    async create(dto: CreateChallengeDto, createdBy?: string, actorName?: string): Promise<ChallengeDocument> {
+    private normalizeTitle(title: string): string {
+        return (title || '')
+            .toLowerCase()
+            .trim()
+            .replace(/[^\w\s]/g, '')
+            .replace(/\s+/g, ' ');
+    }
+
+    private normalizeDescriptionPrefix(description: string): string {
+        return (description || '')
+            .slice(0, 200)
+            .toLowerCase()
+            .trim()
+            .replace(/[^\w\s]/g, '')
+            .replace(/\s+/g, ' ');
+    }
+
+    private async validateDuplicateChallenge(dto: CreateChallengeDto, ignoreId?: string): Promise<string[]> {
+        const warnings: string[] = [];
+        const title = (dto.title || '').trim();
+        const normalizedTitle = this.normalizeTitle(title);
+
+        const exactTitleMatch = await this.challengeModel.findOne({ title }).lean().exec();
+        if (exactTitleMatch && String((exactTitleMatch as any)._id) !== String(ignoreId || '')) {
+            throw new ConflictException(`A challenge with the title '${title}' already exists. Please use a unique title.`);
+        }
+
+        const normalizedTitleMatch = await this.challengeModel.findOne({ normalizedTitle }).lean().exec();
+        if (normalizedTitleMatch && String((normalizedTitleMatch as any)._id) !== String(ignoreId || '')) {
+            throw new ConflictException(`A challenge with the title '${title}' already exists. Please use a unique title.`);
+        }
+
+        const descriptionPrefix = this.normalizeDescriptionPrefix(dto.description || '');
+        if (descriptionPrefix) {
+            const docs = await this.challengeModel.find({}, { _id: 1, title: 1, description: 1 }).lean().exec();
+            const similar = docs.find((doc: any) => {
+                if (String(doc?._id) === String(ignoreId || '')) return false;
+                return this.normalizeDescriptionPrefix(doc?.description || '') === descriptionPrefix;
+            });
+            if (similar) {
+                warnings.push(`Potential duplicate description detected with "${similar.title}".`);
+            }
+        }
+
+        return warnings;
+    }
+
+    async create(dto: CreateChallengeDto, createdBy?: string, actorName?: string): Promise<{ challenge: ChallengeDocument; warnings: string[] }> {
+        const warnings = await this.validateDuplicateChallenge(dto);
         const challenge = new this.challengeModel({
             ...dto,
             createdBy,
+            normalizedTitle: this.normalizeTitle(dto.title),
             acceptanceRate: 0,
             solvedCount: 0,
         });
@@ -56,7 +105,7 @@ export class ChallengeService {
             });
         }
 
-        return saved;
+        return { challenge: saved, warnings };
     }
 
     async findAll(query?: {
@@ -127,9 +176,27 @@ export class ChallengeService {
     async update(id: string, dto: Partial<CreateChallengeDto>, actorId?: string, actorName?: string): Promise<ChallengeDocument> {
         const existing = await this.challengeModel.findById(id).lean().exec();
         if (!existing) throw new NotFoundException('Challenge not found');
+        if (dto.title || dto.description) {
+            await this.validateDuplicateChallenge(
+                {
+                    ...(existing as any),
+                    ...dto,
+                    title: (dto.title ?? (existing as any).title) as string,
+                    description: (dto.description ?? (existing as any).description) as string,
+                } as CreateChallengeDto,
+                id,
+            );
+        }
 
         const updated = await this.challengeModel
-            .findByIdAndUpdate(id, dto, { new: true })
+            .findByIdAndUpdate(
+                id,
+                {
+                    ...dto,
+                    ...(dto.title ? { normalizedTitle: this.normalizeTitle(dto.title) } : {}),
+                },
+                { new: true },
+            )
             .lean()
             .exec();
         if (!updated) throw new NotFoundException('Challenge not found');

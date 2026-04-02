@@ -53,12 +53,53 @@ export class AnalyticsService {
             {
                 $group: {
                     _id: { $ifNull: ['$challengeDoc.difficulty', 'Unknown'] },
-                    submissions: { $sum: 1 },
-                    successfulSubmissions: {
+                    total: { $sum: 1 },
+                    successful: {
                         $sum: {
                             $cond: [{ $eq: ['$challengeProgress.submissions.passed', true] }, 1, 0],
                         },
                     },
+                    failed: {
+                        $sum: {
+                            $cond: [{ $eq: ['$challengeProgress.submissions.passed', false] }, 1, 0],
+                        },
+                    },
+                },
+            },
+        ]);
+
+        const abandonedAgg = await this.userModel.aggregate([
+            { $unwind: '$challengeProgress' },
+            {
+                $addFields: {
+                    challengeObjectId: {
+                        $convert: {
+                            input: '$challengeProgress.challengeId',
+                            to: 'objectId',
+                            onError: null,
+                            onNull: null,
+                        },
+                    },
+                },
+            },
+            {
+                $lookup: {
+                    from: 'challenges',
+                    localField: 'challengeObjectId',
+                    foreignField: '_id',
+                    as: 'challengeDoc',
+                },
+            },
+            {
+                $unwind: {
+                    path: '$challengeDoc',
+                    preserveNullAndEmptyArrays: true,
+                },
+            },
+            {
+                $group: {
+                    _id: { $ifNull: ['$challengeDoc.difficulty', 'Unknown'] },
+                    abandoned: { $sum: { $ifNull: ['$challengeProgress.incompleteAttemptCount', 0] } },
                 },
             },
         ]);
@@ -68,27 +109,36 @@ export class AnalyticsService {
             difficultyAgg.map((item) => [
                 item._id || 'Unknown',
                 {
-                    submissions: Number(item.submissions || 0),
-                    successfulSubmissions: Number(item.successfulSubmissions || 0),
+                    total: Number(item.total || 0),
+                    successful: Number(item.successful || 0),
+                    failed: Number(item.failed || 0),
                 },
             ]),
         );
+        const abandonedMap = new Map(
+            abandonedAgg.map((item) => [item._id || 'Unknown', Number(item.abandoned || 0)]),
+        );
 
         const byDifficulty = orderedDifficulties.map((difficulty) => {
-            const entry = byDifficultyMap.get(difficulty) || { submissions: 0, successfulSubmissions: 0 };
-            const successRate = entry.submissions > 0
-                ? this.toTwoDecimals((entry.successfulSubmissions / entry.submissions) * 100)
+            const entry = byDifficultyMap.get(difficulty) || { total: 0, successful: 0, failed: 0 };
+            const successRate = entry.total > 0
+                ? this.toTwoDecimals((entry.successful / entry.total) * 100)
                 : 0;
             return {
                 difficulty,
-                submissions: entry.submissions,
-                successfulSubmissions: entry.successfulSubmissions,
+                submissions: entry.total,
+                totalSubmissions: entry.total,
+                successfulSubmissions: entry.successful,
+                failedSubmissions: entry.failed,
+                abandonedAttempts: abandonedMap.get(difficulty) || 0,
                 successRate,
             };
         });
 
-        const totalSubmissions = byDifficulty.reduce((acc, item) => acc + item.submissions, 0);
+        const totalSubmissions = byDifficulty.reduce((acc, item) => acc + item.totalSubmissions, 0);
         const totalSuccessfulSubmissions = byDifficulty.reduce((acc, item) => acc + item.successfulSubmissions, 0);
+        const totalFailedSubmissions = byDifficulty.reduce((acc, item) => acc + item.failedSubmissions, 0);
+        const totalAbandonedAttempts = byDifficulty.reduce((acc, item) => acc + item.abandonedAttempts, 0);
         const successRate = totalSubmissions > 0
             ? this.toTwoDecimals((totalSuccessfulSubmissions / totalSubmissions) * 100)
             : 0;
@@ -96,6 +146,8 @@ export class AnalyticsService {
         return {
             totalSubmissions,
             totalSuccessfulSubmissions,
+            totalFailedSubmissions,
+            totalAbandonedAttempts,
             successRate,
             byDifficulty,
         };
@@ -207,6 +259,123 @@ export class AnalyticsService {
 
     async getAdminSubmissionsStats() {
         return this.aggregateSubmissionMetrics();
+    }
+
+    async getAdminDashboardSubmissionStats() {
+        const base = await this.aggregateSubmissionMetrics();
+        const response: Record<string, { total: number; successful: number; failed: number; abandoned: number; successRate: number }> = {
+            easy: { total: 0, successful: 0, failed: 0, abandoned: 0, successRate: 0 },
+            medium: { total: 0, successful: 0, failed: 0, abandoned: 0, successRate: 0 },
+            hard: { total: 0, successful: 0, failed: 0, abandoned: 0, successRate: 0 },
+            expert: { total: 0, successful: 0, failed: 0, abandoned: 0, successRate: 0 },
+        };
+        for (const item of base.byDifficulty || []) {
+            const key = String(item.difficulty || '').toLowerCase();
+            if (!response[key]) continue;
+            response[key] = {
+                total: Number(item.totalSubmissions || item.submissions || 0),
+                successful: Number(item.successfulSubmissions || 0),
+                failed: Number(item.failedSubmissions || 0),
+                abandoned: Number(item.abandonedAttempts || 0),
+                successRate: Number(item.successRate || 0),
+            };
+        }
+        return response;
+    }
+
+    async getAdminChallengeSubmissionsOverview() {
+        const [challenges, users] = await Promise.all([
+            this.challengeModel.find({}, { _id: 1, title: 1, difficulty: 1 }).lean().exec(),
+            this.userModel.find({}, { _id: 1, username: 1, challengeProgress: 1 }).lean().exec(),
+        ]);
+
+        const challengeMap = new Map<string, any>();
+        for (const challenge of challenges) {
+            const id = String((challenge as any)._id);
+            challengeMap.set(id, {
+                challengeId: id,
+                challengeTitle: (challenge as any).title,
+                difficulty: (challenge as any).difficulty,
+                totalSubmissions: 0,
+                successfulSubmissions: 0,
+                failedSubmissions: 0,
+                abandonedAttempts: 0,
+                successRate: 0,
+                averageSolveTime: 0,
+                recentSubmissions: [],
+            });
+        }
+
+        const solveAccumulator: Record<string, { total: number; count: number }> = {};
+
+        for (const user of users as any[]) {
+            const progressEntries = Array.isArray(user.challengeProgress) ? user.challengeProgress : [];
+            for (const entry of progressEntries) {
+                const challengeId = String(entry.challengeId || '');
+                if (!challengeMap.has(challengeId)) continue;
+                const target = challengeMap.get(challengeId);
+                const submissions = Array.isArray(entry.submissions) ? entry.submissions : [];
+
+                target.abandonedAttempts += Number(entry.incompleteAttemptCount || 0);
+                for (const submission of submissions) {
+                    const passed = Boolean(submission?.passed);
+                    target.totalSubmissions += 1;
+                    if (passed) target.successfulSubmissions += 1;
+                    else target.failedSubmissions += 1;
+
+                    const solveSeconds = Number(submission?.solveTimeSeconds ?? entry?.solveTimeSeconds);
+                    if (passed && Number.isFinite(solveSeconds) && solveSeconds > 0) {
+                        solveAccumulator[challengeId] = solveAccumulator[challengeId] || { total: 0, count: 0 };
+                        solveAccumulator[challengeId].total += solveSeconds;
+                        solveAccumulator[challengeId].count += 1;
+                    }
+
+                    target.recentSubmissions.push({
+                        userId: String(user._id),
+                        username: user.username || 'Unknown',
+                        submittedAt: submission?.submittedAt || null,
+                        status: passed ? 'success' : 'failed',
+                        code: submission?.code || '',
+                        executionTime: Number(submission?.executionTimeMs || 0),
+                        memoryUsed: submission?.memoryAllocated || 'Not available',
+                        language: submission?.language || 'javascript',
+                        errorMessage: submission?.error?.message || submission?.error?.stderr || '',
+                    });
+                }
+
+                if (entry.attemptStatus === 'abandoned') {
+                    target.recentSubmissions.push({
+                        userId: String(user._id),
+                        username: user.username || 'Unknown',
+                        submittedAt: entry.gracePeriodExpiresAt || entry.leftAt || entry.updatedAt || null,
+                        status: 'abandoned',
+                        code: '',
+                        executionTime: 0,
+                        memoryUsed: 'N/A',
+                        language: 'N/A',
+                        errorMessage: entry.abandonmentReason ? `Attempt abandoned (${entry.abandonmentReason})` : 'Attempt abandoned',
+                    });
+                }
+            }
+        }
+
+        const overview = [...challengeMap.values()].map((entry: any) => {
+            const solveStats = solveAccumulator[entry.challengeId];
+            const successRate = entry.totalSubmissions > 0
+                ? this.toTwoDecimals((entry.successfulSubmissions / entry.totalSubmissions) * 100)
+                : 0;
+            const recentSubmissions = entry.recentSubmissions
+                .sort((a: any, b: any) => new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime())
+                .slice(0, 10);
+            return {
+                ...entry,
+                successRate,
+                averageSolveTime: solveStats?.count ? this.toTwoDecimals(solveStats.total / solveStats.count) : 0,
+                recentSubmissions,
+            };
+        });
+
+        return overview.sort((a, b) => b.totalSubmissions - a.totalSubmissions);
     }
 
     async getPlatformInsights() {

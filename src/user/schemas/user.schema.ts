@@ -22,6 +22,11 @@ export const UserSchema = new Schema(
     xp: { type: Number, default: 0 },
     level: { type: String, default: null },
     streak: { type: Number, default: 0 },
+    currentStreak: { type: Number, default: 0 },
+    longestStreak: { type: Number, default: 0 },
+    lastLoginDate: { type: Date, default: null },
+    streakUpdatedAt: { type: Date, default: null },
+    loginActivityDates: { type: [String], default: [] },
     // Generated placement problems (stored at registration)
     placementProblems: { type: Array, default: [] },
     challengeProgress: {
@@ -33,6 +38,18 @@ export const UserSchema = new Schema(
           solveTimeSeconds: { type: Number, default: null },
           xpAwarded: { type: Number, default: 0 },
           solvedAt: { type: Date, default: null },
+          attemptId: { type: String, default: null },
+          attemptStatus: {
+            type: String,
+            enum: ['in_progress', 'completed', 'abandoned', 'grace_period'],
+            default: 'completed',
+          },
+          attemptStartedAt: { type: Date, default: null },
+          leftAt: { type: Date, default: null },
+          gracePeriodExpiresAt: { type: Date, default: null },
+          returnedAt: { type: Date, default: null },
+          abandonmentReason: { type: String, enum: ['left_page', 'timeout', 'tab_closed', null], default: null },
+          incompleteAttemptCount: { type: Number, default: 0 },
           submissions: {
             type: [
               {

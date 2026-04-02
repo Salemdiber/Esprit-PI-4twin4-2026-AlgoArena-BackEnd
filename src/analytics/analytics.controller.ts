@@ -1,5 +1,9 @@
 import { Controller, Get } from '@nestjs/common';
 import { AnalyticsService } from './analytics.service';
+import { UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
 
 @Controller()
 export class AnalyticsController {
@@ -28,6 +32,20 @@ export class AnalyticsController {
     @Get('admin/stats/submissions')
     async getSubmissionStats() {
         return await this.analyticsService.getAdminSubmissionsStats();
+    }
+
+    @Get('admin/dashboard/submission-stats')
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles('Admin')
+    async getDashboardSubmissionStats() {
+        return await this.analyticsService.getAdminDashboardSubmissionStats();
+    }
+
+    @Get('admin/challenges/submissions-overview')
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles('Admin')
+    async getChallengeSubmissionOverview() {
+        return await this.analyticsService.getAdminChallengeSubmissionsOverview();
     }
 
 }
