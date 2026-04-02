@@ -10,12 +10,16 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { BattlesService } from './battle.service';
+import { BattleAiService } from './battle-ai.service';
 import { CreateBattleDto } from './dto/create-battle.dto';
 import { UpdateBattleDto } from './dto/update-battle.dto';
 
 @Controller('battles')
 export class BattlesController {
-  constructor(private readonly service: BattlesService) {}
+  constructor(
+    private readonly service: BattlesService,
+    private readonly battleAiService: BattleAiService,
+  ) {}
 
   // POST /battles - Create a new battle
   @Post()
@@ -48,5 +52,14 @@ export class BattlesController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async remove(@Param('id') id: string) {
     await this.service.remove(id);
+  }
+
+  // POST /battles/:id/ai-submit - Generate and submit AI solution
+  @Post(':id/ai-submit')
+  async submitAiSolution(
+    @Param('id') id: string,
+    @Body() body: { language?: 'javascript' | 'python' },
+  ) {
+    return this.battleAiService.submitAiSolution(id, body?.language || 'javascript');
   }
 }
