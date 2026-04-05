@@ -269,7 +269,6 @@ export class AnalyticsService {
             hard: { total: 0, successful: 0, failed: 0, abandoned: 0, successRate: 0 },
             expert: { total: 0, successful: 0, failed: 0, abandoned: 0, successRate: 0 },
         };
-
         for (const item of base.byDifficulty || []) {
             const key = String(item.difficulty || '').toLowerCase();
             if (!response[key]) continue;
@@ -281,7 +280,6 @@ export class AnalyticsService {
                 successRate: Number(item.successRate || 0),
             };
         }
-
         return response;
     }
 
@@ -292,12 +290,12 @@ export class AnalyticsService {
         ]);
 
         const challengeMap = new Map<string, any>();
-        for (const challenge of challenges as any[]) {
-            const id = String(challenge._id);
+        for (const challenge of challenges) {
+            const id = String((challenge as any)._id);
             challengeMap.set(id, {
                 challengeId: id,
-                challengeTitle: challenge.title,
-                difficulty: challenge.difficulty,
+                challengeTitle: (challenge as any).title,
+                difficulty: (challenge as any).difficulty,
                 totalSubmissions: 0,
                 successfulSubmissions: 0,
                 failedSubmissions: 0,
@@ -315,7 +313,6 @@ export class AnalyticsService {
             for (const entry of progressEntries) {
                 const challengeId = String(entry.challengeId || '');
                 if (!challengeMap.has(challengeId)) continue;
-
                 const target = challengeMap.get(challengeId);
                 const submissions = Array.isArray(entry.submissions) ? entry.submissions : [];
 
@@ -362,28 +359,23 @@ export class AnalyticsService {
             }
         }
 
-        return Array.from(challengeMap.values())
-            .map((challenge) => {
-                const totalSubmissions = challenge.totalSubmissions;
-                const solveStats = solveAccumulator[challenge.challengeId];
-                return {
-                    ...challenge,
-                    successRate: totalSubmissions > 0
-                        ? this.toTwoDecimals((challenge.successfulSubmissions / totalSubmissions) * 100)
-                        : 0,
-                    averageSolveTime: solveStats && solveStats.count > 0
-                        ? this.toTwoDecimals(solveStats.total / solveStats.count)
-                        : 0,
-                    recentSubmissions: challenge.recentSubmissions
-                        .sort((a: any, b: any) => {
-                            const aTime = a.submittedAt ? new Date(a.submittedAt).getTime() : 0;
-                            const bTime = b.submittedAt ? new Date(b.submittedAt).getTime() : 0;
-                            return bTime - aTime;
-                        })
-                        .slice(0, 5),
-                };
-            })
-            .sort((a, b) => b.totalSubmissions - a.totalSubmissions);
+        const overview = [...challengeMap.values()].map((entry: any) => {
+            const solveStats = solveAccumulator[entry.challengeId];
+            const successRate = entry.totalSubmissions > 0
+                ? this.toTwoDecimals((entry.successfulSubmissions / entry.totalSubmissions) * 100)
+                : 0;
+            const recentSubmissions = entry.recentSubmissions
+                .sort((a: any, b: any) => new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime())
+                .slice(0, 10);
+            return {
+                ...entry,
+                successRate,
+                averageSolveTime: solveStats?.count ? this.toTwoDecimals(solveStats.total / solveStats.count) : 0,
+                recentSubmissions,
+            };
+        });
+
+        return overview.sort((a, b) => b.totalSubmissions - a.totalSubmissions);
     }
 
     async getPlatformInsights() {

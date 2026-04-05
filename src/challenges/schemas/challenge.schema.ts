@@ -5,8 +5,11 @@ export type ChallengeDocument = Challenge & Document;
 
 @Schema({ timestamps: true })
 export class Challenge {
-    @Prop({ required: true })
+    @Prop({ required: true, unique: true, trim: true })
     title: string;
+
+    @Prop({ required: true, unique: true, index: true })
+    normalizedTitle: string;
 
     @Prop({ required: true, enum: ['Easy', 'Medium', 'Hard', 'Expert'] })
     difficulty: string;
@@ -65,8 +68,23 @@ export class Challenge {
 
 export const ChallengeSchema = SchemaFactory.createForClass(Challenge);
 
+const normalizeTitle = (value: string) =>
+    (value || '')
+        .toLowerCase()
+        .trim()
+        .replace(/[^\w\s]/g, '')
+        .replace(/\s+/g, ' ');
+
+ChallengeSchema.pre('validate', function setNormalizedTitle(next) {
+    const current = this as any;
+    current.normalizedTitle = normalizeTitle(current.title || '');
+    next();
+});
+
 // Performance Indexes for backend querying
 ChallengeSchema.index({ status: 1, difficulty: 1 });
 ChallengeSchema.index({ tags: 1 });
 ChallengeSchema.index({ createdAt: -1 });
+ChallengeSchema.index({ title: 1 }, { unique: true });
+ChallengeSchema.index({ normalizedTitle: 1 }, { unique: true });
 ChallengeSchema.index({ title: 'text', description: 'text', tags: 'text' });
