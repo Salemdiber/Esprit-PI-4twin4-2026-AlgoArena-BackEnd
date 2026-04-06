@@ -8,11 +8,14 @@ import {
   Body,
   HttpCode,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
 import { BattlesService } from './battle.service';
 import { BattleAiService } from './battle-ai.service';
 import { CreateBattleDto } from './dto/create-battle.dto';
 import { UpdateBattleDto } from './dto/update-battle.dto';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @Controller('battles')
 export class BattlesController {
@@ -32,6 +35,14 @@ export class BattlesController {
   @Get()
   async findAll() {
     const battles = await this.service.findAll();
+    return { battles };
+  }
+
+  // GET /battles/me - Retrieve battles for current user
+  @UseGuards(JwtAuthGuard)
+  @Get('me')
+  async findMine(@CurrentUser() user: { userId: string }) {
+    const battles = await this.service.findByUserId(user.userId);
     return { battles };
   }
 

@@ -2,7 +2,7 @@ import { Controller, Post, Body, BadRequestException, Logger, UseGuards, Get, Pa
 import { JudgeService } from './judge.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { Request } from 'express';
+import type { Request } from 'express';
 
 @Controller('judge')
 export class JudgeController {

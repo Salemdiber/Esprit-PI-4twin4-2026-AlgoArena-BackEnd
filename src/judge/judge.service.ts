@@ -381,6 +381,8 @@ export class JudgeService {
       loadTime: `${Date.now() - startedAt}ms`,
       timeComplexity: details.timeComplexity || 'Unknown',
       spaceComplexity: details.spaceComplexity || 'Unknown',
+      codeQualityScore: (details as any).codeQualityScore ?? null,
+      codeQualityNotes: (details as any).codeQualityNotes ?? [],
       aiDetection: details.aiDetection || 'MANUAL',
       recommendations: details.recommendations || [],
       aiAnalysis,

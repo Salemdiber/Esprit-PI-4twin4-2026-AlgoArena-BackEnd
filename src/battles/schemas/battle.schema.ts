@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
-import { BattleStatus, BattleType } from '../battle.enums';
+import { BattleStatus, BattleType, BotDifficulty } from '../battle.enums';
 
 export type BattleDocument = Battle & Document;
 
@@ -26,6 +26,9 @@ export class Battle {
 
   @Prop({ required: true })
   selectChallengeType: string;
+
+  @Prop({ required: true, enum: BotDifficulty, default: BotDifficulty.MEDIUM })
+  botDifficulty: BotDifficulty;
 
   @Prop({ default: null })
   winnerUserId: string;
