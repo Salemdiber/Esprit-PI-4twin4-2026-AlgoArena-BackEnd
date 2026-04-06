@@ -34,7 +34,7 @@ import { SaveSpeedTestSessionDto } from './dto/save-speed-test-session.dto';
 import { AuditLogService } from '../audit-logs/audit-log.service';
 
 // Rank order for promo/demotion direction checks
-const RANK_ORDER = ['BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND'];
+const RANK_ORDER = ['BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND', 'RUBY', 'EMERALD', 'SAPPHIRE', 'OBSIDIAN', 'ALGOARENA CHAMPION'];
 
 const ALLOWED_IMAGE_TYPES = ['.jpg', '.jpeg', '.png', '.webp'];
 const ALLOWED_IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];

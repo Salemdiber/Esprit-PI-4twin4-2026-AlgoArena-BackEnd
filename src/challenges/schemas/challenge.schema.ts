@@ -50,6 +50,9 @@ export class Challenge {
     @Prop({ default: 0 })
     solvedCount: number;
 
+    @Prop({ default: 'challenge', enum: ['challenge', 'practice', 'contest'] })
+    mode: string;
+
     @Prop({ type: Object, default: {} })
     starterCode: Record<string, string>;
 

@@ -1,4 +1,4 @@
-import { Body, Controller, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Param, Post, Put, Req, UseGuards } from '@nestjs/common';
 import { Request } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -27,13 +27,46 @@ export class ChallengeAttemptController {
   async leaveAttempt(
     @CurrentUser() user: { userId: string },
     @Param('challengeId') challengeId: string,
-    @Body() body: { reason?: 'left_page' | 'tab_closed' },
+    @Body() body: { reason?: 'left_page' | 'tab_closed'; savedCode?: string; elapsedTime?: number; attemptId?: string | null },
     @Req() req: Request,
   ) {
     return this.judgeService.leaveChallengeAttempt(
       user.userId,
       challengeId,
       body?.reason || 'left_page',
+      {
+        savedCode: body?.savedCode,
+        elapsedTime: body?.elapsedTime,
+        attemptId: body?.attemptId,
+      },
+      req.ip || req.headers['x-forwarded-for']?.toString() || null,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put(':challengeId/attempt/save')
+  async saveAttempt(
+    @CurrentUser() user: { userId: string },
+    @Param('challengeId') challengeId: string,
+    @Body() body: {
+      attemptId?: string | null;
+      savedCode?: string;
+      elapsedTime?: number;
+      mode?: 'challenge' | 'practice' | 'contest';
+      reason?: 'left_page' | 'tab_closed' | 'manual_save';
+    },
+    @Req() req: Request,
+  ) {
+    return this.judgeService.saveChallengeAttempt(
+      user.userId,
+      challengeId,
+      {
+        attemptId: body?.attemptId,
+        savedCode: body?.savedCode,
+        elapsedTime: body?.elapsedTime,
+        mode: body?.mode,
+        reason: body?.reason,
+      },
       req.ip || req.headers['x-forwarded-for']?.toString() || null,
     );
   }

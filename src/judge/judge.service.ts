@@ -22,7 +22,8 @@ export class JudgeService {
     const userProfile: any = await this.userService.findOne(userId).catch(() => null);
     const actorName = userProfile?.username || `user:${userId}`;
 
-    const attempt = await this.userService.startChallengeAttempt(userId, challengeId);
+    const challengeMode = (challenge as any)?.mode || 'challenge';
+    const attempt = await this.userService.startChallengeAttempt(userId, challengeId, challengeMode);
     await this.auditLogService.create({
       actionType: 'CHALLENGE_STARTED',
       actor: actorName,
@@ -45,29 +46,69 @@ export class JudgeService {
     userId: string,
     challengeId: string,
     reason: 'left_page' | 'tab_closed' = 'left_page',
+    snapshot?: { savedCode?: string; elapsedTime?: number; attemptId?: string | null },
     ipAddress?: string | null,
   ) {
     const challenge = await this.challengeService.findById(challengeId);
     const userProfile: any = await this.userService.findOne(userId).catch(() => null);
     const actorName = userProfile?.username || `user:${userId}`;
 
-    const result = await this.userService.leaveChallengeAttempt(userId, challengeId, reason);
+    const result = await this.userService.leaveChallengeAttempt(userId, challengeId, reason, snapshot);
     await this.auditLogService.create({
-      actionType: 'CHALLENGE_ABANDONED',
+      actionType: 'CHALLENGE_STARTED',
       actor: actorName,
       actorId: userId,
       entityType: 'challenge',
       targetId: challengeId,
       targetLabel: challenge.title,
-      description: `${actorName} left challenge "${challenge.title}" and entered grace period`,
+      description: `${actorName} saved progress and left challenge "${challenge.title}"`,
       status: 'active',
       metadata: {
         difficulty: challenge.difficulty,
         ipAddress: ipAddress || null,
         reason,
-        gracePeriodExpiresAt: result.gracePeriodExpiresAt,
+        elapsedTime: result.elapsedTime ?? null,
       },
     });
+    return result;
+  }
+
+  async saveChallengeAttempt(
+    userId: string,
+    challengeId: string,
+    payload: {
+      attemptId?: string | null;
+      savedCode?: string;
+      elapsedTime?: number;
+      mode?: 'challenge' | 'practice' | 'contest';
+      reason?: 'left_page' | 'tab_closed' | 'manual_save';
+    },
+    ipAddress?: string | null,
+  ) {
+    const challenge = await this.challengeService.findById(challengeId).catch(() => null);
+    const userProfile: any = await this.userService.findOne(userId).catch(() => null);
+    const actorName = userProfile?.username || `user:${userId}`;
+    const result = await this.userService.saveChallengeAttempt(userId, challengeId, payload);
+
+    if (challenge) {
+      await this.auditLogService.create({
+        actionType: 'CHALLENGE_STARTED',
+        actor: actorName,
+        actorId: userId,
+        entityType: 'challenge',
+        targetId: challengeId,
+        targetLabel: challenge.title,
+        description: `${actorName} saved in-progress state for "${challenge.title}"`,
+        status: 'active',
+        metadata: {
+          difficulty: challenge.difficulty,
+          ipAddress: ipAddress || null,
+          elapsedTime: result.elapsedTime ?? null,
+          mode: result.mode || payload?.mode || 'challenge',
+        },
+      });
+    }
+
     return result;
   }
 
@@ -86,8 +127,8 @@ export class JudgeService {
         targetId: challengeId,
         targetLabel: challenge.title,
         description: result.allowed
-          ? `${actorName} returned to challenge "${challenge.title}" within grace period`
-          : `${actorName} failed to return to challenge "${challenge.title}" before grace period expiration`,
+          ? `${actorName} resumed challenge "${challenge.title}"`
+          : `${actorName} attempted to resume completed challenge "${challenge.title}"`,
         status: 'active',
         metadata: {
           difficulty: challenge.difficulty,
@@ -368,7 +409,7 @@ export class JudgeService {
     const solveSecondsValue = Number.isFinite(solveTimeSeconds as number)
       ? Math.max(0, Number(solveTimeSeconds))
       : null;
-    const submissionDetails = {
+    const submissionDetails: any = {
       submittedAt: new Date(),
       language,
       code: userCode,
@@ -390,12 +431,18 @@ export class JudgeService {
       solveTimeSeconds: solveSecondsValue,
     };
     let xpGranted = 0;
+    let xpFull = Number(challenge.xpReward || 0);
+    let xpReduced = false;
     if (mode === 'submit') {
       const persisted = await this.userService.recordChallengeSubmission(userId, challengeId, submissionDetails, {
         xpReward: Number(challenge.xpReward || 0),
         solveTimeSeconds: solveSecondsValue,
       });
       xpGranted = persisted.xpGranted;
+      xpReduced = Boolean(persisted?.progressEntry?.wasReduced);
+      submissionDetails.xpGained = xpGranted;
+      submissionDetails.totalElapsedTime = persisted?.progressEntry?.totalElapsedTime ?? solveSecondsValue ?? 0;
+      submissionDetails.wasReduced = xpReduced;
 
       await this.auditLogService.create({
         actionType: 'CHALLENGE_SUBMITTED',
@@ -453,6 +500,8 @@ export class JudgeService {
       submissionDetails,
       solveTimeSeconds: solveSecondsValue,
       xpGranted,
+      xpFull,
+      xpReduced,
       mode,
     };
   }
@@ -484,13 +533,26 @@ export class JudgeService {
       progress: progress.map((entry: any) => ({
         challengeId: entry.challengeId,
         status: entry.status || 'UNSOLVED',
+        userStatus: entry.status === 'SOLVED'
+          ? 'completed'
+          : entry.attemptStatus === 'abandoned'
+            ? 'abandoned'
+            : entry.attemptStatus === 'in_progress'
+              ? 'in_progress'
+              : 'not_started',
         failedAttempts: Number(entry.failedAttempts || 0),
         solveTimeSeconds: entry.solveTimeSeconds ?? null,
         xpAwarded: Number(entry.xpAwarded || 0),
+        mode: entry.mode || 'challenge',
         solvedAt: entry.solvedAt || null,
         attemptId: entry.attemptId || null,
         attemptStatus: entry.attemptStatus || 'completed',
         attemptStartedAt: entry.attemptStartedAt || null,
+        lastActiveAt: entry.lastActiveAt || null,
+        lastAttemptAt: entry.lastAttemptAt || null,
+        savedCode: entry.savedCode || '',
+        totalElapsedTime: Number(entry.totalElapsedTime || 0),
+        wasReduced: Boolean(entry.wasReduced),
         leftAt: entry.leftAt || null,
         gracePeriodExpiresAt: entry.gracePeriodExpiresAt || null,
         returnedAt: entry.returnedAt || null,
@@ -552,10 +614,16 @@ export class JudgeService {
       failedAttempts: Number(entry.failedAttempts || 0),
       solveTimeSeconds: entry.solveTimeSeconds ?? null,
       xpAwarded: Number(entry.xpAwarded || 0),
+      mode: entry.mode || 'challenge',
       solvedAt: entry.solvedAt || null,
       attemptId: entry.attemptId || null,
       attemptStatus: entry.attemptStatus || 'completed',
       attemptStartedAt: entry.attemptStartedAt || null,
+      lastActiveAt: entry.lastActiveAt || null,
+      lastAttemptAt: entry.lastAttemptAt || null,
+      savedCode: entry.savedCode || '',
+      totalElapsedTime: Number(entry.totalElapsedTime || 0),
+      wasReduced: Boolean(entry.wasReduced),
       leftAt: entry.leftAt || null,
       gracePeriodExpiresAt: entry.gracePeriodExpiresAt || null,
       returnedAt: entry.returnedAt || null,

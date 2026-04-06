@@ -80,4 +80,9 @@ export class CreateChallengeDto {
     @IsIn(['draft', 'published'])
     @IsOptional()
     status?: string;
+
+    @IsString()
+    @IsIn(['challenge', 'practice', 'contest'])
+    @IsOptional()
+    mode?: string;
 }
