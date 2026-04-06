@@ -4,6 +4,7 @@ import { BattlesService } from './battle.service';
 import { ChallengeService } from '../challenges/challenge.service';
 import { DockerExecutionService } from '../judge/services/docker-execution.service';
 import { AIAnalysisService } from '../judge/services/ai-analysis.service';
+import { BotDifficulty } from './battle.enums';
 
 export interface AiSubmissionResult {
   passed: boolean;
@@ -12,10 +13,12 @@ export interface AiSubmissionResult {
   executionTimeMs: number;
   timeComplexity: string;
   spaceComplexity: string;
+  codeQualityScore: number;
   score: number;
   criteria: string[];
   model: string;
   language: 'javascript' | 'python';
+  botDifficulty: BotDifficulty;
   results: any[];
   error: { type: string; message: string; line: number | null } | null;
 }
@@ -81,7 +84,10 @@ export class BattleAiService {
         throw new BadRequestException('Challenge has no test cases');
       }
 
-      const code = await this.generateSolution(challenge, language);
+      const botDifficulty = (battle as any)?.botDifficulty as BotDifficulty | undefined;
+      const effectiveDifficulty = botDifficulty || this.mapChallengeDifficultyToBotDifficulty((challenge as any)?.difficulty);
+
+      const code = await this.generateSolution(challenge, language, effectiveDifficulty);
       const execution = await this.dockerService.executeCode(code, language, testCases, {
         challengeTitle: challenge.title,
         challengeDescription: challenge.description || '',
@@ -101,6 +107,8 @@ export class BattleAiService {
         execution.results,
       );
 
+      const codeQualityScore = Number((details as any).codeQualityScore ?? 65);
+
       const score = this.calculateScore({
         maxPoints: Number(challenge.xpReward || 500),
         passedCount,
@@ -109,6 +117,7 @@ export class BattleAiService {
         timeLimitSeconds: 900,
         timeComplexity: details.timeComplexity,
         spaceComplexity: details.spaceComplexity,
+        codeQualityScore,
       });
 
       const criteria = [
@@ -116,6 +125,7 @@ export class BattleAiService {
         `Execution time: ${execution.executionTimeMs}ms`,
         `Time complexity: ${details.timeComplexity || 'Unknown'}`,
         `Space complexity: ${details.spaceComplexity || 'Unknown'}`,
+        `Code quality: ${Math.round(codeQualityScore)}/100`,
       ];
 
       return {
@@ -125,10 +135,12 @@ export class BattleAiService {
         executionTimeMs: execution.executionTimeMs,
         timeComplexity: details.timeComplexity || 'Unknown',
         spaceComplexity: details.spaceComplexity || 'Unknown',
+        codeQualityScore: Math.round(codeQualityScore),
         score,
         criteria,
         model: this.model,
         language,
+        botDifficulty: effectiveDifficulty,
         results: execution.results,
         error: execution.error,
       };
@@ -142,10 +154,12 @@ export class BattleAiService {
         executionTimeMs: 0,
         timeComplexity: 'Unknown',
         spaceComplexity: 'Unknown',
+        codeQualityScore: 0,
         score: 0,
         criteria: [message],
         model: this.model,
         language,
+        botDifficulty: BotDifficulty.MEDIUM,
         results: [],
         error: { type: 'AIError', message, line: null },
       };
@@ -160,6 +174,7 @@ export class BattleAiService {
     timeLimitSeconds: number;
     timeComplexity?: string;
     spaceComplexity?: string;
+    codeQualityScore?: number;
   }): number {
     const {
       maxPoints,
@@ -169,18 +184,22 @@ export class BattleAiService {
       timeLimitSeconds,
       timeComplexity,
       spaceComplexity,
+      codeQualityScore,
     } = params;
     if (!total) return 0;
 
-    const exactitude = (passedCount / total) * 100;
+    const correctnessFactor = Math.max(0, Math.min(1, passedCount / total));
     const complexityScore = Math.round((
       this.mapComplexityScore(timeComplexity) + this.mapComplexityScore(spaceComplexity)
     ) / 2);
-    const styleScore = 60;
-    const solveSeconds = Math.max(0, Math.round(executionTimeMs / 1000));
-    const timeBonus = Math.max(0, Math.round(10 * (1 - Math.min(1, solveSeconds / (timeLimitSeconds || 900)))));
-    const composite = exactitude * 0.4 + complexityScore * 0.3 + styleScore * 0.2 + timeBonus;
-    return Math.max(0, Math.round((maxPoints || 500) * (composite / 100)));
+    const solveSeconds = Math.max(0, executionTimeMs / 1000);
+    const runtimeScore = Math.round(100 * (1 - Math.min(1, solveSeconds / (timeLimitSeconds || 900))));
+    const quality = Number.isFinite(Number(codeQualityScore)) ? Number(codeQualityScore) : 60;
+    const qualityScore = Math.max(0, Math.min(100, Math.round(quality)));
+
+    // Priority: complexity -> runtime -> code quality (then gated by correctness)
+    const composite = complexityScore * 0.45 + runtimeScore * 0.35 + qualityScore * 0.2;
+    return Math.max(0, Math.round((maxPoints || 500) * (composite / 100) * correctnessFactor));
   }
 
   private mapComplexityScore(value?: string): number {
@@ -194,7 +213,11 @@ export class BattleAiService {
     return 60;
   }
 
-  private async generateSolution(challenge: any, language: 'javascript' | 'python'): Promise<string> {
+  private async generateSolution(
+    challenge: any,
+    language: 'javascript' | 'python',
+    difficulty: BotDifficulty,
+  ): Promise<string> {
     if (!this.apiKey) {
       this.logger.warn('GROK_API_KEY or GROQ_API_KEY is not configured, using fallback solution');
       return this.fallbackSolution(challenge, language);
@@ -206,6 +229,29 @@ export class BattleAiService {
     const tests = Array.isArray(challenge.testCases) ? JSON.stringify(challenge.testCases.slice(0, 6)) : '[]';
 
     const systemPrompt = 'You are a competitive programming assistant. Return only the final code. Do not include markdown or explanations.';
+
+    const difficultyDirectives: Record<BotDifficulty, { extra: string; temperature: number; maxTokens: number }> = {
+      [BotDifficulty.EASY]: {
+        extra:
+          'Difficulty: EASY BOT. Prefer the simplest correct approach. Avoid heavy optimizations and advanced tricks. Keep code short and straightforward even if performance is not optimal, but it MUST pass the provided tests.',
+        temperature: 0.12,
+        maxTokens: 1200,
+      },
+      [BotDifficulty.MEDIUM]: {
+        extra:
+          'Difficulty: MEDIUM BOT. Write a correct solution with reasonable efficiency. Prefer common patterns/data structures. Avoid over-optimizing micro details. It MUST pass the provided tests.',
+        temperature: 0.22,
+        maxTokens: 1600,
+      },
+      [BotDifficulty.HARD]: {
+        extra:
+          'Difficulty: HARD BOT. Aim for an efficient and robust solution, but keep it readable. Do not use obscure hacks or extreme golf. It MUST pass the provided tests, but you do not need to be the absolute fastest possible.',
+        temperature: 0.32,
+        maxTokens: 1800,
+      },
+    };
+
+    const directive = difficultyDirectives[difficulty] || difficultyDirectives[BotDifficulty.MEDIUM];
     const userPrompt = [
       `Solve the following challenge in ${language}.`,
       `Title: ${challenge.title}`,
@@ -214,6 +260,7 @@ export class BattleAiService {
       `Examples: ${examples}`,
       `TestCases: ${tests}`,
       starter ? `StarterCode:\n${starter}` : null,
+      directive.extra,
       'Return a complete solution that matches the starter code signature if provided.',
     ].filter(Boolean).join('\n\n');
 
@@ -230,8 +277,8 @@ export class BattleAiService {
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userPrompt },
           ],
-          temperature: 0.2,
-          max_tokens: 1800,
+          temperature: directive.temperature,
+          max_tokens: directive.maxTokens,
         }),
       });
 
@@ -273,5 +320,17 @@ export class BattleAiService {
     const trimmed = content.trim();
     const fence = trimmed.match(/```(?:\w+)?\s*([\s\S]*?)```/);
     return (fence ? fence[1] : trimmed).trim();
+  }
+
+  private mapChallengeDifficultyToBotDifficulty(value?: string): BotDifficulty {
+    const v = String(value || '').toLowerCase().trim();
+    if (v === 'easy' || v === 'eas' || v === 'beginner') return BotDifficulty.EASY;
+    if (v === 'hard' || v === 'expert') return BotDifficulty.HARD;
+    if (v === 'medium' || v === 'med') return BotDifficulty.MEDIUM;
+    // Handles older enum values like 'EASY'/'MEDIUM'/'HARD'
+    if (v === 'easy') return BotDifficulty.EASY;
+    if (v === 'medium') return BotDifficulty.MEDIUM;
+    if (v === 'hard') return BotDifficulty.HARD;
+    return BotDifficulty.MEDIUM;
   }
 }

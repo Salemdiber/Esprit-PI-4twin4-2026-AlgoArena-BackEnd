@@ -41,6 +41,10 @@ export class BattlesService {
     return this.model.find().exec();
   }
 
+  async findByUserId(userId: string): Promise<Battle[]> {
+    return this.model.find({ userId }).exec();
+  }
+
   async findOne(id: string): Promise<Battle> {
     const found = await this.model.findById(id).exec();
     if (!found) throw new NotFoundException(`Battle with id ${id} not found`);

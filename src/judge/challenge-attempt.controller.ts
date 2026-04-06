@@ -1,5 +1,5 @@
-import { Body, Controller, Param, Post, Put, Req, UseGuards } from '@nestjs/common';
-import { Request } from 'express';
+import { Body, Controller, Param, Post, Req, UseGuards } from '@nestjs/common';
+import type { Request } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JudgeService } from './judge.service';

@@ -1,5 +1,5 @@
 import { IsString, IsNumber, IsEnum, IsOptional, IsDateString } from 'class-validator';
-import { BattleStatus, BattleType } from '../battle.enums';
+import { BattleStatus, BattleType, BotDifficulty } from '../battle.enums';
 
 export class CreateBattleDto {
   @IsString()
@@ -25,6 +25,10 @@ export class CreateBattleDto {
 
   @IsString()
   selectChallengeType: string;
+
+  @IsEnum(BotDifficulty)
+  @IsOptional()
+  botDifficulty?: BotDifficulty;
 
   @IsString()
   @IsOptional()

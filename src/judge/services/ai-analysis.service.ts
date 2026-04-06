@@ -95,6 +95,8 @@ export class AIAnalysisService {
     spaceComplexity: string;
     aiDetection: 'MANUAL' | 'AI_SUSPECTED';
     recommendations: string[];
+    codeQualityScore?: number;
+    codeQualityNotes?: string[];
   }> {
     const fallback = this.estimateSubmissionDetails(userCode);
     try {
@@ -104,7 +106,7 @@ export class AIAnalysisService {
           {
             role: 'system',
             content:
-              'You are an advanced code judge. Return strict JSON only with keys: timeComplexity, spaceComplexity, aiDetection, recommendations. aiDetection must be MANUAL or AI_SUSPECTED. recommendations must be an array of short strings.',
+              'You are an advanced code judge. Return strict JSON only with keys: timeComplexity, spaceComplexity, aiDetection, recommendations, codeQualityScore, codeQualityNotes. aiDetection must be MANUAL or AI_SUSPECTED. recommendations must be an array of short strings. codeQualityScore must be an integer 0-100 (readability, correctness hygiene, edge-cases, structure). codeQualityNotes must be an array of short strings.',
           },
           {
             role: 'user',
@@ -121,6 +123,12 @@ export class AIAnalysisService {
       const parsedSpace = parsed?.spaceComplexity;
       const safeTime = !parsedTime || parsedTime === 'Unknown' ? fallback.timeComplexity : parsedTime;
       const safeSpace = !parsedSpace || parsedSpace === 'Unknown' ? fallback.spaceComplexity : parsedSpace;
+      const qualityScore = Number.isFinite(Number(parsed?.codeQualityScore))
+        ? Math.max(0, Math.min(100, Math.round(Number(parsed.codeQualityScore))))
+        : fallback.codeQualityScore;
+      const qualityNotes = Array.isArray(parsed?.codeQualityNotes) && parsed.codeQualityNotes.length
+        ? parsed.codeQualityNotes.slice(0, 5).map((item: any) => String(item))
+        : fallback.codeQualityNotes;
       return {
         timeComplexity: safeTime,
         spaceComplexity: safeSpace,
@@ -128,6 +136,8 @@ export class AIAnalysisService {
         recommendations: Array.isArray(parsed?.recommendations) && parsed.recommendations.length
           ? parsed.recommendations.slice(0, 5).map((item: any) => String(item))
           : fallback.recommendations,
+        codeQualityScore: qualityScore,
+        codeQualityNotes: qualityNotes,
       };
     } catch (e) {
       this.logger.error(`AI analyzeSubmissionDetails failed: ${e.message}`);
@@ -140,6 +150,8 @@ export class AIAnalysisService {
     spaceComplexity: string;
     aiDetection: 'MANUAL' | 'AI_SUSPECTED';
     recommendations: string[];
+    codeQualityScore: number;
+    codeQualityNotes: string[];
   } {
     const loopCount = (userCode.match(/\b(for|while)\b/g) || []).length;
     const usesCollections = /\b(Map|Set|dict|{}\s*$|\[\])\b/.test(userCode);
@@ -150,6 +162,8 @@ export class AIAnalysisService {
       spaceComplexity,
       aiDetection: 'MANUAL',
       recommendations: ['Consider documenting edge-case handling to improve clarity.'],
+      codeQualityScore: 65,
+      codeQualityNotes: ['Improve naming and add brief comments for tricky parts.'],
     };
   }
 }
