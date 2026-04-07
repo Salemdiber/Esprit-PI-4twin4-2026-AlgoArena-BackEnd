@@ -38,6 +38,25 @@ export class CreateBattleDto {
   @IsOptional()
   startedAt?: string;
 
+  @IsNumber()
+  @IsOptional()
+  timeLimitSeconds?: number;
+
+  @IsNumber()
+  @IsOptional()
+  playerScoreTotal?: number;
+
+  @IsNumber()
+  @IsOptional()
+  opponentScoreTotal?: number;
+
+  @IsNumber()
+  @IsOptional()
+  xpGranted?: number;
+
+  @IsOptional()
+  xpAwarded?: boolean;
+
   @IsDateString()
   @IsOptional()
   endedAt?: string;

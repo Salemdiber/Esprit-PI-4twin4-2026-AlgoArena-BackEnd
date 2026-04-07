@@ -1,5 +1,4 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { I18nContext, I18nService } from 'nestjs-i18n';
 import { ConfigService } from '@nestjs/config';
 import { SettingsService } from '../settings/settings.service';
 import { CacheService } from '../cache/cache.service';
@@ -53,6 +52,14 @@ const RANK_TIERS = [
   { min: 0, rank: 'BRONZE', label: 'Bronze', color: '#cd7f32', gradient: ['#cd7f32', '#a0522d'] as [string, string], xp: 0 },
 ];
 
+const RANK_MESSAGES: Record<string, string> = {
+  DIAMOND: 'Exceptional! Your code correctness, efficiency and style are top-tier.',
+  PLATINUM: 'Outstanding! Clean, efficient solutions delivered at pace.',
+  GOLD: 'Solid work! Good correctness with room to further optimise.',
+  SILVER: 'Good effort — keep sharpening your problem-solving instincts.',
+  BRONZE: 'Every expert started somewhere — keep coding every day!',
+};
+
 // Starter code snippets to detect empty submissions
 const STARTER_TOKENS = [
   '// your solution here',
@@ -75,21 +82,11 @@ export class OnboardingService {
     private readonly settingsService: SettingsService,
     private readonly configService: ConfigService,
     private readonly cacheService: CacheService,
-    private readonly i18n: I18nService,
     private readonly aiAnalysisService: AIAnalysisService,
   ) {
     if (!this.groqApiKey) {
       this.logger.warn('GROQ_API_KEY not set — AI scoring will be disabled');
     }
-  }
-
-  private tr(key: string, args?: Record<string, unknown>): string {
-    const lang = I18nContext.current()?.lang ?? 'en';
-    return this.i18n.translate(key, { lang, args }) as string;
-  }
-
-  private rankMessage(rank: string): string {
-    return this.tr(`onboarding.rankMessages.${rank}`);
   }
 
   async generateSpeedChallengeHint(title: string, description: string, hintLevel = 1): Promise<string> {
@@ -159,7 +156,7 @@ export class OnboardingService {
         space: Math.round(avgSpace),
         style: Math.round(avgStyle),
       },
-      message: this.rankMessage(tier.rank),
+      message: RANK_MESSAGES[tier.rank],
     };
   }
 
@@ -190,7 +187,7 @@ export class OnboardingService {
       complexite: 'O(?)',
       style: s.solved ? 50 : 0,
       composite: s.solved ? baseScore : 0,
-      notes: s.solved ? this.tr('onboarding.ruleBasedNotesSolved') : this.tr('onboarding.ruleBasedNotesNotSolved'),
+      notes: s.solved ? 'Rule-based estimate (AI classification disabled).' : 'Not solved.',
     }));
 
     return {
@@ -202,7 +199,7 @@ export class OnboardingService {
       totalScore: baseScore,
       breakdown,
       aiScores: { exactitude: baseScore, complexity: 50, space: 50, style: 50 },
-      message: this.rankMessage(tier.rank) + this.tr('onboarding.aiDisabledSuffix'),
+      message: RANK_MESSAGES[tier.rank] + ' (AI classification disabled)',
     };
   }
 
@@ -215,7 +212,7 @@ export class OnboardingService {
       STARTER_TOKENS.some((t) => sol.code.toLowerCase().includes(t));
 
     if (!sol.solved || isEmpty) {
-      return this.zeroScore(sol, this.tr('onboarding.notSolvedOrEmpty'));
+      return this.zeroScore(sol, 'Problem not solved or no meaningful code submitted.');
     }
 
     try {

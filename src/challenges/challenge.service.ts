@@ -1,5 +1,4 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
-import { I18nContext, I18nService } from 'nestjs-i18n';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Challenge, ChallengeDocument } from './schemas/challenge.schema';
@@ -11,13 +10,7 @@ export class ChallengeService {
     constructor(
         @InjectModel(Challenge.name) private readonly challengeModel: Model<ChallengeDocument>,
         private readonly auditLogService: AuditLogService,
-        private readonly i18n: I18nService,
-    ) {}
-
-    private tr(key: string, args?: Record<string, unknown>): string {
-        const lang = I18nContext.current()?.lang ?? 'en';
-        return this.i18n.translate(key, { lang, args }) as string;
-    }
+    ) { }
 
     private normalizeTitle(title: string): string {
         return (title || '')
@@ -43,12 +36,12 @@ export class ChallengeService {
 
         const exactTitleMatch = await this.challengeModel.findOne({ title }).lean().exec();
         if (exactTitleMatch && String((exactTitleMatch as any)._id) !== String(ignoreId || '')) {
-            throw new ConflictException(this.tr('challenges.titleExists', { title }));
+            throw new ConflictException(`A challenge with the title '${title}' already exists. Please use a unique title.`);
         }
 
         const normalizedTitleMatch = await this.challengeModel.findOne({ normalizedTitle }).lean().exec();
         if (normalizedTitleMatch && String((normalizedTitleMatch as any)._id) !== String(ignoreId || '')) {
-            throw new ConflictException(this.tr('challenges.titleExists', { title }));
+            throw new ConflictException(`A challenge with the title '${title}' already exists. Please use a unique title.`);
         }
 
         const descriptionPrefix = this.normalizeDescriptionPrefix(dto.description || '');
@@ -59,7 +52,7 @@ export class ChallengeService {
                 return this.normalizeDescriptionPrefix(doc?.description || '') === descriptionPrefix;
             });
             if (similar) {
-                warnings.push(this.tr('challenges.duplicateDescriptionWarning', { title: String(similar.title) }));
+                warnings.push(`Potential duplicate description detected with "${similar.title}".`);
             }
         }
 
@@ -176,13 +169,13 @@ export class ChallengeService {
 
     async findById(id: string): Promise<ChallengeDocument> {
         const challenge = await this.challengeModel.findById(id).lean().exec();
-        if (!challenge) throw new NotFoundException(this.tr('challenges.notFound'));
+        if (!challenge) throw new NotFoundException('Challenge not found');
         return challenge as ChallengeDocument;
     }
 
     async update(id: string, dto: Partial<CreateChallengeDto>, actorId?: string, actorName?: string): Promise<ChallengeDocument> {
         const existing = await this.challengeModel.findById(id).lean().exec();
-        if (!existing) throw new NotFoundException(this.tr('challenges.notFound'));
+        if (!existing) throw new NotFoundException('Challenge not found');
         if (dto.title || dto.description) {
             await this.validateDuplicateChallenge(
                 {
@@ -206,7 +199,7 @@ export class ChallengeService {
             )
             .lean()
             .exec();
-        if (!updated) throw new NotFoundException(this.tr('challenges.notFound'));
+        if (!updated) throw new NotFoundException('Challenge not found');
 
         // Build state diff for audit
         const changedFields: Record<string, any> = {};
@@ -238,7 +231,7 @@ export class ChallengeService {
 
     async publish(id: string, actorId?: string, actorName?: string): Promise<ChallengeDocument> {
         const existing = await this.challengeModel.findById(id).lean().exec();
-        if (!existing) throw new NotFoundException(this.tr('challenges.notFound'));
+        if (!existing) throw new NotFoundException('Challenge not found');
 
         const updated = await this.challengeModel
             .findByIdAndUpdate(id, { status: 'published' }, { new: true })
@@ -263,7 +256,7 @@ export class ChallengeService {
 
     async unpublish(id: string, actorId?: string, actorName?: string): Promise<ChallengeDocument> {
         const existing = await this.challengeModel.findById(id).lean().exec();
-        if (!existing) throw new NotFoundException(this.tr('challenges.notFound'));
+        if (!existing) throw new NotFoundException('Challenge not found');
 
         const updated = await this.challengeModel
             .findByIdAndUpdate(id, { status: 'draft' }, { new: true })
@@ -288,7 +281,7 @@ export class ChallengeService {
 
     async remove(id: string, actorId?: string, actorName?: string): Promise<{ deleted: boolean }> {
         const existing = await this.challengeModel.findById(id).lean().exec();
-        if (!existing) throw new NotFoundException(this.tr('challenges.notFound'));
+        if (!existing) throw new NotFoundException('Challenge not found');
 
         await this.challengeModel.findByIdAndDelete(id).exec();
 

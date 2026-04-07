@@ -7,7 +7,6 @@ import { CreateUserDto } from '../user/dto/create-user.dto';
 import type { Response } from 'express';
 import type { Request } from 'express';
 import { UserService } from '../user/user.service';
-import { I18nContext, I18nService } from 'nestjs-i18n';
 
 class LoginDto {
 	@IsString()
@@ -26,13 +25,7 @@ export class AuthController {
 	constructor(
 		private readonly authService: AuthService,
 		private readonly users: UserService,
-		private readonly i18n: I18nService,
-	) {}
-
-	private tr(key: string, args?: Record<string, unknown>): string {
-		const lang = I18nContext.current()?.lang ?? 'en';
-		return this.i18n.translate(key, { lang, args }) as string;
-	}
+	) { }
 
 	        @ApiOperation({
         summary: 'Post_register_1 operation',
@@ -67,10 +60,10 @@ Content-Type: application/json
 	@Post('register')
         async register(@Body() dto: CreateUserDto, @Res({ passthrough: true }) res: Response) {
 		const existingUsername = await this.users.findByUsername(dto.username);
-		if (existingUsername) throw new BadRequestException(this.tr('auth.usernameTaken'));
+		if (existingUsername) throw new BadRequestException('Username is already taken');
 
 		const existingEmail = await this.users.findByEmail(dto.email);
-		if (existingEmail) throw new BadRequestException(this.tr('auth.emailTaken'));
+		if (existingEmail) throw new BadRequestException('Email is already taken');
 		this.authService.ensurePasswordIsSafe(dto.password, dto.username, dto.email);
 
                 const created = await this.authService.register(dto);
@@ -125,7 +118,7 @@ Content-Type: application/json
 	async checkAvailability(@Body() body: { username?: string; email?: string }) {
 		if (body.username) {
 			const existingUsername = await this.users.findByUsername(body.username);
-			if (existingUsername) return { available: false, message: this.tr('auth.usernameTaken') };
+			if (existingUsername) return { available: false, message: 'Username is already taken' };
 			return { available: true };
 		}
 		if (body.email) {
@@ -135,10 +128,10 @@ Content-Type: application/json
 			}
 
 			const existingEmail = await this.users.findByEmail(body.email);
-			if (existingEmail) return { available: false, message: this.tr('auth.emailTaken') };
+			if (existingEmail) return { available: false, message: 'Email is already taken' };
 			return { available: true, suspicious: validation.suspicious };
 		}
-		throw new BadRequestException(this.tr('auth.mustProvideUsernameOrEmail'));
+		throw new BadRequestException('Must provide username or email');
 	}
 
 	        @ApiOperation({
@@ -173,9 +166,9 @@ Content-Type: application/json
     @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
     @Post('login')
 	async login(@Body() body: LoginDto, @Res({ passthrough: true }) res: Response) {
-		if (!body || !body.username || !body.password) throw new BadRequestException(this.tr('auth.usernamePasswordRequired'));
+		if (!body || !body.username || !body.password) throw new BadRequestException('username and password are required');
 		const user = await this.authService.validateUser(body.username, body.password, body.recaptchaToken);
-		if (!user) throw new UnauthorizedException(this.tr('auth.invalidCredentials'));
+		if (!user) throw new UnauthorizedException('Invalid credentials');
 		const tokens = await this.authService.login(user);
 		res.cookie('refresh_token', tokens.refresh_token, {
 			path: '/',
@@ -371,7 +364,7 @@ Content-Type: application/json
 	@HttpCode(200)
 	async refresh(@Req() req: Request, @Res() res: Response) {
 		const refreshToken = req.cookies?.refresh_token;
-		if (!refreshToken) throw new UnauthorizedException(this.tr('auth.noRefreshToken'));
+		if (!refreshToken) throw new UnauthorizedException('No refresh token');
 		const tokens = await this.authService.refreshTokens(refreshToken);
 		res.cookie('refresh_token', tokens.refresh_token, {
 			httpOnly: true,
@@ -454,7 +447,7 @@ Content-Type: application/json
     @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
     @Post('forgot-password')
 	async forgotPassword(@Body() body: { email: string }) {
-		if (!body.email) throw new BadRequestException(this.tr('auth.emailRequired'));
+		if (!body.email) throw new BadRequestException('email is required');
 		return this.authService.requestPasswordReset(body.email);
 	}
 
@@ -490,7 +483,7 @@ Content-Type: application/json
     @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
     @Post('verify-reset-code')
 	async verifyResetCode(@Body() body: { email: string; code: string }) {
-		if (!body.email || !body.code) throw new BadRequestException(this.tr('auth.missingEmailOrCode'));
+		if (!body.email || !body.code) throw new BadRequestException('Missing email or code');
 		return this.authService.verifyResetPasswordCode(body.email, body.code);
 	}
 
@@ -527,7 +520,7 @@ Content-Type: application/json
     @Post('reset-password')
 	async resetPassword(@Body() body: any) {
 		if (!body.token || !body.newPassword || !body.confirmPassword) {
-			throw new BadRequestException(this.tr('auth.missingRequiredFields'));
+			throw new BadRequestException('Missing required fields');
 		}
 		return this.authService.resetPassword(body.token, body.newPassword, body.confirmPassword);
 	}

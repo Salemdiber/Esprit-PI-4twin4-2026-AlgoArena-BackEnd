@@ -32,7 +32,6 @@ import { UpdateStatusDto } from './dto/update-status.dto';
 import { UpdatePlacementDto } from './dto/update-placement.dto';
 import { SaveSpeedTestSessionDto } from './dto/save-speed-test-session.dto';
 import { AuditLogService } from '../audit-logs/audit-log.service';
-import { I18nContext, I18nService } from 'nestjs-i18n';
 
 // Rank order for promo/demotion direction checks
 const RANK_ORDER = ['BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND', 'RUBY', 'EMERALD', 'SAPPHIRE', 'OBSIDIAN', 'ALGOARENA CHAMPION'];
@@ -71,13 +70,7 @@ export class UserController {
 	constructor(
 		private readonly userService: UserService,
 		private readonly auditLogService: AuditLogService,
-		private readonly i18n: I18nService,
-	) {}
-
-	private tr(key: string, args?: Record<string, unknown>): string {
-		const lang = I18nContext.current()?.lang ?? 'en';
-		return this.i18n.translate(key, { lang, args }) as string;
-	}
+	) { }
 
 	private safeDebugLog(obj: any) {
 		try {
@@ -226,7 +219,7 @@ Audit logs are created for every call:
 	) {
 		const xpDelta = Number(body?.xpDelta);
 		if (!isFinite(xpDelta)) {
-			throw new BadRequestException(this.tr('userController.xpDeltaInvalid'));
+			throw new BadRequestException('xpDelta must be a finite number');
 		}
 
 		const result = await this.userService.updateXpAndRank(user.userId, xpDelta);
@@ -284,7 +277,7 @@ Audit logs are created for every call:
 		@UploadedFile() file: Express.Multer.File,
 	) {
 		if (!file) {
-			throw new BadRequestException(this.tr('userController.avatarRequired'));
+			throw new BadRequestException('Avatar file is required');
 		}
 		return this.userService.updateAvatar(user.userId, file.filename);
 	}
@@ -323,7 +316,7 @@ Audit logs are created for every call:
 	@HttpCode(HttpStatus.OK)
 	async completeSpeedChallenge(@CurrentUser() user: { userId: string }) {
 		await this.userService.completeSpeedChallenge(user.userId);
-		return { message: this.tr('user.speedChallengeCompleted') };
+		return { message: 'Speed challenge completed' };
 	}
 
 	@UseGuards(JwtAuthGuard)
@@ -337,7 +330,7 @@ Audit logs are created for every call:
 		@Body() sessionData: SaveSpeedTestSessionDto,
 	) {
 		await this.userService.saveSpeedTestSession(user.userId, sessionData);
-		return { message: this.tr('user.sessionSaved') };
+		return { message: 'Session saved' };
 	}
 
 	@UseGuards(JwtAuthGuard)
@@ -347,7 +340,7 @@ Audit logs are created for every call:
 	@Get('me/speed-challenge/session')
 	async getSpeedTestSession(@CurrentUser() user: { userId: string }) {
 		const session = await this.userService.getSpeedTestSession(user.userId);
-		return session || { message: this.tr('user.noOngoingSession') };
+		return session || { message: 'No ongoing session' };
 	}
 
 	@UseGuards(JwtAuthGuard)
@@ -358,7 +351,7 @@ Audit logs are created for every call:
 	@HttpCode(HttpStatus.OK)
 	async clearSpeedTestSession(@CurrentUser() user: { userId: string }) {
 		await this.userService.clearSpeedTestSession(user.userId);
-		return { message: this.tr('user.sessionCleared') };
+		return { message: 'Session cleared' };
 	}
 
 	@UseGuards(JwtAuthGuard)
@@ -409,7 +402,7 @@ Audit logs are created for every call:
 			});
 			return result;
 		} catch (err) {
-			throw new HttpException(this.tr('userController.failedCreateAdmin'), HttpStatus.BAD_REQUEST);
+			throw new HttpException('Failed to create admin', HttpStatus.BAD_REQUEST);
 		}
 	}
 
@@ -420,7 +413,7 @@ Audit logs are created for every call:
 		try {
 			return await this.userService.create(dto);
 		} catch (err) {
-			throw new HttpException(this.tr('userController.failedCreateUser'), HttpStatus.BAD_REQUEST);
+			throw new HttpException('Failed to create user', HttpStatus.BAD_REQUEST);
 		}
 	}
 
@@ -467,7 +460,7 @@ Audit logs are created for every call:
 		@UploadedFile() file: Express.Multer.File,
 	) {
 		if (!file) {
-			throw new BadRequestException(this.tr('userController.avatarRequired'));
+			throw new BadRequestException('Avatar file is required');
 		}
 		return this.userService.updateAvatar(id, file.filename);
 	}

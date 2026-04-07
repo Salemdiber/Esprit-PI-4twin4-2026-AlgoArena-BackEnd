@@ -1,5 +1,4 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { I18nContext, I18nService } from 'nestjs-i18n';
 import { promises as dns } from 'dns';
 import disposableDomainsList from 'disposable-email-domains';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -24,8 +23,6 @@ export interface EmailValidationResult {
 @Injectable()
 export class EmailDeliverabilityService {
   private readonly logger = new Logger(EmailDeliverabilityService.name);
-
-  constructor(private readonly i18n: I18nService) {}
   private readonly domainCache = new Map<string, CacheValue>();
   private readonly cacheTtlMs = 10 * 60 * 1000;
   private readonly mxTimeoutMs = 2500;
@@ -101,12 +98,18 @@ export class EmailDeliverabilityService {
   }
 
   private result(valid: boolean, reason: EmailValidationReason, suspicious: boolean): EmailValidationResult {
-    const lang = I18nContext.current()?.lang ?? 'en';
-    const message = this.i18n.translate(`emailValidation.${reason}`, { lang }) as string;
+    const reasonMessages: Record<EmailValidationReason, string> = {
+      ok: 'Email is valid',
+      invalid_format: 'Invalid email format',
+      fake_pattern: 'Invalid email format',
+      disposable: 'Disposable emails are not allowed',
+      no_mx: 'Email domain cannot receive emails',
+    };
+
     return {
       valid,
       reason,
-      message,
+      message: reasonMessages[reason],
       suspicious,
     };
   }

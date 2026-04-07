@@ -5,7 +5,6 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { SettingsService } from '../settings.service';
-import { I18nContext, I18nService } from 'nestjs-i18n';
 
 /** Route prefixes that are always allowed, even in maintenance mode */
 const ALLOWED_PREFIXES = ['/auth', '/settings'];
@@ -14,10 +13,7 @@ const ALLOWED_EXACT = ['/user/me'];
 
 @Injectable()
 export class MaintenanceGuard implements CanActivate {
-  constructor(
-    private readonly settingsService: SettingsService,
-    private readonly i18n: I18nService,
-  ) {}
+  constructor(private readonly settingsService: SettingsService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
@@ -42,9 +38,8 @@ export class MaintenanceGuard implements CanActivate {
       return true;
     }
 
-    const lang = I18nContext.current()?.lang ?? 'en';
     throw new ServiceUnavailableException(
-      this.i18n.translate('maintenance.serviceUnavailable', { lang }) as string,
+      'Service is under maintenance. Please try again later.',
     );
   }
 }

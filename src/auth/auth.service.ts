@@ -7,8 +7,10 @@ import { EmailService } from './email.service';
 import { SettingsService } from '../settings/settings.service';
 import { CacheService } from '../cache/cache.service';
 import { EmailDeliverabilityService, EmailValidationResult } from './email-deliverability.service';
-import { passwordContainsIdentityData } from './password-policy.util';
-import { I18nContext, I18nService } from 'nestjs-i18n';
+import {
+	PASSWORD_SECURITY_MESSAGE,
+	passwordContainsIdentityData,
+} from './password-policy.util';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import { join } from 'path';
@@ -27,20 +29,14 @@ export class AuthService {
 		private readonly configService: ConfigService,
 		private readonly cacheService: CacheService,
 		private readonly emailDeliverabilityService: EmailDeliverabilityService,
-		private readonly i18n: I18nService,
-	) {}
-
-	private tr(key: string, args?: Record<string, unknown>): string {
-		const lang = I18nContext.current()?.lang ?? 'en';
-		return this.i18n.translate(key, { lang, args }) as string;
-	}
+	) { }
 
 	async register(dto: any) {
 		const settings: any = await this.settingsService.getSettings();
 		if (settings && !settings.userRegistration) {
-			throw new BadRequestException(this.tr('auth.registrationDisabled'));
+			throw new BadRequestException('Registration is disabled');
 		}
-		if (!dto.recaptchaToken) throw new UnauthorizedException(this.tr('auth.recaptchaRequired'));
+		if (!dto.recaptchaToken) throw new UnauthorizedException('reCAPTCHA token is required');
 		await this.recaptchaService.validate(dto.recaptchaToken);
 		this.ensurePasswordIsSafe(dto.password, dto.username, dto.email);
 		const emailValidation = await this.validateDeliverableEmail(dto.email);
@@ -70,7 +66,7 @@ export class AuthService {
 
 	ensurePasswordIsSafe(password: string, username: string, email: string) {
 		if (passwordContainsIdentityData(password, username, email)) {
-			throw new BadRequestException(this.tr('auth.passwordContainsIdentity'));
+			throw new BadRequestException(PASSWORD_SECURITY_MESSAGE);
 		}
 	}
 
@@ -172,7 +168,7 @@ export class AuthService {
 	}
 
 	async validateUser(username: string, password: string, recaptchaToken?: string) {
-		if (!recaptchaToken) throw new UnauthorizedException(this.tr('auth.recaptchaRequired'));
+		if (!recaptchaToken) throw new UnauthorizedException('reCAPTCHA token is required');
 		await this.recaptchaService.validate(recaptchaToken);
 		if (!password) return null;
 		const crypto = require('crypto');
@@ -266,7 +262,7 @@ export class AuthService {
 
 			return { access_token: accessToken, refresh_token: newRefreshToken };
 		} catch (e) {
-			throw new UnauthorizedException(this.tr('auth.invalidRefreshToken'));
+			throw new UnauthorizedException('Invalid refresh token');
 		}
 	}
 
@@ -284,7 +280,7 @@ export class AuthService {
 
 	async requestPasswordReset(email: string) {
 		const user = await this.users.findByEmail(email);
-		if (!user) return { message: this.tr('auth.resetIfExists') };
+		if (!user) return { message: 'If email exists, a reset link was sent' };
 
 		const plainToken = crypto.randomBytes(32).toString('hex');
 		const tokenHash = crypto.createHash('sha256').update(plainToken).digest('hex');
@@ -294,7 +290,7 @@ export class AuthService {
 		await this.users.setResetPasswordToken(email, tokenHash, expires, confirmationCode);
 		await this.emailService.sendPasswordResetEmail(email, plainToken, confirmationCode);
 
-		return { message: this.tr('auth.resetEmailSent') };
+		return { message: 'Reset email sent' };
 	}
 
 	/**
@@ -302,19 +298,19 @@ export class AuthService {
 	 */
 	async verifyResetPasswordCode(email: string, code: string) {
 		const user = await this.users.verifyResetPasswordCode(email, code);
-		if (!user) throw new BadRequestException(this.tr('auth.invalidConfirmationCode'));
-		return { message: this.tr('auth.codeVerified') };
+		if (!user) throw new BadRequestException('Invalid or expired confirmation code');
+		return { message: 'Code verified. You may now reset your password.' };
 	}
 
 	async resetPassword(token: string, newPassword: string, confirmPassword: string) {
-		if (newPassword !== confirmPassword) throw new BadRequestException(this.tr('auth.passwordsDoNotMatch'));
+		if (newPassword !== confirmPassword) throw new BadRequestException('Passwords do not match');
 
 		const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
 		const user = await this.users.findByResetPasswordToken(tokenHash);
 
-		if (!user) throw new BadRequestException(this.tr('auth.invalidOrExpiredToken'));
+		if (!user) throw new BadRequestException('Invalid or expired token');
 		if (!user.resetPasswordCodeVerified) {
-			throw new BadRequestException(this.tr('auth.confirmationNotVerified'));
+			throw new BadRequestException('Confirmation code not verified');
 		}
 
 		const passwordHash = crypto.createHash('sha256').update(newPassword).digest('hex');
@@ -322,6 +318,6 @@ export class AuthService {
 		const rawId = (user as any)._id || (user as any).userId || (user as any).id;
 		await this.users.updatePasswordAndClearToken(rawId.toString(), passwordHash);
 
-		return { message: this.tr('auth.passwordUpdated') };
+		return { message: 'Password updated successfully' };
 	}
 }

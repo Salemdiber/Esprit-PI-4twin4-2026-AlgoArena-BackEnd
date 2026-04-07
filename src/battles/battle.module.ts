@@ -7,6 +7,7 @@ import { Battle, BattleSchema } from './schemas/battle.schema';
 import { BattleHistory, BattleHistorySchema } from './schemas/battle-history.schema';
 import { ChallengeModule } from '../challenges/challenge.module';
 import { JudgeModule } from '../judge/judge.module';
+import { UserModule } from '../user/user.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { JudgeModule } from '../judge/judge.module';
     ]),
     ChallengeModule,
     JudgeModule,
+    UserModule,
   ],
   controllers: [BattlesController],
   providers: [BattlesService, BattleAiService],

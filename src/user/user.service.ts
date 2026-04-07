@@ -5,7 +5,6 @@ import {
   ConflictException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { I18nContext, I18nService } from 'nestjs-i18n';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Types } from 'mongoose';
@@ -102,15 +101,7 @@ const getRankDefinition = (rankName: string | null | undefined) => {
 
 @Injectable()
 export class UserService {
-  constructor(
-    @InjectModel('User') private userModel: Model<any>,
-    private readonly i18n: I18nService,
-  ) {}
-
-  private tr(key: string, args?: Record<string, unknown>): string {
-    const lang = I18nContext.current()?.lang ?? 'en';
-    return this.i18n.translate(key, { lang, args }) as string;
-  }
+  constructor(@InjectModel('User') private userModel: Model<any>) { }
 
   private utcDateOnly(value: Date = new Date()): Date {
     return new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()));
@@ -147,7 +138,7 @@ export class UserService {
 
   private ensureValidObjectId(id: string) {
     if (!id || !/^[a-fA-F0-9]{24}$/.test(id) || !Types.ObjectId.isValid(id)) {
-      throw new BadRequestException(this.tr('user.invalidId'));
+      throw new BadRequestException('Invalid user id');
     }
   }
 
@@ -178,7 +169,7 @@ export class UserService {
   async findOne(id: string) {
     this.ensureValidObjectId(id);
     const user = await this.userModel.findById(id).lean().exec();
-    if (!user) throw new NotFoundException(this.tr('user.notFound'));
+    if (!user) throw new NotFoundException('User not found');
     return user;
   }
 
@@ -193,7 +184,7 @@ export class UserService {
     if (partial.password) update.passwordHash = crypto.createHash('sha256').update(partial.password).digest('hex');
 
     const updated = await this.userModel.findByIdAndUpdate(id, update, { new: true }).lean().exec();
-    if (!updated) throw new NotFoundException(this.tr('user.notFound'));
+    if (!updated) throw new NotFoundException('User not found');
     return updated;
   }
 
@@ -202,7 +193,7 @@ export class UserService {
   async getMyProfile(userId: string): Promise<any> {
     this.ensureValidObjectId(userId);
     const user = await this.userModel.findById(userId).lean().exec();
-    if (!user) throw new NotFoundException(this.tr('user.notFound'));
+    if (!user) throw new NotFoundException('User not found');
 
     const { passwordHash: _omit, ...rest } = user as any;
     const rankStats = await this.getRankStats(userId);
@@ -232,7 +223,7 @@ export class UserService {
     const todayToken = this.dateToken(today);
 
     const user = await this.userModel.findById(userId).lean().exec() as any;
-    if (!user) throw new NotFoundException(this.tr('user.notFound'));
+    if (!user) throw new NotFoundException('User not found');
 
     const lastLoginDateRaw = user.lastLoginDate ? new Date(user.lastLoginDate) : null;
     const lastLoginDay = lastLoginDateRaw ? this.utcDateOnly(lastLoginDateRaw) : null;
@@ -334,7 +325,7 @@ export class UserService {
   }> {
     this.ensureValidObjectId(userId);
     const user = await this.userModel.findById(userId).lean().exec() as any;
-    if (!user) throw new NotFoundException(this.tr('user.notFound'));
+    if (!user) throw new NotFoundException('User not found');
 
     const xp: number = Number(user.xp ?? 0);
     const calculatedRank = xpToRank(xp);
@@ -414,7 +405,7 @@ export class UserService {
   }> {
     this.ensureValidObjectId(userId);
     const user = await this.userModel.findById(userId).lean().exec() as any;
-    if (!user) throw new NotFoundException(this.tr('user.notFound'));
+    if (!user) throw new NotFoundException('User not found');
 
     const previousXp: number = user.xp ?? 0;
     const previousRank: string | null = user.rank ?? null;
@@ -449,7 +440,7 @@ export class UserService {
   async getChallengeProgress(userId: string): Promise<any[]> {
     this.ensureValidObjectId(userId);
     const user = await this.userModel.findById(userId).lean().exec() as any;
-    if (!user) throw new NotFoundException(this.tr('user.notFound'));
+    if (!user) throw new NotFoundException('User not found');
     return Array.isArray(user.challengeProgress) ? user.challengeProgress : [];
   }
 
@@ -539,7 +530,7 @@ export class UserService {
   ) {
     this.ensureValidObjectId(userId);
     const user = await this.userModel.findById(userId).lean().exec() as any;
-    if (!user) throw new NotFoundException(this.tr('user.notFound'));
+    if (!user) throw new NotFoundException('User not found');
 
     const challengeProgressRaw = Array.isArray(user.challengeProgress) ? [...user.challengeProgress] : [];
     const { changed, next } = this.syncInactivityLifecycle(challengeProgressRaw);
@@ -621,7 +612,7 @@ export class UserService {
   ) {
     this.ensureValidObjectId(userId);
     const user = await this.userModel.findById(userId).lean().exec() as any;
-    if (!user) throw new NotFoundException(this.tr('user.notFound'));
+    if (!user) throw new NotFoundException('User not found');
 
     const challengeProgressRaw = Array.isArray(user.challengeProgress) ? [...user.challengeProgress] : [];
     const { next } = this.syncInactivityLifecycle(challengeProgressRaw);
@@ -688,7 +679,7 @@ export class UserService {
   ) {
     this.ensureValidObjectId(userId);
     const user = await this.userModel.findById(userId).lean().exec() as any;
-    if (!user) throw new NotFoundException(this.tr('user.notFound'));
+    if (!user) throw new NotFoundException('User not found');
     const challengeProgressRaw = Array.isArray(user.challengeProgress) ? [...user.challengeProgress] : [];
     const { next } = this.syncInactivityLifecycle(challengeProgressRaw);
     const challengeProgress = next;
@@ -720,7 +711,7 @@ export class UserService {
   async returnChallengeAttempt(userId: string, challengeId: string) {
     this.ensureValidObjectId(userId);
     const user = await this.userModel.findById(userId).lean().exec() as any;
-    if (!user) throw new NotFoundException(this.tr('user.notFound'));
+    if (!user) throw new NotFoundException('User not found');
 
     const challengeProgressRaw = Array.isArray(user.challengeProgress) ? [...user.challengeProgress] : [];
     const { next } = this.syncInactivityLifecycle(challengeProgressRaw);
@@ -760,7 +751,7 @@ export class UserService {
   async expireChallengeAttempt(userId: string, challengeId: string) {
     this.ensureValidObjectId(userId);
     const user = await this.userModel.findById(userId).lean().exec() as any;
-    if (!user) throw new NotFoundException(this.tr('user.notFound'));
+    if (!user) throw new NotFoundException('User not found');
     const challengeProgress = Array.isArray(user.challengeProgress) ? [...user.challengeProgress] : [];
     const index = challengeProgress.findIndex((entry: any) => entry.challengeId === challengeId);
     if (index < 0) return { updated: false, status: 'UNSOLVED' };
@@ -778,7 +769,7 @@ export class UserService {
   async getUserAttempts(userId: string) {
     this.ensureValidObjectId(userId);
     const user = await this.userModel.findById(userId).lean().exec() as any;
-    if (!user) throw new NotFoundException(this.tr('user.notFound'));
+    if (!user) throw new NotFoundException('User not found');
     const progressRaw = Array.isArray(user.challengeProgress) ? user.challengeProgress : [];
     const { changed, next: progress } = this.syncInactivityLifecycle(progressRaw);
     if (changed) {
@@ -814,7 +805,7 @@ export class UserService {
   ): Promise<{ progressEntry: any; xpGranted: number }> {
     this.ensureValidObjectId(userId);
     const user = await this.userModel.findById(userId).lean().exec() as any;
-    if (!user) throw new NotFoundException(this.tr('user.notFound'));
+    if (!user) throw new NotFoundException('User not found');
 
     const challengeProgress = Array.isArray(user.challengeProgress) ? [...user.challengeProgress] : [];
     const index = challengeProgress.findIndex((entry: any) => entry.challengeId === challengeId);
@@ -899,7 +890,7 @@ export class UserService {
   async updateAvatar(userId: string, filename: string): Promise<{ message: string; avatarUrl: string }> {
     this.ensureValidObjectId(userId);
     const user = await this.userModel.findById(userId).lean().exec();
-    if (!user) throw new NotFoundException(this.tr('user.notFound'));
+    if (!user) throw new NotFoundException('User not found');
 
     if ((user as any).avatar) {
       const oldPath = join(process.cwd(), (user as any).avatar);
@@ -910,28 +901,28 @@ export class UserService {
     const updated = await this.userModel
       .findByIdAndUpdate(userId, { avatar: avatarPath }, { new: true })
       .lean().exec();
-    if (!updated) throw new NotFoundException(this.tr('user.notFound'));
+    if (!updated) throw new NotFoundException('User not found');
 
-    return { message: this.tr('user.avatarUpdated'), avatarUrl: avatarPath };
+    return { message: 'Avatar updated successfully', avatarUrl: avatarPath };
   }
 
   async updateProfile(userId: string, dto: UpdateProfileDto): Promise<any> {
     this.ensureValidObjectId(userId);
     if (dto.username === undefined && dto.email === undefined && dto.bio === undefined) {
-      throw new BadRequestException(this.tr('user.updateRequiresField'));
+      throw new BadRequestException('At least one field is required: username, email, or bio');
     }
 
     if (dto.username) {
       const conflict = await this.userModel.findOne({ username: dto.username }).lean().exec();
       if (conflict && (conflict as any)._id.toString() !== userId) {
-        throw new ConflictException(this.tr('user.usernameTaken'));
+        throw new ConflictException('Username already taken');
       }
     }
 
     if (dto.email) {
       const conflict = await this.userModel.findOne({ email: dto.email }).lean().exec();
       if (conflict && (conflict as any)._id.toString() !== userId) {
-        throw new ConflictException(this.tr('user.emailInUse'));
+        throw new ConflictException('Email already in use');
       }
     }
 
@@ -943,7 +934,7 @@ export class UserService {
     const updated = await this.userModel
       .findByIdAndUpdate(userId, update, { new: true })
       .lean().exec();
-    if (!updated) throw new NotFoundException(this.tr('user.notFound'));
+    if (!updated) throw new NotFoundException('User not found');
 
     const { passwordHash: _omit, ...rest } = updated as any;
     return rest;
@@ -959,7 +950,7 @@ export class UserService {
   async updatePlacement(userId: string, dto: UpdatePlacementDto, force = false): Promise<any> {
     this.ensureValidObjectId(userId);
     const user = await this.userModel.findById(userId).lean().exec() as any;
-    if (!user) throw new NotFoundException(this.tr('user.notFound'));
+    if (!user) throw new NotFoundException('User not found');
 
     if (user.rank && !force) {
       const { passwordHash: _omit, ...rest } = user;
@@ -1037,21 +1028,21 @@ export class UserService {
   async changePassword(userId: string, dto: ChangePasswordDto): Promise<{ message: string }> {
     this.ensureValidObjectId(userId);
     const user = await this.userModel.findById(userId).lean().exec();
-    if (!user) throw new NotFoundException(this.tr('user.notFound'));
+    if (!user) throw new NotFoundException('User not found');
 
     if (dto.newPassword !== dto.confirmPassword) {
-      throw new BadRequestException(this.tr('user.passwordMismatch'));
+      throw new BadRequestException('newPassword and confirmPassword do not match');
     }
 
     const currentHash = crypto.createHash('sha256').update(dto.currentPassword).digest('hex');
     if ((user as any).passwordHash !== currentHash) {
-      throw new BadRequestException(this.tr('user.currentPasswordIncorrect'));
+      throw new BadRequestException('Current password is incorrect');
     }
 
     const newHash = crypto.createHash('sha256').update(dto.newPassword).digest('hex');
     await this.userModel.findByIdAndUpdate(userId, { passwordHash: newHash }).exec();
 
-    return { message: this.tr('user.passwordUpdated') };
+    return { message: 'Password updated successfully' };
   }
 
   async updateStatus(id: string, status: boolean): Promise<any> {
@@ -1059,7 +1050,7 @@ export class UserService {
     const updated = await this.userModel
       .findByIdAndUpdate(id, { status }, { new: true })
       .lean().exec();
-    if (!updated) throw new NotFoundException(this.tr('user.notFound'));
+    if (!updated) throw new NotFoundException('User not found');
 
     const { passwordHash: _omit, ...rest } = updated as any;
     return rest;
@@ -1068,11 +1059,11 @@ export class UserService {
   async deleteAccount(userId: string, dto: DeleteAccountDto): Promise<{ message: string }> {
     this.ensureValidObjectId(userId);
     const user = await this.userModel.findById(userId).lean().exec();
-    if (!user) throw new NotFoundException(this.tr('user.notFound'));
+    if (!user) throw new NotFoundException('User not found');
 
     const hash = crypto.createHash('sha256').update(dto.password).digest('hex');
     if ((user as any).passwordHash !== hash) {
-      throw new UnauthorizedException(this.tr('user.invalidPassword'));
+      throw new UnauthorizedException('Invalid password');
     }
 
     if ((user as any).avatar) {
@@ -1081,7 +1072,7 @@ export class UserService {
     }
 
     await this.userModel.findByIdAndDelete(userId).exec();
-    return { message: this.tr('user.accountDeleted') };
+    return { message: 'Account deleted successfully' };
   }
 
   // â”€â”€ Password Reset â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€

@@ -1,33 +1,13 @@
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
-import { I18nValidationPipe } from 'nestjs-i18n';
+import { ValidationPipe } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
 import { join } from 'path';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import { WsAdapter } from '@nestjs/platform-ws';
-
-function swaggerDocsMessage(req: { headers?: Record<string, string | string[] | undefined> }, key: 'unauthorized' | 'forbidden' | 'invalidToken'): string {
-  const raw = req.headers?.['accept-language'];
-  const al = Array.isArray(raw) ? raw[0] : raw;
-  const fr = String(al || '').toLowerCase().startsWith('fr');
-  const messages = {
-    unauthorized: fr
-      ? 'Non autorisé à consulter la documentation API'
-      : 'Unauthorized to view API Docs',
-    forbidden: fr
-      ? 'Interdit : accès réservé aux administrateurs / développeurs'
-      : 'Forbidden: Admin/Dev access only',
-    invalidToken: fr
-      ? 'Jeton invalide pour l’accès à la documentation API'
-      : 'Invalid token for API Docs access',
-  };
-  return messages[key];
-}
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
-  app.useWebSocketAdapter(new WsAdapter(app));
   const allowedOrigins = (process.env.CORS_ORIGIN ?? 'http://localhost:5173')
     .split(',')
     .map((origin) => origin.trim())
@@ -36,16 +16,11 @@ async function bootstrap() {
   app.enableCors({
     origin: allowedOrigins,
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept-Language'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
   });
 
-  app.useGlobalPipes(
-    new I18nValidationPipe({
-      whitelist: true,
-      transform: true,
-    }),
-  );
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.use(cookieParser());
   app.useStaticAssets(join(process.cwd(), 'uploads'), { prefix: '/uploads' });
 
@@ -61,16 +36,16 @@ async function bootstrap() {
   app.use('/api/docs', (req: any, res: any, next: any) => {
     if (process.env.NODE_ENV === 'production') {
       const token = req.cookies?.access_token || req.cookies?.refresh_token;
-      if (!token) return res.status(401).send(swaggerDocsMessage(req, 'unauthorized'));
+      if (!token) return res.status(401).send('Unauthorized to view API Docs');
       try {
         const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
         // Assuming roles are uppercase 'ADMIN', 'ORGANIZER' or similar
         const role = (payload.role || '').toUpperCase();
         if (role !== 'ADMIN' && role !== 'SUPER_ADMIN' && role !== 'DEV') {
-          return res.status(403).send(swaggerDocsMessage(req, 'forbidden'));
+          return res.status(403).send('Forbidden: Admin/Dev access only');
         }
       } catch (e) {
-        return res.status(401).send(swaggerDocsMessage(req, 'invalidToken'));
+        return res.status(401).send('Invalid token for API Docs access');
       }
     }
     next();
