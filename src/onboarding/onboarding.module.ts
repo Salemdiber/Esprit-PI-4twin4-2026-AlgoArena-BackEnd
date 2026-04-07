@@ -4,9 +4,10 @@ import { OnboardingService } from './onboarding.service';
 import { SettingsModule } from '../settings/settings.module';
 import { AiModule } from '../ai/ai.module';
 import { CacheModule } from '../cache/cache.module';
+import { JudgeModule } from '../judge/judge.module';
 
 @Module({
-  imports: [SettingsModule, AiModule, CacheModule],
+  imports: [SettingsModule, AiModule, CacheModule, JudgeModule],
   controllers: [OnboardingController],
   providers: [OnboardingService],
 })

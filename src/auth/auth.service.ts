@@ -134,11 +134,11 @@ export class AuthService {
 				if (jsonMatch) {
 					const parsed = JSON.parse(jsonMatch[0]);
 					if (Array.isArray(parsed)) {
-						// Save to cache for 1 day
+						// Save to cache for 3 days
 						try {
 							const promptHash = crypto.createHash('sha256').update(prompt).digest('hex');
 							const cacheKey = `groq:challenges:${promptHash}`;
-							await this.cacheService.set(cacheKey, JSON.stringify(parsed), 60 * 60 * 24);
+							await this.cacheService.set(cacheKey, JSON.stringify(parsed), 60 * 60 * 24 * 3);
 						} catch (e) {
 							console.warn('Failed to cache generated challenges:', (e as Error).message);
 						}

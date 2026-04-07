@@ -1,7 +1,8 @@
-import { Controller, Get, Post, Body, HttpCode } from '@nestjs/common';
+import { Controller, Get, Post, Body, HttpCode, UseGuards } from '@nestjs/common';
 import { join } from 'path';
 import * as fs from 'fs';
 import { OnboardingService, SolutionInput } from './onboarding.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller()
 export class OnboardingController {
@@ -67,5 +68,23 @@ export class OnboardingController {
     const { solutions = [], totalSeconds = 900 } = body;
     const result = await this.onboardingService.classifySolutions(solutions, totalSeconds);
     return result;
+  }
+
+  @Post('speed-challenge/hint')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(200)
+  async speedChallengeHint(
+    @Body() body: { title: string; description: string; hintLevel?: number },
+  ) {
+    const title = String(body?.title || '').trim();
+    const description = String(body?.description || '').trim();
+    const hintLevel = Number.isFinite(Number(body?.hintLevel)) ? Number(body?.hintLevel) : 1;
+
+    if (!title || !description) {
+      return { hint: 'No problem details available for this hint.' };
+    }
+
+    const hint = await this.onboardingService.generateSpeedChallengeHint(title, description, hintLevel);
+    return { hint };
   }
 }

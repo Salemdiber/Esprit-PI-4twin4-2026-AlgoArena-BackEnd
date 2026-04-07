@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SettingsService } from '../settings/settings.service';
 import { CacheService } from '../cache/cache.service';
+import { AIAnalysisService } from '../judge/services/ai-analysis.service';
 import * as crypto from 'crypto';
 
 // ─── DTOs ─────────────────────────────────────────────────────────────────────
@@ -81,10 +82,15 @@ export class OnboardingService {
     private readonly settingsService: SettingsService,
     private readonly configService: ConfigService,
     private readonly cacheService: CacheService,
+    private readonly aiAnalysisService: AIAnalysisService,
   ) {
     if (!this.groqApiKey) {
       this.logger.warn('GROQ_API_KEY not set — AI scoring will be disabled');
     }
+  }
+
+  async generateSpeedChallengeHint(title: string, description: string, hintLevel = 1): Promise<string> {
+    return this.aiAnalysisService.generateHint(title, description, hintLevel);
   }
 
   // ── Public entry point ──────────────────────────────────────────────────────
@@ -330,11 +336,11 @@ END_JSON_RESPONSE`;
     const data = await res.json() as { choices: Array<{ message: { content: string } }> };
     const content = data.choices[0]?.message?.content ?? '';
 
-    // Save to cache (7 days)
+    // Save to cache (3 days)
     try {
       const promptHash = crypto.createHash('sha256').update(prompt).digest('hex');
       const cacheKey = `groq:${promptHash}`;
-      await this.cacheService.set(cacheKey, content, 60 * 60 * 24 * 7);
+      await this.cacheService.set(cacheKey, content, 60 * 60 * 24 * 3);
     } catch (e) {
       this.logger.warn('Groq cache save failed: ' + (e as Error).message);
     }
