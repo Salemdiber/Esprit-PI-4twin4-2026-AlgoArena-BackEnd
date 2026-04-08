@@ -30,6 +30,8 @@ export class AnalyticsController {
   }
 
   @Get('admin/stats/submissions')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('Admin')
   async getSubmissionStats() {
     return await this.analyticsService.getAdminSubmissionsStats();
   }
