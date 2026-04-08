@@ -4,6 +4,6 @@ import { SystemHealthController } from './system-health.controller';
 
 @Module({
   providers: [SystemHealthService],
-  controllers: [SystemHealthController]
+  controllers: [SystemHealthController],
 })
 export class SystemHealthModule {}

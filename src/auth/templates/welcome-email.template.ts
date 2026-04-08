@@ -1,8 +1,11 @@
-export const welcomeEmailTemplate = (platformName: string, ctaUrl?: string, logoUrl?: string) => {
+export const welcomeEmailTemplate = (
+  platformName: string,
+  ctaUrl?: string,
+  logoUrl?: string,
+) => {
   const safeCtaUrl = ctaUrl || 'http://localhost:5173/signin';
   const safeLogoUrl =
-    logoUrl ||
-    'https://dummyimage.com/180x48/0f172a/8be9fd.png&text=NextGen';
+    logoUrl || 'https://dummyimage.com/180x48/0f172a/8be9fd.png&text=NextGen';
 
   return `
 <!doctype html>

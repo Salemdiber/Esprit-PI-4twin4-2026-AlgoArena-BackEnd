@@ -3,4 +3,3 @@ export enum SupportCategory {
   CONTACT_SUPPORT = 'contact_support',
   REPORT_BUG = 'report_bug',
 }
-

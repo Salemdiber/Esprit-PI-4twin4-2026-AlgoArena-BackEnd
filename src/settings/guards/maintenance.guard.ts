@@ -25,7 +25,9 @@ export class MaintenanceGuard implements CanActivate {
 
     // Always allow auth, settings routes & exact whitelisted paths
     if (
-      ALLOWED_PREFIXES.some((prefix) => path === prefix || path.startsWith(prefix + '/')) ||
+      ALLOWED_PREFIXES.some(
+        (prefix) => path === prefix || path.startsWith(prefix + '/'),
+      ) ||
       ALLOWED_EXACT.includes(path)
     ) {
       return true;
@@ -44,7 +46,7 @@ export class MaintenanceGuard implements CanActivate {
 
     const lang = I18nContext.current()?.lang ?? 'en';
     throw new ServiceUnavailableException(
-      this.i18n.translate('maintenance.serviceUnavailable', { lang }) as string,
+      this.i18n.translate('maintenance.serviceUnavailable', { lang }),
     );
   }
 }

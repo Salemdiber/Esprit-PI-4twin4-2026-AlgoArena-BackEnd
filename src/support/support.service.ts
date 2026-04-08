@@ -1,9 +1,16 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import nodemailer from 'nodemailer';
 import { UserService } from '../user/user.service';
-import { SupportRequest, SupportRequestDocument } from './schemas/support-request.schema';
+import {
+  SupportRequest,
+  SupportRequestDocument,
+} from './schemas/support-request.schema';
 import { SupportCategory } from './enums/support-category.enum';
 import { ScheduleMeetingDto } from './dto/schedule-meeting.dto';
 import { ContactSupportDto } from './dto/contact-support.dto';
@@ -12,7 +19,8 @@ import { ReportBugDto } from './dto/report-bug.dto';
 @Injectable()
 export class SupportService {
   constructor(
-    @InjectModel(SupportRequest.name) private readonly supportModel: Model<SupportRequestDocument>,
+    @InjectModel(SupportRequest.name)
+    private readonly supportModel: Model<SupportRequestDocument>,
     private readonly userService: UserService,
   ) {}
 
@@ -54,7 +62,8 @@ export class SupportService {
   private sanitizeBundle(input: unknown) {
     if (!input || typeof input !== 'object') return null;
     const blocked = ['authorization', 'token', 'password', 'cookie', 'email'];
-    const cleanKey = (k: string) => !blocked.some((b) => k.toLowerCase().includes(b));
+    const cleanKey = (k: string) =>
+      !blocked.some((b) => k.toLowerCase().includes(b));
     const clone = (val: any): any => {
       if (Array.isArray(val)) return val.map(clone);
       if (!val || typeof val !== 'object') return val;
@@ -82,14 +91,26 @@ export class SupportService {
       locale: sanitized.locale,
       timezone: sanitized.timezone,
       buildVersion: sanitized.buildVersion,
-      featureFlags: Array.isArray(sanitized.featureFlags) ? sanitized.featureFlags : [],
-      consoleErrors: Array.isArray(sanitized.consoleErrors) ? sanitized.consoleErrors : [],
-      networkFailures: Array.isArray(sanitized.networkFailures) ? sanitized.networkFailures : [],
+      featureFlags: Array.isArray(sanitized.featureFlags)
+        ? sanitized.featureFlags
+        : [],
+      consoleErrors: Array.isArray(sanitized.consoleErrors)
+        ? sanitized.consoleErrors
+        : [],
+      networkFailures: Array.isArray(sanitized.networkFailures)
+        ? sanitized.networkFailures
+        : [],
       clientTimestamp: sanitized.clientTimestamp,
       sessionId: sanitized.sessionId,
     } as any;
-    whitelist.consoleErrors = whitelist.consoleErrors.slice(0, this.CONSOLE_MAX);
-    whitelist.networkFailures = whitelist.networkFailures.slice(0, this.NETWORK_MAX);
+    whitelist.consoleErrors = whitelist.consoleErrors.slice(
+      0,
+      this.CONSOLE_MAX,
+    );
+    whitelist.networkFailures = whitelist.networkFailures.slice(
+      0,
+      this.NETWORK_MAX,
+    );
     let payload = JSON.stringify(whitelist);
     if (Buffer.byteLength(payload, 'utf8') > this.BUNDLE_MAX_BYTES) {
       // Progressive truncation to keep payload lightweight
@@ -104,7 +125,10 @@ export class SupportService {
     return whitelist;
   }
 
-  private async createRequest(userId: string, payload: Partial<SupportRequest>) {
+  private async createRequest(
+    userId: string,
+    payload: Partial<SupportRequest>,
+  ) {
     const user = (await this.userService.findOne(userId)) as any;
     const referenceNumber = await this.nextReferenceNumber();
     const created = await this.supportModel.create({
@@ -115,7 +139,10 @@ export class SupportService {
       referenceNumber,
     });
 
-    const eta = this.etaFor(payload.category!, (payload as any)?.bugDetails?.severity);
+    const eta = this.etaFor(
+      payload.category!,
+      (payload as any)?.bugDetails?.severity,
+    );
     await this.sendEmail(
       user.email,
       `Support request ${referenceNumber} received`,
@@ -142,7 +169,9 @@ export class SupportService {
         preferredTimeSlot: dto.preferredTimeSlot,
         timezone: dto.timezone,
         meetingType: dto.meetingType,
-        alternativeDate: dto.alternativeDate ? new Date(dto.alternativeDate) : null,
+        alternativeDate: dto.alternativeDate
+          ? new Date(dto.alternativeDate)
+          : null,
       } as any,
       attachmentUrls: [],
     });
@@ -201,8 +230,8 @@ export class SupportService {
   async getMyRequestById(userId: string, id: string) {
     const item = await this.supportModel.findById(id).lean().exec();
     if (!item) throw new NotFoundException('Support request not found');
-    if (String(item.userId) !== String(userId)) throw new ForbiddenException('Forbidden');
+    if (String(item.userId) !== String(userId))
+      throw new ForbiddenException('Forbidden');
     return item;
   }
 }
-

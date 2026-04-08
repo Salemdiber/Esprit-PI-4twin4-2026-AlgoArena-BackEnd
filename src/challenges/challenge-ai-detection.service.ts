@@ -9,7 +9,10 @@ export interface AiDetectionResult {
 @Injectable()
 export class ChallengeAiDetectionService {
   // Lightweight stub implementation. Replace with real AI logic later.
-  async analyzeSubmission(code: string, reference?: string): Promise<AiDetectionResult> {
+  async analyzeSubmission(
+    code: string,
+    reference?: string,
+  ): Promise<AiDetectionResult> {
     // Simple heuristic: short code -> low similarity
     const lengthScore = Math.min(1, code.length / 1000);
     const similarity = Math.round(lengthScore * 100);

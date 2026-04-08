@@ -8,7 +8,9 @@ import { DockerExecutionService } from './services/docker-execution.service';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('Admin')
 export class SandboxAdminController {
-  constructor(private readonly dockerExecutionService: DockerExecutionService) {}
+  constructor(
+    private readonly dockerExecutionService: DockerExecutionService,
+  ) {}
 
   @Get('status')
   async getStatus() {

@@ -1,15 +1,23 @@
-import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiParam,
+  ApiQuery,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { Controller, Get } from '@nestjs/common';
 import { SystemHealthService } from './system-health.service';
 
 @ApiTags('System Health')
 @Controller('system-health')
 export class SystemHealthController {
-    constructor(private readonly systemHealthService: SystemHealthService) { }
+  constructor(private readonly systemHealthService: SystemHealthService) {}
 
-    @Get()
-    //@UseGuards(AuthGuard) // Ensure only authenticated users can access, but removed for ease unless strict validation is required
-    async getHealth() {
-        return await this.systemHealthService.getHealthMetrics();
-    }
+  @Get()
+  //@UseGuards(AuthGuard) // Ensure only authenticated users can access, but removed for ease unless strict validation is required
+  async getHealth() {
+    return await this.systemHealthService.getHealthMetrics();
+  }
 }

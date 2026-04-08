@@ -1,4 +1,11 @@
-import { IsDateString, IsEnum, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import {
+  IsDateString,
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 import { MeetingTimeSlot } from '../enums/meeting-time-slot.enum';
 
 export enum Priority {
@@ -44,4 +51,3 @@ export class ScheduleMeetingDto {
   @IsDateString()
   alternativeDate?: string;
 }
-

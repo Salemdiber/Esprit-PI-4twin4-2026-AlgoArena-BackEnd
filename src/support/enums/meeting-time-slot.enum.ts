@@ -6,4 +6,3 @@ export enum MeetingTimeSlot {
   SLOT_15_16 = '15:00-16:00',
   SLOT_16_17 = '16:00-17:00',
 }
-

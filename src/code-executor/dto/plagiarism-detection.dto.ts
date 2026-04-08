@@ -3,74 +3,74 @@
  */
 
 export class DetectPlagiarismDto {
-    submittedCode: string;
-    referenceCode: string;
-    userId: string;
-    challengeId?: string;
-    language?: 'javascript' | 'python' | 'typescript';
+  submittedCode: string;
+  referenceCode: string;
+  userId: string;
+  challengeId?: string;
+  language?: 'javascript' | 'python' | 'typescript';
 }
 
 export class BulkPlagiarismCheckDto {
-    challenge_id: string;
-    submissions: Array<{
-        user_id: string;
-        code: string;
-    }>;
+  challenge_id: string;
+  submissions: Array<{
+    user_id: string;
+    code: string;
+  }>;
 }
 
 export class PlagiarismThresholdDto {
-    overallSimilarityThreshold: number; // 0-100
-    technique?: 'all' | 'hash' | 'ast' | 'token' | 'ai';
+  overallSimilarityThreshold: number; // 0-100
+  technique?: 'all' | 'hash' | 'ast' | 'token' | 'ai';
 }
 
 export class PlagiarismResponseDto {
-    success: boolean;
-    data: {
-        overallSimilarity: number;
-        isSuspicious: boolean;
-        recommendation: 'clear' | 'review' | 'suspicious';
-        techniques: {
-            hashMatch: {
-                technique: string;
-                similarity: number;
-            };
-            astComparison: {
-                technique: string;
-                similarity: number;
-            };
-            tokenSimilarity: {
-                technique: string;
-                similarity: number;
-            };
-            aiPatternDetection: {
-                technique: string;
-                similarity: number;
-                detectedPatterns: Array<{
-                    type: string;
-                    confidence: number;
-                    description: string;
-                }>;
-            };
-        };
-        details: string[];
+  success: boolean;
+  data: {
+    overallSimilarity: number;
+    isSuspicious: boolean;
+    recommendation: 'clear' | 'review' | 'suspicious';
+    techniques: {
+      hashMatch: {
+        technique: string;
+        similarity: number;
+      };
+      astComparison: {
+        technique: string;
+        similarity: number;
+      };
+      tokenSimilarity: {
+        technique: string;
+        similarity: number;
+      };
+      aiPatternDetection: {
+        technique: string;
+        similarity: number;
+        detectedPatterns: Array<{
+          type: string;
+          confidence: number;
+          description: string;
+        }>;
+      };
     };
-    timestamp: string;
+    details: string[];
+  };
+  timestamp: string;
 }
 
 export class BulkPlagiarismResultDto {
-    success: boolean;
-    challengeId: string;
-    matchPairs: Array<{
-        user1: string;
-        user2: string;
-        overallSimilarity: number;
-        recommendation: string;
-        techniques: {
-            hash: number;
-            ast: number;
-            token: number;
-            ai: number;
-        };
-    }>;
-    timestamp: string;
+  success: boolean;
+  challengeId: string;
+  matchPairs: Array<{
+    user1: string;
+    user2: string;
+    overallSimilarity: number;
+    recommendation: string;
+    techniques: {
+      hash: number;
+      ast: number;
+      token: number;
+      ai: number;
+    };
+  }>;
+  timestamp: string;
 }

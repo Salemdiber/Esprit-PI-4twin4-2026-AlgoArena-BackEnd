@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { SupportService } from './support.service';
 import { ScheduleMeetingDto } from './dto/schedule-meeting.dto';
@@ -32,7 +41,12 @@ export class SupportController {
     @Query('limit') limit?: string,
     @Query('category') category?: string,
   ) {
-    return this.supportService.getMyRequests(req.user.userId, Number(page || 1), Number(limit || 10), category);
+    return this.supportService.getMyRequests(
+      req.user.userId,
+      Number(page || 1),
+      Number(limit || 10),
+      category,
+    );
   }
 
   @Get('my-requests/:id')
@@ -40,4 +54,3 @@ export class SupportController {
     return this.supportService.getMyRequestById(req.user.userId, id);
   }
 }
-

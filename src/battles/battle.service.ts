@@ -16,7 +16,7 @@ export class BattlesService {
 
   private tr(key: string, args?: Record<string, unknown>): string {
     const lang = I18nContext.current()?.lang ?? 'en';
-    return this.i18n.translate(key, { lang, args }) as string;
+    return this.i18n.translate(key, { lang, args });
   }
 
   private async generateIdBattle(): Promise<string> {
@@ -54,13 +54,15 @@ export class BattlesService {
 
   async findOne(id: string): Promise<Battle> {
     const found = await this.model.findById(id).exec();
-    if (!found) throw new NotFoundException(this.tr('battles.notFoundById', { id }));
+    if (!found)
+      throw new NotFoundException(this.tr('battles.notFoundById', { id }));
     return found;
   }
 
   async update(id: string, dto: UpdateBattleDto): Promise<Battle> {
     const existing = await this.model.findById(id).exec();
-    if (!existing) throw new NotFoundException(this.tr('battles.notFoundById', { id }));
+    if (!existing)
+      throw new NotFoundException(this.tr('battles.notFoundById', { id }));
 
     const nextStatus = dto.battleStatus || existing.battleStatus;
     const updatePayload: any = { ...dto };
@@ -69,13 +71,17 @@ export class BattlesService {
       updatePayload.winnerUserId = null;
     }
 
-    const updated = await this.model.findByIdAndUpdate(id, updatePayload, { new: true }).exec();
-    if (!updated) throw new NotFoundException(this.tr('battles.notFoundById', { id }));
+    const updated = await this.model
+      .findByIdAndUpdate(id, updatePayload, { new: true })
+      .exec();
+    if (!updated)
+      throw new NotFoundException(this.tr('battles.notFoundById', { id }));
     return updated;
   }
 
   async remove(id: string): Promise<void> {
     const deleted = await this.model.findByIdAndDelete(id).exec();
-    if (!deleted) throw new NotFoundException(this.tr('battles.notFoundById', { id }));
+    if (!deleted)
+      throw new NotFoundException(this.tr('battles.notFoundById', { id }));
   }
 }

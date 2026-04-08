@@ -1,4 +1,8 @@
-import { Injectable, InternalServerErrorException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import { resetPasswordEmailTemplate } from './templates/reset-password-email.template';
 import { welcomeEmailTemplate } from './templates/welcome-email.template';
@@ -9,7 +13,9 @@ export class EmailService {
   private transporter: nodemailer.Transporter | null = null;
 
   constructor() {
-    this.logger.log('Brevo email service initialized. Ensure EMAIL_FROM is verified and SPF/DKIM are configured.');
+    this.logger.log(
+      'Brevo email service initialized. Ensure EMAIL_FROM is verified and SPF/DKIM are configured.',
+    );
   }
 
   private getRequiredConfig() {
@@ -72,16 +78,30 @@ export class EmailService {
       );
     } catch (err) {
       const error = err as Error;
-      this.logger.error(`Email send failure | to=${to} | error=${error?.message || 'Unknown error'}`);
+      this.logger.error(
+        `Email send failure | to=${to} | error=${error?.message || 'Unknown error'}`,
+      );
       throw new InternalServerErrorException('Failed to send email');
     }
   }
 
-  async sendPasswordResetEmail(email: string, token: string, confirmationCode: string) {
+  async sendPasswordResetEmail(
+    email: string,
+    token: string,
+    confirmationCode: string,
+  ) {
     // Reset link (frontend route)
     const resetLink = `http://localhost:5173/reset-password/${token}`;
-    const htmlTemplate = resetPasswordEmailTemplate(resetLink, undefined, confirmationCode);
-    await this.sendEmail(email, 'Reset Your Password - AlgoArena', htmlTemplate);
+    const htmlTemplate = resetPasswordEmailTemplate(
+      resetLink,
+      undefined,
+      confirmationCode,
+    );
+    await this.sendEmail(
+      email,
+      'Reset Your Password - AlgoArena',
+      htmlTemplate,
+    );
   }
 
   async sendWelcomeEmail(email: string, username: string) {
@@ -89,7 +109,11 @@ export class EmailService {
     const logoUrl = process.env.PLATFORM_LOGO_URL;
     const appUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
 
-    const htmlTemplate = welcomeEmailTemplate(platformName, `${appUrl}/signin`, logoUrl);
+    const htmlTemplate = welcomeEmailTemplate(
+      platformName,
+      `${appUrl}/signin`,
+      logoUrl,
+    );
     await this.sendEmail(email, `Welcome to ${platformName}`, htmlTemplate);
     this.logger.log(`Welcome email sent to ${email} (${username})`);
   }

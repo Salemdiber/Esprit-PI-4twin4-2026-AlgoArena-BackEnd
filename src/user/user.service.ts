@@ -20,22 +20,85 @@ import { UpdatePlacementDto } from './dto/update-placement.dto';
 
 // â”€â”€ Rank system constants (single source of truth) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export const RANK_CONFIG = [
-  { level: 1, name: 'BRONZE', title: 'Novice', xpRequired: 500, badgeColor: '#CD7F32' },
-  { level: 2, name: 'SILVER', title: 'Apprentice', xpRequired: 1500, badgeColor: '#C0C0C0' },
-  { level: 3, name: 'GOLD', title: 'Coder', xpRequired: 3000, badgeColor: '#FFD700' },
-  { level: 4, name: 'PLATINUM', title: 'Developer', xpRequired: 5000, badgeColor: '#E5E4E2' },
-  { level: 5, name: 'DIAMOND', title: 'Engineer', xpRequired: 10000, badgeColor: '#B9F2FF' },
-  { level: 6, name: 'RUBY', title: 'Architect', xpRequired: 15000, badgeColor: '#E0115F' },
-  { level: 7, name: 'EMERALD', title: 'Master', xpRequired: 25000, badgeColor: '#50C878' },
-  { level: 8, name: 'SAPPHIRE', title: 'Grandmaster', xpRequired: 40000, badgeColor: '#0F52BA' },
-  { level: 9, name: 'OBSIDIAN', title: 'Legend', xpRequired: 60000, badgeColor: '#3D3635' },
-  { level: 10, name: 'ALGOARENA CHAMPION', title: 'Champion', xpRequired: 100000, badgeColor: '#D4AF37' },
+  {
+    level: 1,
+    name: 'BRONZE',
+    title: 'Novice',
+    xpRequired: 500,
+    badgeColor: '#CD7F32',
+  },
+  {
+    level: 2,
+    name: 'SILVER',
+    title: 'Apprentice',
+    xpRequired: 1500,
+    badgeColor: '#C0C0C0',
+  },
+  {
+    level: 3,
+    name: 'GOLD',
+    title: 'Coder',
+    xpRequired: 3000,
+    badgeColor: '#FFD700',
+  },
+  {
+    level: 4,
+    name: 'PLATINUM',
+    title: 'Developer',
+    xpRequired: 5000,
+    badgeColor: '#E5E4E2',
+  },
+  {
+    level: 5,
+    name: 'DIAMOND',
+    title: 'Engineer',
+    xpRequired: 10000,
+    badgeColor: '#B9F2FF',
+  },
+  {
+    level: 6,
+    name: 'RUBY',
+    title: 'Architect',
+    xpRequired: 15000,
+    badgeColor: '#E0115F',
+  },
+  {
+    level: 7,
+    name: 'EMERALD',
+    title: 'Master',
+    xpRequired: 25000,
+    badgeColor: '#50C878',
+  },
+  {
+    level: 8,
+    name: 'SAPPHIRE',
+    title: 'Grandmaster',
+    xpRequired: 40000,
+    badgeColor: '#0F52BA',
+  },
+  {
+    level: 9,
+    name: 'OBSIDIAN',
+    title: 'Legend',
+    xpRequired: 60000,
+    badgeColor: '#3D3635',
+  },
+  {
+    level: 10,
+    name: 'ALGOARENA CHAMPION',
+    title: 'Champion',
+    xpRequired: 100000,
+    badgeColor: '#D4AF37',
+  },
 ] as const;
 
-export const RANK_THRESHOLDS: Record<string, number> = RANK_CONFIG.reduce((acc, rank) => {
-  acc[rank.name] = rank.xpRequired;
-  return acc;
-}, {} as Record<string, number>);
+export const RANK_THRESHOLDS: Record<string, number> = RANK_CONFIG.reduce(
+  (acc, rank) => {
+    acc[rank.name] = rank.xpRequired;
+    return acc;
+  },
+  {} as Record<string, number>,
+);
 
 const RANK_ORDER = RANK_CONFIG.map((rank) => rank.name);
 const STREAK_ACTIVITY_WINDOW_DAYS = 30;
@@ -45,7 +108,7 @@ const STREAK_MESSAGES = {
   dayOne: [
     "Welcome back, warrior! Every legend starts with Day 1. Let's build something unstoppable. \u{1F525}",
     "Day 1 — The grind begins NOW. Show these algorithms who's boss! \u{1F4AA}",
-    "Fresh start, fresh fire. Your coding journey resets today. Make it count! \u{1F680}",
+    'Fresh start, fresh fire. Your coding journey resets today. Make it count! \u{1F680}',
     'Day 1 locked in. One solid session today can change your entire trajectory. \u{2B50}',
     "A new streak starts today. Keep showing up and you'll shock yourself in a week. \u{1F947}",
   ],
@@ -97,7 +160,10 @@ export function xpToRank(xp: number): string {
 
 const getRankDefinition = (rankName: string | null | undefined) => {
   if (!rankName) return null;
-  return RANK_CONFIG.find((rank) => rank.name === String(rankName).toUpperCase()) || null;
+  return (
+    RANK_CONFIG.find((rank) => rank.name === String(rankName).toUpperCase()) ||
+    null
+  );
 };
 
 @Injectable()
@@ -109,11 +175,13 @@ export class UserService {
 
   private tr(key: string, args?: Record<string, unknown>): string {
     const lang = I18nContext.current()?.lang ?? 'en';
-    return this.i18n.translate(key, { lang, args }) as string;
+    return this.i18n.translate(key, { lang, args });
   }
 
   private utcDateOnly(value: Date = new Date()): Date {
-    return new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()));
+    return new Date(
+      Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate()),
+    );
   }
 
   private dateToken(value: Date): string {
@@ -122,20 +190,42 @@ export class UserService {
 
   private daysBetweenUtc(a: Date, b: Date): number {
     const dayMs = 24 * 60 * 60 * 1000;
-    return Math.round((this.utcDateOnly(a).getTime() - this.utcDateOnly(b).getTime()) / dayMs);
+    return Math.round(
+      (this.utcDateOnly(a).getTime() - this.utcDateOnly(b).getTime()) / dayMs,
+    );
   }
 
   private pickTierMessage(streak: number): string {
-    const pick = (pool: string[]) => pool[Math.floor(Math.random() * pool.length)];
+    const pick = (pool: string[]) =>
+      pool[Math.floor(Math.random() * pool.length)];
     if (streak <= 1) return pick(STREAK_MESSAGES.dayOne);
-    if (streak <= 4) return pick(STREAK_MESSAGES.buildMomentum).replaceAll('{streak}', String(streak));
-    if (streak <= 9) return pick(STREAK_MESSAGES.beastMode).replaceAll('{streak}', String(streak));
-    if (streak <= 19) return pick(STREAK_MESSAGES.impressive).replaceAll('{streak}', String(streak));
-    if (streak <= 49) return pick(STREAK_MESSAGES.elite).replaceAll('{streak}', String(streak));
-    return pick(STREAK_MESSAGES.mythical).replaceAll('{streak}', String(streak));
+    if (streak <= 4)
+      return pick(STREAK_MESSAGES.buildMomentum).replaceAll(
+        '{streak}',
+        String(streak),
+      );
+    if (streak <= 9)
+      return pick(STREAK_MESSAGES.beastMode).replaceAll(
+        '{streak}',
+        String(streak),
+      );
+    if (streak <= 19)
+      return pick(STREAK_MESSAGES.impressive).replaceAll(
+        '{streak}',
+        String(streak),
+      );
+    if (streak <= 49)
+      return pick(STREAK_MESSAGES.elite).replaceAll('{streak}', String(streak));
+    return pick(STREAK_MESSAGES.mythical).replaceAll(
+      '{streak}',
+      String(streak),
+    );
   }
 
-  private buildRecentActivity(loginActivityDates: string[] = [], referenceDay: Date = new Date()): boolean[] {
+  private buildRecentActivity(
+    loginActivityDates: string[] = [],
+    referenceDay: Date = new Date(),
+  ): boolean[] {
     const normalized = new Set(loginActivityDates);
     const start = this.utcDateOnly(referenceDay);
     return Array.from({ length: 7 }, (_, index) => {
@@ -152,7 +242,10 @@ export class UserService {
   }
 
   async create(dto: CreateUserDto) {
-    const passwordHash = crypto.createHash('sha256').update(dto.password).digest('hex');
+    const passwordHash = crypto
+      .createHash('sha256')
+      .update(dto.password)
+      .digest('hex');
     const created = await this.userModel.create({
       username: dto.username,
       passwordHash,
@@ -170,9 +263,13 @@ export class UserService {
   }
 
   async findLatestByUsernameOrEmail(identifier: string) {
-    return this.userModel.findOne({
-      $or: [{ username: identifier }, { email: identifier }]
-    }).sort({ createdAt: -1 }).lean().exec();
+    return this.userModel
+      .findOne({
+        $or: [{ username: identifier }, { email: identifier }],
+      })
+      .sort({ createdAt: -1 })
+      .lean()
+      .exec();
   }
 
   async findOne(id: string) {
@@ -190,9 +287,16 @@ export class UserService {
     if (partial.avatar !== undefined) update.avatar = partial.avatar;
     if (partial.bio !== undefined) update.bio = partial.bio;
     if (partial.role) update.role = partial.role;
-    if (partial.password) update.passwordHash = crypto.createHash('sha256').update(partial.password).digest('hex');
+    if (partial.password)
+      update.passwordHash = crypto
+        .createHash('sha256')
+        .update(partial.password)
+        .digest('hex');
 
-    const updated = await this.userModel.findByIdAndUpdate(id, update, { new: true }).lean().exec();
+    const updated = await this.userModel
+      .findByIdAndUpdate(id, update, { new: true })
+      .lean()
+      .exec();
     if (!updated) throw new NotFoundException(this.tr('user.notFound'));
     return updated;
   }
@@ -231,14 +335,20 @@ export class UserService {
     const today = this.utcDateOnly(now);
     const todayToken = this.dateToken(today);
 
-    const user = await this.userModel.findById(userId).lean().exec() as any;
+    const user = (await this.userModel.findById(userId).lean().exec()) as any;
     if (!user) throw new NotFoundException(this.tr('user.notFound'));
 
-    const lastLoginDateRaw = user.lastLoginDate ? new Date(user.lastLoginDate) : null;
-    const lastLoginDay = lastLoginDateRaw ? this.utcDateOnly(lastLoginDateRaw) : null;
+    const lastLoginDateRaw = user.lastLoginDate
+      ? new Date(user.lastLoginDate)
+      : null;
+    const lastLoginDay = lastLoginDateRaw
+      ? this.utcDateOnly(lastLoginDateRaw)
+      : null;
     const previousCurrent = Number(user.currentStreak ?? user.streak ?? 0);
     const previousLongest = Number(user.longestStreak ?? user.streak ?? 0);
-    const loginActivityDates = Array.isArray(user.loginActivityDates) ? [...user.loginActivityDates] : [];
+    const loginActivityDates = Array.isArray(user.loginActivityDates)
+      ? [...user.loginActivityDates]
+      : [];
 
     let currentStreak = previousCurrent;
     let longestStreak = previousLongest;
@@ -258,7 +368,12 @@ export class UserService {
         shouldPersist = true;
       } else if (diffDays > 1) {
         currentStreak = 1;
-        longestStreak = Math.max(longestStreak, previousCurrent, previousLongest, 1);
+        longestStreak = Math.max(
+          longestStreak,
+          previousCurrent,
+          previousLongest,
+          1,
+        );
         shouldPersist = true;
       }
     }
@@ -270,19 +385,20 @@ export class UserService {
       .slice(-STREAK_ACTIVITY_WINDOW_DAYS);
 
     if (shouldPersist || !loginActivityDates.includes(todayToken)) {
-      await this.userModel.findByIdAndUpdate(
-        userId,
-        {
+      await this.userModel
+        .findByIdAndUpdate(userId, {
           currentStreak,
           longestStreak,
           streak: currentStreak,
           lastLoginDate: today,
           streakUpdatedAt: now,
           loginActivityDates: nextActivity,
-        },
-      ).exec();
+        })
+        .exec();
     } else if (Number(user.streak ?? 0) !== currentStreak) {
-      await this.userModel.findByIdAndUpdate(userId, { streak: currentStreak }).exec();
+      await this.userModel
+        .findByIdAndUpdate(userId, { streak: currentStreak })
+        .exec();
     }
 
     return {
@@ -333,7 +449,7 @@ export class UserService {
     isMaxRank: boolean;
   }> {
     this.ensureValidObjectId(userId);
-    const user = await this.userModel.findById(userId).lean().exec() as any;
+    const user = (await this.userModel.findById(userId).lean().exec()) as any;
     if (!user) throw new NotFoundException(this.tr('user.notFound'));
 
     const xp: number = Number(user.xp ?? 0);
@@ -368,7 +484,13 @@ export class UserService {
     const xpInCurrentRank = Math.max(0, xp - xpFloor);
     const xpNeededForNextRank = nextRank ? Math.max(0, xpCeil - xp) : 0;
     const progressPercentage = nextRank
-      ? Math.max(0, Math.min(100, Math.round(((xp - xpFloor) / Math.max(1, xpCeil - xpFloor)) * 100)))
+      ? Math.max(
+          0,
+          Math.min(
+            100,
+            Math.round(((xp - xpFloor) / Math.max(1, xpCeil - xpFloor)) * 100),
+          ),
+        )
       : 100;
 
     return {
@@ -381,11 +503,11 @@ export class UserService {
       },
       nextRank: nextRank
         ? {
-          level: nextRank.level,
-          name: nextRank.name,
-          title: nextRank.title,
-          xpRequired: nextRank.xpRequired,
-        }
+            level: nextRank.level,
+            name: nextRank.name,
+            title: nextRank.title,
+            xpRequired: nextRank.xpRequired,
+          }
         : null,
       totalXP: xp,
       xpInCurrentRank,
@@ -403,17 +525,25 @@ export class UserService {
    * Adds (or subtracts) XP from a user and auto-promotes / demotes their rank.
    * Returns change details for audit logging in the controller.
    */
-  async updateXpAndRank(userId: string, xpDelta: number): Promise<{
+  async updateXpAndRank(
+    userId: string,
+    xpDelta: number,
+  ): Promise<{
     previousXp: number;
     newXp: number;
     previousRank: string | null;
     newRank: string;
     rankChanged: boolean;
     rankUpgraded: boolean;
-    newRankDetails: { level: number; name: string; title: string; badgeColor: string } | null;
+    newRankDetails: {
+      level: number;
+      name: string;
+      title: string;
+      badgeColor: string;
+    } | null;
   }> {
     this.ensureValidObjectId(userId);
-    const user = await this.userModel.findById(userId).lean().exec() as any;
+    const user = (await this.userModel.findById(userId).lean().exec()) as any;
     if (!user) throw new NotFoundException(this.tr('user.notFound'));
 
     const previousXp: number = user.xp ?? 0;
@@ -421,11 +551,15 @@ export class UserService {
     const newXp = Math.max(0, previousXp + xpDelta);
     const newRank = xpToRank(newXp);
     const rankChanged = newRank !== previousRank;
-    const previousIdx = previousRank ? RANK_ORDER.indexOf(previousRank as (typeof RANK_ORDER)[number]) : -1;
+    const previousIdx = previousRank
+      ? RANK_ORDER.indexOf(previousRank as (typeof RANK_ORDER)[number])
+      : -1;
     const nextIdx = RANK_ORDER.indexOf(newRank as (typeof RANK_ORDER)[number]);
     const rankUpgraded = rankChanged && nextIdx > previousIdx;
 
-    await this.userModel.findByIdAndUpdate(userId, { xp: newXp, rank: newRank }).exec();
+    await this.userModel
+      .findByIdAndUpdate(userId, { xp: newXp, rank: newRank })
+      .exec();
 
     const newRankDef = getRankDefinition(newRank);
     return {
@@ -437,25 +571,30 @@ export class UserService {
       rankUpgraded,
       newRankDetails: newRankDef
         ? {
-          level: newRankDef.level,
-          name: newRankDef.name,
-          title: newRankDef.title,
-          badgeColor: newRankDef.badgeColor,
-        }
+            level: newRankDef.level,
+            name: newRankDef.name,
+            title: newRankDef.title,
+            badgeColor: newRankDef.badgeColor,
+          }
         : null,
     };
   }
 
   async getChallengeProgress(userId: string): Promise<any[]> {
     this.ensureValidObjectId(userId);
-    const user = await this.userModel.findById(userId).lean().exec() as any;
+    const user = (await this.userModel.findById(userId).lean().exec()) as any;
     if (!user) throw new NotFoundException(this.tr('user.notFound'));
     return Array.isArray(user.challengeProgress) ? user.challengeProgress : [];
   }
 
-  async getChallengeProgressEntry(userId: string, challengeId: string): Promise<any | null> {
+  async getChallengeProgressEntry(
+    userId: string,
+    challengeId: string,
+  ): Promise<any | null> {
     const progress = await this.getChallengeProgress(userId);
-    return progress.find((entry: any) => entry.challengeId === challengeId) || null;
+    return (
+      progress.find((entry: any) => entry.challengeId === challengeId) || null
+    );
   }
 
   private createDefaultProgressEntry(challengeId: string) {
@@ -489,12 +628,14 @@ export class UserService {
     if (entry.status === 'SOLVED') return entry;
     if (entry.attemptStatus !== 'in_progress') return entry;
 
-    const lastActiveSource = entry.lastActiveAt || entry.lastAttemptAt || entry.attemptStartedAt;
+    const lastActiveSource =
+      entry.lastActiveAt || entry.lastAttemptAt || entry.attemptStartedAt;
     if (!lastActiveSource) return entry;
 
     const lastActive = new Date(lastActiveSource);
     if (!Number.isFinite(lastActive.getTime())) return entry;
-    if (now.getTime() - lastActive.getTime() <= ABANDON_AFTER_INACTIVITY_MS) return entry;
+    if (now.getTime() - lastActive.getTime() <= ABANDON_AFTER_INACTIVITY_MS)
+      return entry;
 
     return {
       ...entry,
@@ -538,14 +679,22 @@ export class UserService {
     mode: 'challenge' | 'practice' | 'contest' = 'challenge',
   ) {
     this.ensureValidObjectId(userId);
-    const user = await this.userModel.findById(userId).lean().exec() as any;
+    const user = (await this.userModel.findById(userId).lean().exec()) as any;
     if (!user) throw new NotFoundException(this.tr('user.notFound'));
 
-    const challengeProgressRaw = Array.isArray(user.challengeProgress) ? [...user.challengeProgress] : [];
-    const { changed, next } = this.syncInactivityLifecycle(challengeProgressRaw);
+    const challengeProgressRaw = Array.isArray(user.challengeProgress)
+      ? [...user.challengeProgress]
+      : [];
+    const { changed, next } =
+      this.syncInactivityLifecycle(challengeProgressRaw);
     const challengeProgress = next;
-    const index = challengeProgress.findIndex((entry: any) => entry.challengeId === challengeId);
-    const existing = index >= 0 ? challengeProgress[index] : this.createDefaultProgressEntry(challengeId);
+    const index = challengeProgress.findIndex(
+      (entry: any) => entry.challengeId === challengeId,
+    );
+    const existing =
+      index >= 0
+        ? challengeProgress[index]
+        : this.createDefaultProgressEntry(challengeId);
 
     if (existing.status === 'SOLVED') {
       return {
@@ -563,7 +712,9 @@ export class UserService {
     const now = new Date();
     if (existing.attemptStatus === 'in_progress' && existing.attemptId) {
       if (changed) {
-        await this.userModel.findByIdAndUpdate(userId, { challengeProgress }).exec();
+        await this.userModel
+          .findByIdAndUpdate(userId, { challengeProgress })
+          .exec();
       }
       return {
         challengeId,
@@ -595,7 +746,9 @@ export class UserService {
     if (index >= 0) challengeProgress[index] = nextEntry;
     else challengeProgress.push(nextEntry);
 
-    await this.userModel.findByIdAndUpdate(userId, { challengeProgress }).exec();
+    await this.userModel
+      .findByIdAndUpdate(userId, { challengeProgress })
+      .exec();
     return {
       challengeId,
       attemptId,
@@ -620,14 +773,21 @@ export class UserService {
     },
   ) {
     this.ensureValidObjectId(userId);
-    const user = await this.userModel.findById(userId).lean().exec() as any;
+    const user = (await this.userModel.findById(userId).lean().exec()) as any;
     if (!user) throw new NotFoundException(this.tr('user.notFound'));
 
-    const challengeProgressRaw = Array.isArray(user.challengeProgress) ? [...user.challengeProgress] : [];
+    const challengeProgressRaw = Array.isArray(user.challengeProgress)
+      ? [...user.challengeProgress]
+      : [];
     const { next } = this.syncInactivityLifecycle(challengeProgressRaw);
     const challengeProgress = next;
-    const index = challengeProgress.findIndex((entry: any) => entry.challengeId === challengeId);
-    const existing = index >= 0 ? challengeProgress[index] : this.createDefaultProgressEntry(challengeId);
+    const index = challengeProgress.findIndex(
+      (entry: any) => entry.challengeId === challengeId,
+    );
+    const existing =
+      index >= 0
+        ? challengeProgress[index]
+        : this.createDefaultProgressEntry(challengeId);
     const now = new Date();
     const mode = payload?.mode || existing.mode || 'challenge';
     const elapsedTime = this.normalizeElapsedByMode(
@@ -635,7 +795,10 @@ export class UserService {
       Number(payload?.elapsedTime || 0),
       Number(existing.totalElapsedTime || 0),
     );
-    const attemptId = payload?.attemptId || existing.attemptId || `${challengeId}-${now.getTime()}`;
+    const attemptId =
+      payload?.attemptId ||
+      existing.attemptId ||
+      `${challengeId}-${now.getTime()}`;
 
     const nextEntry = {
       ...existing,
@@ -647,7 +810,10 @@ export class UserService {
       lastAttemptAt: now,
       savedCode: payload?.savedCode ?? existing.savedCode ?? '',
       totalElapsedTime: elapsedTime,
-      leftAt: payload?.reason === 'left_page' || payload?.reason === 'tab_closed' ? now : existing.leftAt || null,
+      leftAt:
+        payload?.reason === 'left_page' || payload?.reason === 'tab_closed'
+          ? now
+          : existing.leftAt || null,
       gracePeriodExpiresAt: null,
       returnedAt: existing.returnedAt || null,
       abandonmentReason: null,
@@ -656,7 +822,9 @@ export class UserService {
     if (index >= 0) challengeProgress[index] = nextEntry;
     else challengeProgress.push(nextEntry);
 
-    await this.userModel.findByIdAndUpdate(userId, { challengeProgress }).exec();
+    await this.userModel
+      .findByIdAndUpdate(userId, { challengeProgress })
+      .exec();
     return {
       challengeId,
       attemptId: nextEntry.attemptId,
@@ -673,7 +841,11 @@ export class UserService {
     userId: string,
     challengeId: string,
     reason: 'left_page' | 'tab_closed' = 'left_page',
-    payload?: { savedCode?: string; elapsedTime?: number; attemptId?: string | null },
+    payload?: {
+      savedCode?: string;
+      elapsedTime?: number;
+      attemptId?: string | null;
+    },
   ) {
     return this.saveChallengeAttempt(userId, challengeId, {
       ...payload,
@@ -687,14 +859,22 @@ export class UserService {
     reason: 'timeout' | 'left_page' | 'tab_closed' = 'timeout',
   ) {
     this.ensureValidObjectId(userId);
-    const user = await this.userModel.findById(userId).lean().exec() as any;
+    const user = (await this.userModel.findById(userId).lean().exec()) as any;
     if (!user) throw new NotFoundException(this.tr('user.notFound'));
-    const challengeProgressRaw = Array.isArray(user.challengeProgress) ? [...user.challengeProgress] : [];
+    const challengeProgressRaw = Array.isArray(user.challengeProgress)
+      ? [...user.challengeProgress]
+      : [];
     const { next } = this.syncInactivityLifecycle(challengeProgressRaw);
     const challengeProgress = next;
-    const index = challengeProgress.findIndex((entry: any) => entry.challengeId === challengeId);
-    const existing = index >= 0 ? challengeProgress[index] : this.createDefaultProgressEntry(challengeId);
-    const shouldIncrement = existing.status !== 'SOLVED' && existing.attemptStatus !== 'abandoned';
+    const index = challengeProgress.findIndex(
+      (entry: any) => entry.challengeId === challengeId,
+    );
+    const existing =
+      index >= 0
+        ? challengeProgress[index]
+        : this.createDefaultProgressEntry(challengeId);
+    const shouldIncrement =
+      existing.status !== 'SOLVED' && existing.attemptStatus !== 'abandoned';
     const nextEntry = {
       ...existing,
       attemptStatus: existing.status === 'SOLVED' ? 'completed' : 'abandoned',
@@ -703,13 +883,17 @@ export class UserService {
       gracePeriodExpiresAt: null,
       lastActiveAt: new Date(),
       lastAttemptAt: new Date(),
-      incompleteAttemptCount: existing.status === 'SOLVED'
-        ? Number(existing.incompleteAttemptCount || 0)
-        : Number(existing.incompleteAttemptCount || 0) + (shouldIncrement ? 1 : 0),
+      incompleteAttemptCount:
+        existing.status === 'SOLVED'
+          ? Number(existing.incompleteAttemptCount || 0)
+          : Number(existing.incompleteAttemptCount || 0) +
+            (shouldIncrement ? 1 : 0),
     };
     if (index >= 0) challengeProgress[index] = nextEntry;
     else challengeProgress.push(nextEntry);
-    await this.userModel.findByIdAndUpdate(userId, { challengeProgress }).exec();
+    await this.userModel
+      .findByIdAndUpdate(userId, { challengeProgress })
+      .exec();
     return {
       challengeId,
       status: nextEntry.attemptStatus,
@@ -719,14 +903,21 @@ export class UserService {
 
   async returnChallengeAttempt(userId: string, challengeId: string) {
     this.ensureValidObjectId(userId);
-    const user = await this.userModel.findById(userId).lean().exec() as any;
+    const user = (await this.userModel.findById(userId).lean().exec()) as any;
     if (!user) throw new NotFoundException(this.tr('user.notFound'));
 
-    const challengeProgressRaw = Array.isArray(user.challengeProgress) ? [...user.challengeProgress] : [];
+    const challengeProgressRaw = Array.isArray(user.challengeProgress)
+      ? [...user.challengeProgress]
+      : [];
     const { next } = this.syncInactivityLifecycle(challengeProgressRaw);
     const challengeProgress = next;
-    const index = challengeProgress.findIndex((entry: any) => entry.challengeId === challengeId);
-    const existing = index >= 0 ? challengeProgress[index] : this.createDefaultProgressEntry(challengeId);
+    const index = challengeProgress.findIndex(
+      (entry: any) => entry.challengeId === challengeId,
+    );
+    const existing =
+      index >= 0
+        ? challengeProgress[index]
+        : this.createDefaultProgressEntry(challengeId);
     const now = new Date();
 
     if (existing.status === 'SOLVED') {
@@ -746,7 +937,9 @@ export class UserService {
     };
     if (index >= 0) challengeProgress[index] = nextEntry;
     else challengeProgress.push(nextEntry);
-    await this.userModel.findByIdAndUpdate(userId, { challengeProgress }).exec();
+    await this.userModel
+      .findByIdAndUpdate(userId, { challengeProgress })
+      .exec();
     return {
       allowed: true,
       remainingTime: 0,
@@ -759,10 +952,14 @@ export class UserService {
 
   async expireChallengeAttempt(userId: string, challengeId: string) {
     this.ensureValidObjectId(userId);
-    const user = await this.userModel.findById(userId).lean().exec() as any;
+    const user = (await this.userModel.findById(userId).lean().exec()) as any;
     if (!user) throw new NotFoundException(this.tr('user.notFound'));
-    const challengeProgress = Array.isArray(user.challengeProgress) ? [...user.challengeProgress] : [];
-    const index = challengeProgress.findIndex((entry: any) => entry.challengeId === challengeId);
+    const challengeProgress = Array.isArray(user.challengeProgress)
+      ? [...user.challengeProgress]
+      : [];
+    const index = challengeProgress.findIndex(
+      (entry: any) => entry.challengeId === challengeId,
+    );
     if (index < 0) return { updated: false, status: 'UNSOLVED' };
 
     const existing = this.normalizeInactivityEntry(challengeProgress[index]);
@@ -771,18 +968,25 @@ export class UserService {
     }
 
     challengeProgress[index] = existing;
-    await this.userModel.findByIdAndUpdate(userId, { challengeProgress }).exec();
+    await this.userModel
+      .findByIdAndUpdate(userId, { challengeProgress })
+      .exec();
     return { updated: true, status: 'abandoned' };
   }
 
   async getUserAttempts(userId: string) {
     this.ensureValidObjectId(userId);
-    const user = await this.userModel.findById(userId).lean().exec() as any;
+    const user = (await this.userModel.findById(userId).lean().exec()) as any;
     if (!user) throw new NotFoundException(this.tr('user.notFound'));
-    const progressRaw = Array.isArray(user.challengeProgress) ? user.challengeProgress : [];
-    const { changed, next: progress } = this.syncInactivityLifecycle(progressRaw);
+    const progressRaw = Array.isArray(user.challengeProgress)
+      ? user.challengeProgress
+      : [];
+    const { changed, next: progress } =
+      this.syncInactivityLifecycle(progressRaw);
     if (changed) {
-      await this.userModel.findByIdAndUpdate(userId, { challengeProgress: progress }).exec();
+      await this.userModel
+        .findByIdAndUpdate(userId, { challengeProgress: progress })
+        .exec();
     }
 
     return progress.map((entry: any) => ({
@@ -813,16 +1017,22 @@ export class UserService {
     opts?: { xpReward?: number; solveTimeSeconds?: number | null },
   ): Promise<{ progressEntry: any; xpGranted: number }> {
     this.ensureValidObjectId(userId);
-    const user = await this.userModel.findById(userId).lean().exec() as any;
+    const user = (await this.userModel.findById(userId).lean().exec()) as any;
     if (!user) throw new NotFoundException(this.tr('user.notFound'));
 
-    const challengeProgress = Array.isArray(user.challengeProgress) ? [...user.challengeProgress] : [];
-    const index = challengeProgress.findIndex((entry: any) => entry.challengeId === challengeId);
+    const challengeProgress = Array.isArray(user.challengeProgress)
+      ? [...user.challengeProgress]
+      : [];
+    const index = challengeProgress.findIndex(
+      (entry: any) => entry.challengeId === challengeId,
+    );
     const existing = index >= 0 ? challengeProgress[index] : null;
 
     const baseEntry = existing || this.createDefaultProgressEntry(challengeId);
 
-    const submissions = Array.isArray(baseEntry.submissions) ? [...baseEntry.submissions, submission] : [submission];
+    const submissions = Array.isArray(baseEntry.submissions)
+      ? [...baseEntry.submissions, submission]
+      : [submission];
     let nextStatus = baseEntry.status || 'UNSOLVED';
     let failedAttempts = Number(baseEntry.failedAttempts || 0);
     let solveTimeSeconds = baseEntry.solveTimeSeconds ?? null;
@@ -834,10 +1044,15 @@ export class UserService {
     if (submission.passed) {
       if (nextStatus !== 'SOLVED') {
         nextStatus = 'SOLVED';
-        const currentMode = (baseEntry.mode || 'challenge') as 'challenge' | 'practice' | 'contest';
+        const currentMode = (baseEntry.mode || 'challenge') as
+          | 'challenge'
+          | 'practice'
+          | 'contest';
         const totalElapsed = this.normalizeElapsedByMode(
           currentMode,
-          Number.isFinite(opts?.solveTimeSeconds as number) ? Number(opts?.solveTimeSeconds) : 0,
+          Number.isFinite(opts?.solveTimeSeconds as number)
+            ? Number(opts?.solveTimeSeconds)
+            : 0,
           Number(baseEntry.totalElapsedTime || 0),
         );
         solveTimeSeconds = totalElapsed;
@@ -855,7 +1070,9 @@ export class UserService {
       failedAttempts += 1;
       submission.totalElapsedTime = Math.max(
         Number(baseEntry.totalElapsedTime || 0),
-        Number.isFinite(opts?.solveTimeSeconds as number) ? Number(opts?.solveTimeSeconds) : 0,
+        Number.isFinite(opts?.solveTimeSeconds as number)
+          ? Number(opts?.solveTimeSeconds)
+          : 0,
       );
       submission.xpGained = 0;
       submission.wasReduced = false;
@@ -873,8 +1090,12 @@ export class UserService {
       mode: baseEntry.mode || 'challenge',
       lastActiveAt: new Date(),
       lastAttemptAt: new Date(),
-      savedCode: submission.passed ? '' : (submission.code || baseEntry.savedCode || ''),
-      totalElapsedTime: Number(submission.totalElapsedTime || baseEntry.totalElapsedTime || 0),
+      savedCode: submission.passed
+        ? ''
+        : submission.code || baseEntry.savedCode || '',
+      totalElapsedTime: Number(
+        submission.totalElapsedTime || baseEntry.totalElapsedTime || 0,
+      ),
       wasReduced,
       leftAt: null,
       gracePeriodExpiresAt: null,
@@ -887,29 +1108,35 @@ export class UserService {
     if (index >= 0) challengeProgress[index] = updatedEntry;
     else challengeProgress.push(updatedEntry);
 
-    await this.userModel.findByIdAndUpdate(
-      userId,
-      { challengeProgress },
-      { new: false },
-    ).exec();
+    await this.userModel
+      .findByIdAndUpdate(userId, { challengeProgress }, { new: false })
+      .exec();
 
     return { progressEntry: updatedEntry, xpGranted };
   }
 
-  async updateAvatar(userId: string, filename: string): Promise<{ message: string; avatarUrl: string }> {
+  async updateAvatar(
+    userId: string,
+    filename: string,
+  ): Promise<{ message: string; avatarUrl: string }> {
     this.ensureValidObjectId(userId);
     const user = await this.userModel.findById(userId).lean().exec();
     if (!user) throw new NotFoundException(this.tr('user.notFound'));
 
     if ((user as any).avatar) {
       const oldPath = join(process.cwd(), (user as any).avatar);
-      try { await fs.promises.unlink(oldPath); } catch { /* already gone */ }
+      try {
+        await fs.promises.unlink(oldPath);
+      } catch {
+        /* already gone */
+      }
     }
 
     const avatarPath = `/uploads/avatars/${filename}`;
     const updated = await this.userModel
       .findByIdAndUpdate(userId, { avatar: avatarPath }, { new: true })
-      .lean().exec();
+      .lean()
+      .exec();
     if (!updated) throw new NotFoundException(this.tr('user.notFound'));
 
     return { message: this.tr('user.avatarUpdated'), avatarUrl: avatarPath };
@@ -917,19 +1144,29 @@ export class UserService {
 
   async updateProfile(userId: string, dto: UpdateProfileDto): Promise<any> {
     this.ensureValidObjectId(userId);
-    if (dto.username === undefined && dto.email === undefined && dto.bio === undefined) {
+    if (
+      dto.username === undefined &&
+      dto.email === undefined &&
+      dto.bio === undefined
+    ) {
       throw new BadRequestException(this.tr('user.updateRequiresField'));
     }
 
     if (dto.username) {
-      const conflict = await this.userModel.findOne({ username: dto.username }).lean().exec();
+      const conflict = await this.userModel
+        .findOne({ username: dto.username })
+        .lean()
+        .exec();
       if (conflict && (conflict as any)._id.toString() !== userId) {
         throw new ConflictException(this.tr('user.usernameTaken'));
       }
     }
 
     if (dto.email) {
-      const conflict = await this.userModel.findOne({ email: dto.email }).lean().exec();
+      const conflict = await this.userModel
+        .findOne({ email: dto.email })
+        .lean()
+        .exec();
       if (conflict && (conflict as any)._id.toString() !== userId) {
         throw new ConflictException(this.tr('user.emailInUse'));
       }
@@ -942,7 +1179,8 @@ export class UserService {
 
     const updated = await this.userModel
       .findByIdAndUpdate(userId, update, { new: true })
-      .lean().exec();
+      .lean()
+      .exec();
     if (!updated) throw new NotFoundException(this.tr('user.notFound'));
 
     const { passwordHash: _omit, ...rest } = updated as any;
@@ -951,14 +1189,20 @@ export class UserService {
 
   async setRefreshTokenHash(userId: string, hash: string | null) {
     this.ensureValidObjectId(userId);
-    await this.userModel.findByIdAndUpdate(userId, { refreshTokenHash: hash }).exec();
+    await this.userModel
+      .findByIdAndUpdate(userId, { refreshTokenHash: hash })
+      .exec();
   }
 
   // â”€â”€ Speed Challenge Placement â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-  async updatePlacement(userId: string, dto: UpdatePlacementDto, force = false): Promise<any> {
+  async updatePlacement(
+    userId: string,
+    dto: UpdatePlacementDto,
+    force = false,
+  ): Promise<any> {
     this.ensureValidObjectId(userId);
-    const user = await this.userModel.findById(userId).lean().exec() as any;
+    const user = (await this.userModel.findById(userId).lean().exec()) as any;
     if (!user) throw new NotFoundException(this.tr('user.notFound'));
 
     if (user.rank && !force) {
@@ -966,13 +1210,14 @@ export class UserService {
       return rest;
     }
 
-    const updated = await this.userModel
+    const updated = (await this.userModel
       .findByIdAndUpdate(
         userId,
         { rank: dto.rank, xp: dto.xp, level: dto.level ?? dto.rank },
         { new: true },
       )
-      .lean().exec() as any;
+      .lean()
+      .exec()) as any;
 
     const { passwordHash: _omit, ...rest } = updated;
     return rest;
@@ -980,12 +1225,20 @@ export class UserService {
 
   async setPlacementProblems(userId: string, problems: any[]) {
     this.ensureValidObjectId(userId);
-    await this.userModel.findByIdAndUpdate(userId, { placementProblems: problems }, { new: true }).exec();
+    await this.userModel
+      .findByIdAndUpdate(userId, { placementProblems: problems }, { new: true })
+      .exec();
   }
 
   async completeSpeedChallenge(userId: string): Promise<void> {
     this.ensureValidObjectId(userId);
-    await this.userModel.findByIdAndUpdate(userId, { speedChallengeCompleted: true }, { new: true }).exec();
+    await this.userModel
+      .findByIdAndUpdate(
+        userId,
+        { speedChallengeCompleted: true },
+        { new: true },
+      )
+      .exec();
   }
 
   async hasCompletedSpeedChallenge(userId: string): Promise<boolean> {
@@ -996,16 +1249,18 @@ export class UserService {
 
   async saveSpeedTestSession(userId: string, sessionData: any): Promise<void> {
     this.ensureValidObjectId(userId);
-    await this.userModel.findByIdAndUpdate(
-      userId,
-      {
-        speedTestSession: {
-          ...sessionData,
-          savedAt: new Date(),
+    await this.userModel
+      .findByIdAndUpdate(
+        userId,
+        {
+          speedTestSession: {
+            ...sessionData,
+            savedAt: new Date(),
+          },
         },
-      },
-      { new: true }
-    ).exec();
+        { new: true },
+      )
+      .exec();
   }
 
   async getSpeedTestSession(userId: string): Promise<any> {
@@ -1016,25 +1271,30 @@ export class UserService {
 
   async clearSpeedTestSession(userId: string): Promise<void> {
     this.ensureValidObjectId(userId);
-    await this.userModel.findByIdAndUpdate(
-      userId,
-      {
-        speedTestSession: {
-          phase: null,
-          secondsLeft: null,
-          currentIndex: null,
-          solvedIds: [],
-          codes: {},
-          languages: {},
-          elapsedSeconds: null,
-          savedAt: null,
+    await this.userModel
+      .findByIdAndUpdate(
+        userId,
+        {
+          speedTestSession: {
+            phase: null,
+            secondsLeft: null,
+            currentIndex: null,
+            solvedIds: [],
+            codes: {},
+            languages: {},
+            elapsedSeconds: null,
+            savedAt: null,
+          },
         },
-      },
-      { new: true }
-    ).exec();
+        { new: true },
+      )
+      .exec();
   }
 
-  async changePassword(userId: string, dto: ChangePasswordDto): Promise<{ message: string }> {
+  async changePassword(
+    userId: string,
+    dto: ChangePasswordDto,
+  ): Promise<{ message: string }> {
     this.ensureValidObjectId(userId);
     const user = await this.userModel.findById(userId).lean().exec();
     if (!user) throw new NotFoundException(this.tr('user.notFound'));
@@ -1043,13 +1303,21 @@ export class UserService {
       throw new BadRequestException(this.tr('user.passwordMismatch'));
     }
 
-    const currentHash = crypto.createHash('sha256').update(dto.currentPassword).digest('hex');
+    const currentHash = crypto
+      .createHash('sha256')
+      .update(dto.currentPassword)
+      .digest('hex');
     if ((user as any).passwordHash !== currentHash) {
       throw new BadRequestException(this.tr('user.currentPasswordIncorrect'));
     }
 
-    const newHash = crypto.createHash('sha256').update(dto.newPassword).digest('hex');
-    await this.userModel.findByIdAndUpdate(userId, { passwordHash: newHash }).exec();
+    const newHash = crypto
+      .createHash('sha256')
+      .update(dto.newPassword)
+      .digest('hex');
+    await this.userModel
+      .findByIdAndUpdate(userId, { passwordHash: newHash })
+      .exec();
 
     return { message: this.tr('user.passwordUpdated') };
   }
@@ -1058,14 +1326,18 @@ export class UserService {
     this.ensureValidObjectId(id);
     const updated = await this.userModel
       .findByIdAndUpdate(id, { status }, { new: true })
-      .lean().exec();
+      .lean()
+      .exec();
     if (!updated) throw new NotFoundException(this.tr('user.notFound'));
 
     const { passwordHash: _omit, ...rest } = updated as any;
     return rest;
   }
 
-  async deleteAccount(userId: string, dto: DeleteAccountDto): Promise<{ message: string }> {
+  async deleteAccount(
+    userId: string,
+    dto: DeleteAccountDto,
+  ): Promise<{ message: string }> {
     this.ensureValidObjectId(userId);
     const user = await this.userModel.findById(userId).lean().exec();
     if (!user) throw new NotFoundException(this.tr('user.notFound'));
@@ -1077,7 +1349,11 @@ export class UserService {
 
     if ((user as any).avatar) {
       const avatarPath = join(process.cwd(), (user as any).avatar);
-      try { await fs.promises.unlink(avatarPath); } catch { /* already gone */ }
+      try {
+        await fs.promises.unlink(avatarPath);
+      } catch {
+        /* already gone */
+      }
     }
 
     await this.userModel.findByIdAndDelete(userId).exec();
@@ -1094,58 +1370,73 @@ export class UserService {
     return this.userModel.findOne({ username }).sort({ createdAt: -1 }).exec();
   }
 
-  async setResetPasswordToken(email: string, tokenHash: string, expires: Date, confirmationCode?: string) {
-    const code = confirmationCode || Math.floor(100000 + Math.random() * 900000).toString();
-    return this.userModel.findOneAndUpdate(
-      { email },
-      {
-        resetPasswordToken: tokenHash,
-        resetPasswordExpires: expires,
-        resetPasswordCode: code,
-        resetPasswordCodeVerified: false,
-      },
-      { new: true, sort: { createdAt: -1 } },
-    ).exec();
+  async setResetPasswordToken(
+    email: string,
+    tokenHash: string,
+    expires: Date,
+    confirmationCode?: string,
+  ) {
+    const code =
+      confirmationCode ||
+      Math.floor(100000 + Math.random() * 900000).toString();
+    return this.userModel
+      .findOneAndUpdate(
+        { email },
+        {
+          resetPasswordToken: tokenHash,
+          resetPasswordExpires: expires,
+          resetPasswordCode: code,
+          resetPasswordCodeVerified: false,
+        },
+        { new: true, sort: { createdAt: -1 } },
+      )
+      .exec();
   }
 
   async findByResetPasswordToken(tokenHash: string) {
-    return this.userModel.findOne({
-      resetPasswordToken: tokenHash,
-      resetPasswordExpires: { $gt: new Date() },
-    }).exec();
+    return this.userModel
+      .findOne({
+        resetPasswordToken: tokenHash,
+        resetPasswordExpires: { $gt: new Date() },
+      })
+      .exec();
   }
 
   async findByEmailAndResetCode(email: string, code: string) {
     const c = String(code).trim();
-    return this.userModel.findOne({
-      email,
-      resetPasswordCode: c,
-      resetPasswordExpires: { $gt: new Date() },
-      resetPasswordToken: { $ne: null },
-      resetPasswordCodeVerified: false,
-    }).exec();
+    return this.userModel
+      .findOne({
+        email,
+        resetPasswordCode: c,
+        resetPasswordExpires: { $gt: new Date() },
+        resetPasswordToken: { $ne: null },
+        resetPasswordCodeVerified: false,
+      })
+      .exec();
   }
 
   async verifyResetPasswordCode(email: string, code: string) {
     const user = await this.findByEmailAndResetCode(email, String(code).trim());
     if (!user) return null;
-    await this.userModel.findByIdAndUpdate(user._id, { resetPasswordCodeVerified: true }).exec();
+    await this.userModel
+      .findByIdAndUpdate(user._id, { resetPasswordCodeVerified: true })
+      .exec();
     return user;
   }
 
   async updatePasswordAndClearToken(userId: string, passwordHash: string) {
-    return this.userModel.findByIdAndUpdate(
-      userId,
-      {
-        passwordHash,
-        resetPasswordToken: null,
-        resetPasswordExpires: null,
-        resetPasswordCode: null,
-        resetPasswordCodeVerified: false,
-      },
-      { new: true },
-    ).exec();
+    return this.userModel
+      .findByIdAndUpdate(
+        userId,
+        {
+          passwordHash,
+          resetPasswordToken: null,
+          resetPasswordExpires: null,
+          resetPasswordCode: null,
+          resetPasswordCodeVerified: false,
+        },
+        { new: true },
+      )
+      .exec();
   }
 }
-
-

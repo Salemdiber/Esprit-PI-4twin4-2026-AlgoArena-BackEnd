@@ -39,7 +39,9 @@ import { SupportModule } from './support/support.module';
       },
       resolvers: [AcceptLanguageResolver],
     }),
-    MongooseModule.forRoot(process.env.MONGO_URI || 'mongodb://localhost:27017/algoarena'),
+    MongooseModule.forRoot(
+      process.env.MONGO_URI || 'mongodb://localhost:27017/algoarena',
+    ),
     UserModule,
     AuthModule,
     SystemHealthModule,

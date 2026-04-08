@@ -1,4 +1,12 @@
-import { IsBoolean, IsEnum, IsNotEmpty, IsObject, IsOptional, IsString, MaxLength } from 'class-validator';
+import {
+  IsBoolean,
+  IsEnum,
+  IsNotEmpty,
+  IsObject,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 import { Priority } from './schedule-meeting.dto';
 
 export enum BugSeverity {
@@ -59,4 +67,3 @@ export class ReportBugDto {
   @IsObject()
   reproductionBundle?: Record<string, unknown>;
 }
-

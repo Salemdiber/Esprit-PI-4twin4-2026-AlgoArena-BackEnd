@@ -7,4 +7,3 @@ export class ReactMessageDto {
   @IsString()
   emoji: string;
 }
-

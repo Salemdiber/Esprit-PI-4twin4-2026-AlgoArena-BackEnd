@@ -4,4 +4,3 @@ export enum SupportStatus {
   RESOLVED = 'resolved',
   CLOSED = 'closed',
 }
-
