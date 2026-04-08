@@ -15,6 +15,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { AuditLogService } from '../audit-logs/audit-log.service';
 import { CommunityService } from './community.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { CreateCommentDto } from './dto/create-comment.dto';
@@ -35,7 +36,35 @@ const ensureUploadDir = () => {
 
 @Controller('community')
 export class CommunityController {
-  constructor(private readonly communityService: CommunityService) { }
+  constructor(
+    private readonly communityService: CommunityService,
+    private readonly auditLogService: AuditLogService,
+  ) {}
+
+  private async writeAudit(entry: {
+    actionType: string;
+    actor: string;
+    actorId?: string;
+    targetId?: string | null;
+    targetLabel?: string;
+    description: string;
+    metadata?: Record<string, unknown>;
+  }) {
+    try {
+      await this.auditLogService.create({
+        actionType: entry.actionType,
+        actor: entry.actor,
+        actorId: entry.actorId || null,
+        entityType: 'community',
+        targetId: entry.targetId || null,
+        targetLabel: entry.targetLabel || null,
+        description: entry.description,
+        metadata: entry.metadata || {},
+      } as any);
+    } catch {
+      // Audit logging is best effort and must not break API calls.
+    }
+  }
 
   @UseGuards(JwtAuthGuard)
   @Post('uploads')
@@ -71,12 +100,25 @@ export class CommunityController {
     const protocol = req.protocol;
     const relativePath = `/uploads/community/${file.filename}`;
 
-    return {
+    const result = {
       url: relativePath,
       absoluteUrl: `${protocol}://${host}${relativePath}`,
       mimetype: file.mimetype,
       size: file.size,
     };
+
+    await this.writeAudit({
+      actionType: 'COMMUNITY_MEDIA_UPLOADED',
+      actor: 'system',
+      description: 'Community media uploaded',
+      metadata: {
+        filename: file.filename,
+        mimetype: file.mimetype,
+        size: file.size,
+      },
+    });
+
+    return result;
   }
 
   @Get('posts')
@@ -90,7 +132,20 @@ export class CommunityController {
     @Body() dto: CreatePostDto,
     @CurrentUser() user: { userId: string; username: string; avatar?: string; role?: string },
   ) {
-    return this.communityService.createPost(dto, user);
+    const created = await this.communityService.createPost(dto, user);
+    await this.writeAudit({
+      actionType: 'COMMUNITY_POST_CREATED',
+      actor: user.username,
+      actorId: user.userId,
+      targetId: created?._id ? String(created._id) : null,
+      targetLabel: created?.title ? String(created.title) : 'Community post',
+      description: `${user.username} created a community post`,
+      metadata: {
+        type: created?.type || 'normal',
+        tagsCount: Array.isArray(created?.tags) ? created.tags.length : 0,
+      },
+    });
+    return created;
   }
 
   @UseGuards(JwtAuthGuard)
@@ -100,7 +155,20 @@ export class CommunityController {
     @Body() dto: CreateCommentDto,
     @CurrentUser() user: { userId: string; username: string; avatar?: string; role?: string },
   ) {
-    return this.communityService.addComment(postId, dto, user);
+    const updated = await this.communityService.addComment(postId, dto, user);
+    await this.writeAudit({
+      actionType: 'COMMUNITY_COMMENT_ADDED',
+      actor: user.username,
+      actorId: user.userId,
+      targetId: postId,
+      targetLabel: updated?.title ? String(updated.title) : 'Community post',
+      description: `${user.username} added a comment`,
+      metadata: {
+        postId,
+        isReply: Boolean(dto?.parentCommentId),
+      },
+    });
+    return updated;
   }
 
   @UseGuards(JwtAuthGuard)
@@ -110,7 +178,20 @@ export class CommunityController {
     @Body() dto: UpdatePostDto,
     @CurrentUser() user: { userId: string; username: string; role?: string },
   ) {
-    return this.communityService.updatePost(postId, dto, user);
+    const updated = await this.communityService.updatePost(postId, dto, user);
+    await this.writeAudit({
+      actionType: 'COMMUNITY_POST_UPDATED',
+      actor: user.username,
+      actorId: user.userId,
+      targetId: postId,
+      targetLabel: updated?.title ? String(updated.title) : 'Community post',
+      description: `${user.username} updated a community post`,
+      metadata: {
+        postId,
+        fields: Object.keys(dto || {}),
+      },
+    });
+    return updated;
   }
 
   @UseGuards(JwtAuthGuard)
@@ -121,7 +202,26 @@ export class CommunityController {
     @Body() dto: UpdateCommentDto,
     @CurrentUser() user: { userId: string; username: string; role?: string },
   ) {
-    return this.communityService.updateComment(postId, commentId, dto, user);
+    const updated = await this.communityService.updateComment(
+      postId,
+      commentId,
+      dto,
+      user,
+    );
+    await this.writeAudit({
+      actionType: 'COMMUNITY_COMMENT_UPDATED',
+      actor: user.username,
+      actorId: user.userId,
+      targetId: commentId,
+      targetLabel: `Comment ${commentId}`,
+      description: `${user.username} updated a community comment`,
+      metadata: {
+        postId,
+        commentId,
+        fields: Object.keys(dto || {}),
+      },
+    });
+    return updated;
   }
 
   @UseGuards(JwtAuthGuard)
@@ -130,7 +230,17 @@ export class CommunityController {
     @Param('postId') postId: string,
     @CurrentUser() user: { userId: string; role?: string },
   ) {
-    return this.communityService.deletePost(postId, user);
+    const result = await this.communityService.deletePost(postId, user);
+    await this.writeAudit({
+      actionType: 'COMMUNITY_POST_DELETED',
+      actor: user.userId,
+      actorId: user.userId,
+      targetId: postId,
+      targetLabel: `Post ${postId}`,
+      description: `User ${user.userId} deleted a community post`,
+      metadata: { postId },
+    });
+    return result;
   }
 
   @UseGuards(JwtAuthGuard)
@@ -140,7 +250,17 @@ export class CommunityController {
     @Param('commentId') commentId: string,
     @CurrentUser() user: { userId: string; role?: string },
   ) {
-    return this.communityService.deleteComment(postId, commentId, user);
+    const result = await this.communityService.deleteComment(postId, commentId, user);
+    await this.writeAudit({
+      actionType: 'COMMUNITY_COMMENT_DELETED',
+      actor: user.userId,
+      actorId: user.userId,
+      targetId: commentId,
+      targetLabel: `Comment ${commentId}`,
+      description: `User ${user.userId} deleted a community comment`,
+      metadata: { postId, commentId },
+    });
+    return result;
   }
 
   @UseGuards(JwtAuthGuard)
@@ -150,7 +270,21 @@ export class CommunityController {
     @Body() dto: { solved?: boolean },
     @CurrentUser() user: { userId: string; username: string; role?: string },
   ) {
-    return this.communityService.updatePost(postId, { solved: Boolean(dto?.solved) }, user);
+    const updated = await this.communityService.updatePost(
+      postId,
+      { solved: Boolean(dto?.solved) },
+      user,
+    );
+    await this.writeAudit({
+      actionType: 'COMMUNITY_POST_SOLVED_TOGGLED',
+      actor: user.username,
+      actorId: user.userId,
+      targetId: postId,
+      targetLabel: updated?.title ? String(updated.title) : `Post ${postId}`,
+      description: `${user.username} updated solved status on a community post`,
+      metadata: { postId, solved: Boolean(dto?.solved) },
+    });
+    return updated;
   }
 
   @UseGuards(JwtAuthGuard)
@@ -160,7 +294,21 @@ export class CommunityController {
     @Body() dto: { pinned?: boolean },
     @CurrentUser() user: { userId: string; username: string; role?: string },
   ) {
-    return this.communityService.updatePost(postId, { pinned: Boolean(dto?.pinned) }, user);
+    const updated = await this.communityService.updatePost(
+      postId,
+      { pinned: Boolean(dto?.pinned) },
+      user,
+    );
+    await this.writeAudit({
+      actionType: 'COMMUNITY_POST_PINNED_TOGGLED',
+      actor: user.username,
+      actorId: user.userId,
+      targetId: postId,
+      targetLabel: updated?.title ? String(updated.title) : `Post ${postId}`,
+      description: `${user.username} updated pinned status on a community post`,
+      metadata: { postId, pinned: Boolean(dto?.pinned) },
+    });
+    return updated;
   }
 
   @UseGuards(JwtAuthGuard)
@@ -171,6 +319,21 @@ export class CommunityController {
     @Body() dto: { pinned?: boolean },
     @CurrentUser() user: { userId: string; username: string; role?: string },
   ) {
-    return this.communityService.updateComment(postId, commentId, { pinned: Boolean(dto?.pinned) }, user);
+    const updated = await this.communityService.updateComment(
+      postId,
+      commentId,
+      { pinned: Boolean(dto?.pinned) },
+      user,
+    );
+    await this.writeAudit({
+      actionType: 'COMMUNITY_COMMENT_PINNED_TOGGLED',
+      actor: user.username,
+      actorId: user.userId,
+      targetId: commentId,
+      targetLabel: `Comment ${commentId}`,
+      description: `${user.username} updated pinned status on a community comment`,
+      metadata: { postId, commentId, pinned: Boolean(dto?.pinned) },
+    });
+    return updated;
   }
 }

@@ -32,6 +32,17 @@ export const AuditLogSchema = new Schema(
         'CHALLENGE_SOLVED',
         'DIFFICULTY_CHANGED',
         'TAGS_UPDATED',
+        // Community events
+        'COMMUNITY_POST_CREATED',
+        'COMMUNITY_POST_UPDATED',
+        'COMMUNITY_POST_DELETED',
+        'COMMUNITY_POST_SOLVED_TOGGLED',
+        'COMMUNITY_POST_PINNED_TOGGLED',
+        'COMMUNITY_COMMENT_ADDED',
+        'COMMUNITY_COMMENT_UPDATED',
+        'COMMUNITY_COMMENT_DELETED',
+        'COMMUNITY_COMMENT_PINNED_TOGGLED',
+        'COMMUNITY_MEDIA_UPLOADED',
         // System events
         'SYSTEM_CONFIG_UPDATED',
         'SETTINGS_UPDATED',
@@ -60,7 +71,7 @@ export const AuditLogSchema = new Schema(
     entityType: {
       type: String,
       required: true,
-      enum: ['user', 'admin', 'challenge', 'system', 'audit'],
+      enum: ['user', 'admin', 'challenge', 'community', 'system', 'audit'],
       index: true,
     },
     targetId: {
