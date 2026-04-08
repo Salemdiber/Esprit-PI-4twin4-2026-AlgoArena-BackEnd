@@ -1,4 +1,5 @@
 import { Controller, Post, Body, BadRequestException, Logger, UseGuards, Get, Param, Req } from '@nestjs/common';
+import { I18nContext, I18nService } from 'nestjs-i18n';
 import { JudgeService } from './judge.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -8,7 +9,15 @@ import type { Request } from 'express';
 export class JudgeController {
   private readonly logger = new Logger(JudgeController.name);
 
-  constructor(private readonly judgeService: JudgeService) {}
+  constructor(
+    private readonly judgeService: JudgeService,
+    private readonly i18n: I18nService,
+  ) {}
+
+  private tr(key: string): string {
+    const lang = I18nContext.current()?.lang ?? 'en';
+    return this.i18n.translate(key, { lang }) as string;
+  }
 
   @UseGuards(JwtAuthGuard)
   @Post('submit')
@@ -25,7 +34,7 @@ export class JudgeController {
     @Req() req: Request,
   ) {
     if (!body.challengeId || !body.userCode || !body.language) {
-      throw new BadRequestException("challengeId, userCode, and language are required fields.");
+      throw new BadRequestException(this.tr('judge.fieldsRequired'));
     }
     return this.judgeService.judgeSubmission(
       user.userId,
@@ -48,7 +57,7 @@ export class JudgeController {
     },
   ) {
     if (!body.challengeId) {
-      throw new BadRequestException("challengeId is required.");
+      throw new BadRequestException(this.tr('judge.challengeIdRequired'));
     }
     return this.judgeService.getHint(body.challengeId, body.attemptCount || 0, body.elapsedTimeSeconds || 0);
   }

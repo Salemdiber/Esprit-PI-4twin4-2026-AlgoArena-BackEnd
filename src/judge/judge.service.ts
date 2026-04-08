@@ -1,4 +1,5 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { I18nContext, I18nService } from 'nestjs-i18n';
 import { DockerExecutionService } from './services/docker-execution.service';
 import { AIAnalysisService } from './services/ai-analysis.service';
 import { ChallengeService } from '../challenges/challenge.service';
@@ -15,7 +16,13 @@ export class JudgeService {
     private readonly challengeService: ChallengeService,
     private readonly userService: UserService,
     private readonly auditLogService: AuditLogService,
+    private readonly i18n: I18nService,
   ) {}
+
+  private tr(key: string): string {
+    const lang = I18nContext.current()?.lang ?? 'en';
+    return this.i18n.translate(key, { lang }) as string;
+  }
 
   async startChallengeAttempt(userId: string, challengeId: string, ipAddress?: string | null) {
     const challenge = await this.challengeService.findById(challengeId);
@@ -192,12 +199,12 @@ export class JudgeService {
   ) {
     const startedAt = Date.now();
     if (language !== 'javascript' && language !== 'python') {
-      throw new BadRequestException("Unsupported language. Only 'javascript' and 'python' are allowed.");
+      throw new BadRequestException(this.tr('judge.unsupportedLanguage'));
     }
 
     const challenge = await this.challengeService.findById(challengeId);
     if (!challenge) {
-      throw new BadRequestException("Challenge not found.");
+      throw new BadRequestException(this.tr('judge.challengeNotFound'));
     }
     const existingProgress = await this.userService.getChallengeProgressEntry(userId, challengeId);
     if (mode === 'submit' && existingProgress?.status === 'SOLVED') {
@@ -207,7 +214,7 @@ export class JudgeService {
         success: true,
         passed: true,
         alreadySolved: true,
-        message: 'Challenge already solved. Resubmission is disabled.',
+        message: this.tr('judge.alreadySolved'),
         previousSubmission: latest,
         solveTimeSeconds: existingProgress.solveTimeSeconds ?? null,
       };
@@ -246,7 +253,7 @@ export class JudgeService {
         results: [],
         error: {
           type: "SyntaxError",
-          message: aiCheck.errorMessage || "Syntax Error detected.",
+          message: aiCheck.errorMessage || this.tr('judge.syntaxError'),
           line: aiCheck.errorLine
         },
         source: 'ai-syntax-check',
@@ -283,7 +290,7 @@ export class JudgeService {
         results: [],
         error: {
           type: "SyntaxError",
-          message: aiCheck.errorMessage || "Syntax Error detected.",
+          message: aiCheck.errorMessage || this.tr('judge.syntaxError'),
           line: aiCheck.errorLine
         },
         aiAnalysis: "Syntax error prevented execution. Please fix and try again.",
@@ -511,7 +518,7 @@ export class JudgeService {
   async getHint(challengeId: string, attemptCount: number, elapsedTimeSeconds: number) {
     const challenge = await this.challengeService.findById(challengeId);
     if (!challenge) {
-      throw new BadRequestException("Challenge not found.");
+      throw new BadRequestException(this.tr('judge.challengeNotFound'));
     }
 
     const isUnlocked = attemptCount >= 3 || elapsedTimeSeconds >= 300;

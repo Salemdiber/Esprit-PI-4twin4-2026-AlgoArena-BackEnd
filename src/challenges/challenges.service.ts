@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { I18nContext, I18nService } from 'nestjs-i18n';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { CreateChallengeDto } from './dto/create-challenge.dto';
@@ -9,7 +10,13 @@ import { Challenge, ChallengeDocument } from './schemas/challenge.schema';
 export class ChallengesService {
   constructor(
     @InjectModel(Challenge.name) private readonly model: Model<ChallengeDocument>,
+    private readonly i18n: I18nService,
   ) {}
+
+  private tr(key: string, args?: Record<string, unknown>): string {
+    const lang = I18nContext.current()?.lang ?? 'en';
+    return this.i18n.translate(key, { lang, args }) as string;
+  }
 
   private normalizeTitle(title: string): string {
     return (title || '')
@@ -33,11 +40,11 @@ export class ChallengesService {
     const normalizedTitle = this.normalizeTitle(title);
     const exact = await this.model.findOne({ title }).lean().exec();
     if (exact && String((exact as any)._id) !== String(ignoreId || '')) {
-      throw new ConflictException(`A challenge with the title '${title}' already exists. Please use a unique title.`);
+      throw new ConflictException(this.tr('challenges.titleExists', { title }));
     }
     const normalized = await this.model.findOne({ normalizedTitle }).lean().exec();
     if (normalized && String((normalized as any)._id) !== String(ignoreId || '')) {
-      throw new ConflictException(`A challenge with the title '${title}' already exists. Please use a unique title.`);
+      throw new ConflictException(this.tr('challenges.titleExists', { title }));
     }
     const descriptionPrefix = this.normalizeDescriptionPrefix(dto.description || '');
     if (!descriptionPrefix) return [];
@@ -46,7 +53,9 @@ export class ChallengesService {
       if (String(doc?._id) === String(ignoreId || '')) return false;
       return this.normalizeDescriptionPrefix(doc?.description || '') === descriptionPrefix;
     });
-    return similar ? [`Potential duplicate description detected with "${similar.title}".`] : [];
+    return similar
+      ? [this.tr('challenges.duplicateDescriptionWarning', { title: String(similar.title) })]
+      : [];
   }
 
   async create(dto: CreateChallengeDto): Promise<Challenge> {
@@ -68,14 +77,14 @@ export class ChallengesService {
 
   async findOne(id: string): Promise<Challenge> {
     const found = await this.model.findById(id).exec();
-    if (!found) throw new NotFoundException(`Challenge with id ${id} not found`);
+    if (!found) throw new NotFoundException(this.tr('challenges.notFoundById', { id }));
     return found;
   }
 
   async findPublishedById(id: string): Promise<Challenge> {
     const found = await this.model.findById(id).exec();
     if (!found || found.status !== 'published') {
-      throw new NotFoundException(`Published challenge with id ${id} not found`);
+      throw new NotFoundException(this.tr('challenges.publishedNotFound', { id }));
     }
     return found;
   }
@@ -83,7 +92,7 @@ export class ChallengesService {
   async update(id: string, dto: UpdateChallengeDto): Promise<Challenge> {
     if (dto.title || dto.description) {
       const existing = await this.model.findById(id).lean().exec();
-      if (!existing) throw new NotFoundException(`Challenge with id ${id} not found`);
+      if (!existing) throw new NotFoundException(this.tr('challenges.notFoundById', { id }));
       await this.ensureChallengeUniqueness({
         ...(existing as any),
         ...dto,
@@ -99,12 +108,12 @@ export class ChallengesService {
       },
       { new: true },
     ).exec();
-    if (!updated) throw new NotFoundException(`Challenge with id ${id} not found`);
+    if (!updated) throw new NotFoundException(this.tr('challenges.notFoundById', { id }));
     return updated;
   }
 
   async remove(id: string): Promise<void> {
     const deleted = await this.model.findByIdAndDelete(id).exec();
-    if (!deleted) throw new NotFoundException(`Challenge with id ${id} not found`);
+    if (!deleted) throw new NotFoundException(this.tr('challenges.notFoundById', { id }));
   }
 }

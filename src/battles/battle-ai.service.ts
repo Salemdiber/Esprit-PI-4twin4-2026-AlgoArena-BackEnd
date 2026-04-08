@@ -1,4 +1,5 @@
 import { Injectable, Logger, BadRequestException, HttpException, HttpStatus } from '@nestjs/common';
+import { I18nContext, I18nService } from 'nestjs-i18n';
 import { ConfigService } from '@nestjs/config';
 import { BattlesService } from './battle.service';
 import { ChallengeService } from '../challenges/challenge.service';
@@ -37,6 +38,7 @@ export class BattleAiService {
     private readonly challengeService: ChallengeService,
     private readonly dockerService: DockerExecutionService,
     private readonly analysisService: AIAnalysisService,
+    private readonly i18n: I18nService,
   ) {
     const grokKey = this.config.get<string>('GROK_API_KEY');
     const groqKey = this.config.get<string>('GROQ_API_KEY');
@@ -59,20 +61,25 @@ export class BattleAiService {
     }
   }
 
+  private tr(key: string, args?: Record<string, unknown>): string {
+    const lang = I18nContext.current()?.lang ?? 'en';
+    return this.i18n.translate(key, { lang, args }) as string;
+  }
+
   async submitAiSolution(battleId: string, language: 'javascript' | 'python' = 'javascript'): Promise<AiSubmissionResult> {
     if (!battleId) {
-      throw new BadRequestException('battleId is required');
+      throw new BadRequestException(this.tr('battleAi.battleIdRequired'));
     }
 
     try {
       const battle = await this.battlesService.findOne(battleId);
       if (!battle?.challengeId) {
-        throw new BadRequestException('Battle is missing a challengeId');
+        throw new BadRequestException(this.tr('battleAi.missingChallengeId'));
       }
 
       const challenge = await this.challengeService.findById(battle.challengeId);
       if (!challenge) {
-        throw new BadRequestException('Challenge not found');
+        throw new BadRequestException(this.tr('battleAi.challengeNotFound'));
       }
 
       const testCases = (challenge.testCases || []).map((tc) => ({
@@ -81,7 +88,7 @@ export class BattleAiService {
       }));
 
       if (!testCases.length) {
-        throw new BadRequestException('Challenge has no test cases');
+        throw new BadRequestException(this.tr('battleAi.noTestCases'));
       }
 
       const botDifficulty = (battle as any)?.botDifficulty as BotDifficulty | undefined;

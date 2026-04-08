@@ -1,6 +1,9 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
+import * as path from 'path';
+import { I18nModule, AcceptLanguageResolver } from 'nestjs-i18n';
+import { I18nJsonLoader } from 'nestjs-i18n/dist/loaders';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { OnboardingModule } from './onboarding/onboarding.module';
@@ -19,11 +22,22 @@ import { ChallengesModule } from './challenges/challenges.module';
 import { CacheModule } from './cache/cache.module';
 import { BattlesModule } from './battles/battle.module';
 import { JudgeModule } from './judge/judge.module';
+import { ChatModule } from './chat/chat.module';
+import { SupportModule } from './support/support.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+    }),
+    I18nModule.forRoot({
+      fallbackLanguage: 'en',
+      loader: I18nJsonLoader,
+      loaderOptions: {
+        path: path.join(__dirname, 'i18n'),
+        watch: process.env.NODE_ENV !== 'production',
+      },
+      resolvers: [AcceptLanguageResolver],
     }),
     MongooseModule.forRoot(process.env.MONGO_URI || 'mongodb://localhost:27017/algoarena'),
     UserModule,
@@ -40,6 +54,8 @@ import { JudgeModule } from './judge/judge.module';
     AiModule,
     ChallengeModule,
     JudgeModule,
+    ChatModule,
+    SupportModule,
   ],
   controllers: [AppController],
   providers: [

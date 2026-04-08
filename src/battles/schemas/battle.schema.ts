@@ -36,21 +36,6 @@ export class Battle {
   @Prop({ type: Date, default: Date.now })
   startedAt: Date;
 
-  @Prop({ type: Number, default: 900 })
-  timeLimitSeconds: number;
-
-  @Prop({ type: Number, default: 0 })
-  playerScoreTotal: number;
-
-  @Prop({ type: Number, default: 0 })
-  opponentScoreTotal: number;
-
-  @Prop({ type: Boolean, default: false })
-  xpAwarded: boolean;
-
-  @Prop({ type: Number, default: 0 })
-  xpGranted: number;
-
   @Prop({ type: Date })
   endedAt: Date;
 

@@ -1,4 +1,5 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { I18nContext, I18nService } from 'nestjs-i18n';
 import { InjectModel } from '@nestjs/mongoose';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
@@ -68,7 +69,15 @@ export class DockerExecutionService implements OnModuleInit {
   private readonly cpuLimitNano = 500_000_000;
   private readonly timeoutMs = 3000;
 
-  constructor(@InjectModel('SandboxMetric') private readonly sandboxMetricModel: Model<any>) {}
+  constructor(
+    @InjectModel('SandboxMetric') private readonly sandboxMetricModel: Model<any>,
+    private readonly i18n: I18nService,
+  ) {}
+
+  private tr(key: string, args?: Record<string, unknown>): string {
+    const lang = I18nContext.current()?.lang ?? 'en';
+    return this.i18n.translate(key, { lang, args }) as string;
+  }
 
   async onModuleInit() {
     const available = await this.isDockerAvailable();
@@ -93,7 +102,7 @@ export class DockerExecutionService implements OnModuleInit {
         executionTimeMs: Date.now() - startedAt,
         error: {
           type: 'ServiceUnavailable',
-          message: 'Docker sandbox execution is unavailable. Start Docker Desktop and try again.',
+          message: this.tr('docker.unavailable'),
           line: null,
         },
       };
@@ -110,7 +119,7 @@ export class DockerExecutionService implements OnModuleInit {
         executionTimeMs: Date.now() - startedAt,
         error: {
           type: 'SyntaxError',
-          message: 'No function definition found. Define a callable function and try again.',
+          message: this.tr('docker.noFunction'),
           line: null,
         },
       };
@@ -244,7 +253,7 @@ export class DockerExecutionService implements OnModuleInit {
           executionTimeMs: Date.now() - startedAt,
           error: {
             type: 'TimeoutError',
-            message: `Execution exceeded ${this.timeoutMs}ms and was terminated.`,
+            message: this.tr('docker.timeout', { ms: this.timeoutMs }),
             line: null,
           },
         };
@@ -265,7 +274,7 @@ export class DockerExecutionService implements OnModuleInit {
           executionTimeMs: Date.now() - startedAt,
           error: {
             type: 'SystemError',
-            message: 'Execution completed but produced an unreadable result payload.',
+            message: this.tr('docker.unreadableResult'),
             line: null,
           },
         };
@@ -288,7 +297,7 @@ export class DockerExecutionService implements OnModuleInit {
             expectedOutput: testCase.expected,
             actualOutput: null,
             passed: false,
-            error: 'No execution result returned for this test case.',
+            error: this.tr('docker.noResultForCase'),
             executionTimeMs: 0,
             executionTime: '0ms',
           };
@@ -340,7 +349,7 @@ export class DockerExecutionService implements OnModuleInit {
         executionTimeMs: Date.now() - startedAt,
         error: {
           type: 'ExecutionError',
-          message: error?.message || 'Unexpected execution failure.',
+          message: error?.message || this.tr('docker.unexpectedFailure'),
           line: null,
         },
       };
@@ -428,7 +437,7 @@ export class DockerExecutionService implements OnModuleInit {
         data: [],
         error: {
           type: 'InputParseError',
-          message: error?.message || 'Unable to parse challenge test-case input.',
+          message: error?.message || this.tr('docker.parseTestInput'),
           line: null,
         },
       };

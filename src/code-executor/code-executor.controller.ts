@@ -1,15 +1,24 @@
 import { Controller, Post, Body, BadRequestException } from '@nestjs/common';
+import { I18nContext, I18nService } from 'nestjs-i18n';
 import { CodeExecutorService } from './code-executor.service';
 
 @Controller('api')
 export class CodeExecutorController {
-    constructor(private readonly executor: CodeExecutorService) {}
+    constructor(
+        private readonly executor: CodeExecutorService,
+        private readonly i18n: I18nService,
+    ) {}
+
+    private tr(key: string): string {
+        const lang = I18nContext.current()?.lang ?? 'en';
+        return this.i18n.translate(key, { lang }) as string;
+    }
 
     @Post('execute')
     async execute(@Body() body: any) {
         const { code, language, testCases } = body || {};
-        if (!code) throw new BadRequestException('code is required');
-        if (!language) throw new BadRequestException('language is required');
+        if (!code) throw new BadRequestException(this.tr('codeExecutor.codeRequired'));
+        if (!language) throw new BadRequestException(this.tr('codeExecutor.languageRequired'));
 
         try {
             if (Array.isArray(testCases) && testCases.length > 0) {
