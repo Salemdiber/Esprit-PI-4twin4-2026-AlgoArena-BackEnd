@@ -1,6 +1,6 @@
-<div align="center">
+ï»¿<div align="center">
   <img src="https://raw.githubusercontent.com/Salemdiber/Esprit-PI-4twin4-2026-AlgoArena-FrontEnd/main/public/logo_algoarena.png" alt="AlgoArena Logo" width="200" />
-  <h1>AlgoArena — Backend API</h1>
+  <h1>AlgoArena | Backend API</h1>
   <p><strong>A competitive programming platform where developers sharpen their algorithmic skills</strong></p>
 </div>
 
@@ -77,25 +77,25 @@ The backend integrates external services (Groq and Docker) to enable AI generati
 ## Architecture Overview
 ```text
 +------------------------------------------------------------------------------+
-¦                               NestJS Backend                                ¦
-¦                                                                              ¦
-¦  +---------------+  +----------------+  +----------------+  +------------+  ¦
-¦  ¦ Auth Module   ¦  ¦ Challenges     ¦  ¦ Judge Module   ¦  ¦ User Module¦  ¦
-¦  ¦ OAuth + JWT   ¦  ¦ CRUD + Public  ¦  ¦ Docker Exec +  ¦  ¦ Profile +  ¦  ¦
-¦  ¦ + Password    ¦  ¦ listing + AI   ¦  ¦ AI Analysis    ¦  ¦ Rank/XP    ¦  ¦
-¦  +---------------+  +----------------+  +----------------+  +------------+  ¦
-¦         ¦                    ¦                   ¦                 ¦         ¦
-¦  +------------------------------------------------------------------------+  ¦
-¦  ¦                    Core Platform Services Layer                         ¦  ¦
-¦  ¦  Analytics  |  Settings  |  Sessions  |  Audit Logs  |  Onboarding     ¦  ¦
-¦  +--------------------------------------------------------------------------+  ¦
-¦                ¦                          ¦                          ¦         ¦
+|                               NestJS Backend                                |
+|                                                                              |
+|  +---------------+  +----------------+  +----------------+  +------------+  |
+|  | Auth Module   |  | Challenges     |  | Judge Module   |  | User Module|  |
+|  | OAuth + JWT   |  | CRUD + Public  |  | Docker Exec +  |  | Profile +  |  |
+|  | + Password    |  | listing + AI   |  | AI Analysis    |  | Rank/XP    |  |
+|  +---------------+  +----------------+  +----------------+  +------------+  |
+|         |                    |                   |                 |         |
+|  +------------------------------------------------------------------------+  |
+|  |                    Core Platform Services Layer                         |  |
+|  |  Analytics  |  Settings  |  Sessions  |  Audit Logs  |  Onboarding     |  |
+|  +--------------------------------------------------------------------------+  |
+|                |                          |                          |         |
 +----------------+--------------------------+--------------------------+---------+
-                 ¦                          ¦                          ¦
+                 |                          |                          |
                  ?                          ?                          ?
         +----------------+         +-----------------+         +-----------------+
-        ¦ MongoDB        ¦         ¦ Docker Engine   ¦         ¦ External AI APIs ¦
-        ¦ via Mongoose   ¦         ¦ sandbox runtime ¦         ¦ Groq / Anthropic ¦
+        | MongoDB        |         | Docker Engine   |         | External AI APIs |
+        | via Mongoose   |         | sandbox runtime |         | Groq / Anthropic |
         +----------------+         +-----------------+         +-----------------+
 ```
 
