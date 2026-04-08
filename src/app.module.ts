@@ -24,6 +24,7 @@ import { BattlesModule } from './battles/battle.module';
 import { JudgeModule } from './judge/judge.module';
 import { ChatModule } from './chat/chat.module';
 import { SupportModule } from './support/support.module';
+import { CommunityModule } from './community/community.module';
 
 @Module({
   imports: [
@@ -58,6 +59,7 @@ import { SupportModule } from './support/support.module';
     JudgeModule,
     ChatModule,
     SupportModule,
+    CommunityModule,
   ],
   controllers: [AppController],
   providers: [
