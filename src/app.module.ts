@@ -42,16 +42,6 @@ import { CommunityModule } from './community/community.module';
     }),
     MongooseModule.forRoot(
       process.env.MONGO_URI || 'mongodb://localhost:27017/algoarena',
-      {
-        maxPoolSize: 10,
-        minPoolSize: 2,
-        socketTimeoutMS: 45000,
-        serverSelectionTimeoutMS: 5000,
-        connectionFactory: (connection) => {
-          connection.set('bufferCommands', false);
-          return connection;
-        },
-      },
     ),
     UserModule,
     AuthModule,

@@ -94,59 +94,22 @@ export class ChallengesService {
   }
 
   async findAll(): Promise<Challenge[]> {
-    return this.model
-      .find()
-      .select('-testCases -referenceSolution')
-      .sort({ createdAt: -1 })
-      .limit(20)
-      .lean()
-      .exec();
+    return this.model.find().exec();
   }
 
-  async findPublished(query?: {
-    page?: number;
-    limit?: number;
-  }): Promise<{
-    challenges: Partial<Challenge>[];
-    total: number;
-    page: number;
-    limit: number;
-    pages: number;
-  }> {
-    const page = Math.max(1, Number(query?.page) || 1);
-    const limit = Math.min(20, Math.max(1, Number(query?.limit) || 20));
-    const skip = (page - 1) * limit;
-
-    const [challenges, total] = await Promise.all([
-      this.model
-        .find({ status: 'published' })
-        .select('_id title difficulty tags xpReward acceptanceRate solvedCount estimatedTime mode createdAt')
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean()
-        .exec(),
-      this.model.countDocuments({ status: 'published' }).exec(),
-    ]);
-
-    return {
-      challenges,
-      total,
-      page,
-      limit,
-      pages: Math.ceil(total / limit),
-    };
+  async findPublished(): Promise<Challenge[]> {
+    return this.model.find({ status: 'published' }).exec();
   }
 
   async findOne(id: string): Promise<Challenge> {
-    const found = await this.model.findById(id).lean().exec();
+    const found = await this.model.findById(id).exec();
     if (!found)
       throw new NotFoundException(this.tr('challenges.notFoundById', { id }));
     return found;
   }
 
   async findPublishedById(id: string): Promise<Challenge> {
-    const found = await this.model.findById(id).lean().exec();
+    const found = await this.model.findById(id).exec();
     if (!found || found.status !== 'published') {
       throw new NotFoundException(
         this.tr('challenges.publishedNotFound', { id }),

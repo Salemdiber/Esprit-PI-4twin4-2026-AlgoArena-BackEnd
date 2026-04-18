@@ -86,8 +86,6 @@ ChallengeSchema.pre('validate', function setNormalizedTitle(next) {
 
 // Performance Indexes for backend querying
 ChallengeSchema.index({ status: 1, difficulty: 1 });
-ChallengeSchema.index({ difficulty: 1 });
-ChallengeSchema.index({ status: 1 });
 ChallengeSchema.index({ tags: 1 });
 ChallengeSchema.index({ createdAt: -1 });
 ChallengeSchema.index({ title: 1 }, { unique: true });

@@ -6,8 +6,6 @@ import {
   Delete,
   Param,
   Body,
-  Query,
-  Header,
   HttpCode,
   HttpStatus,
   UseGuards,
@@ -32,7 +30,6 @@ export class ChallengesController {
 
   // GET /challenges - Retrieve all challenges
   @Get()
-  @Header('Cache-Control', 'private, max-age=60')
   async findAll() {
     const challenges = await this.service.findAll();
     return { challenges };
@@ -40,17 +37,12 @@ export class ChallengesController {
 
   // GET /challenges/public - Retrieve all published challenges
   @Get('public')
-  @Header('Cache-Control', 'public, max-age=60')
-  findPublished(@Query('page') page?: string, @Query('limit') limit?: string) {
-    return this.service.findPublished({
-      page: Number(page) || 1,
-      limit: Number(limit) || 20,
-    });
+  findPublished() {
+    return this.service.findPublished();
   }
 
   // GET /challenges/public/:id - Retrieve a specific published challenge by id
   @Get('public/:id')
-  @Header('Cache-Control', 'public, max-age=60')
   findPublishedById(@Param('id') id: string) {
     return this.service.findPublishedById(id);
   }

@@ -5,10 +5,6 @@ import { UpdateSettingsDto } from './dto/update-settings.dto';
 
 @Injectable()
 export class SettingsService implements OnModuleInit {
-  private settingsCache: any = null;
-  private settingsCacheTime = 0;
-  private readonly settingsTtlMs = 5 * 60 * 1000;
-
   constructor(@InjectModel('Settings') private settingsModel: Model<any>) {}
 
   /** Seed default settings document if none exists */
@@ -20,14 +16,7 @@ export class SettingsService implements OnModuleInit {
   }
 
   async getSettings() {
-    const now = Date.now();
-    if (this.settingsCache && now - this.settingsCacheTime < this.settingsTtlMs) {
-      return this.settingsCache;
-    }
-
     const settings = await this.settingsModel.findOne().lean().exec();
-    this.settingsCache = settings;
-    this.settingsCacheTime = now;
     return settings;
   }
 
@@ -36,8 +25,6 @@ export class SettingsService implements OnModuleInit {
       .findOneAndUpdate({}, { $set: dto }, { new: true })
       .lean()
       .exec();
-    this.settingsCache = settings;
-    this.settingsCacheTime = Date.now();
     return settings;
   }
 }
