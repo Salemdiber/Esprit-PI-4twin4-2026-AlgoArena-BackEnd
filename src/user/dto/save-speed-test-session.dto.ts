@@ -1,11 +1,4 @@
-import {
-  IsOptional,
-  IsNumber,
-  IsArray,
-  IsObject,
-  IsString,
-  IsEnum,
-} from 'class-validator';
+import { IsOptional, IsNumber, IsArray, IsObject, IsString, IsEnum } from 'class-validator';
 
 export class SaveSpeedTestSessionDto {
   @IsEnum(['INTRO', 'CHALLENGE', 'RESULT'])

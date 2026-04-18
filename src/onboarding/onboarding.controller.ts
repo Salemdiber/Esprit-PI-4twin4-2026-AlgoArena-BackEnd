@@ -1,11 +1,4 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  HttpCode,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Post, Body, HttpCode, UseGuards } from '@nestjs/common';
 import { join } from 'path';
 import * as fs from 'fs';
 import { OnboardingService, SolutionInput } from './onboarding.service';
@@ -45,12 +38,7 @@ export class OnboardingController {
           try {
             const raw = dec.fn();
             const data = JSON.parse(raw);
-            return {
-              success: true,
-              problems: data,
-              path: file,
-              encoding: dec.name,
-            };
+            return { success: true, problems: data, path: file, encoding: dec.name };
           } catch (err) {
             // try next decoder
           }
@@ -58,32 +46,13 @@ export class OnboardingController {
 
         // If we reach here, parsing failed for all attempted encodings
         const snippet = buf.slice(0, 64).toString('hex');
-
-        console.error(
-          'OnboardingController: failed to parse JSON for',
-          file,
-          'sampleHex:',
-          snippet,
-        );
-        return {
-          success: false,
-          problems: [],
-          error: 'Failed to parse JSON (encoding mismatch)',
-          path: file,
-          sampleHex: snippet,
-        };
+        // eslint-disable-next-line no-console
+        console.error('OnboardingController: failed to parse JSON for', file, 'sampleHex:', snippet);
+        return { success: false, problems: [], error: 'Failed to parse JSON (encoding mismatch)', path: file, sampleHex: snippet };
       } catch (e) {
-        console.error(
-          'OnboardingController read error for',
-          file,
-          e?.message || e,
-        );
-        return {
-          success: false,
-          problems: [],
-          error: String(e?.message || e),
-          path: file,
-        };
+        // eslint-disable-next-line no-console
+        console.error('OnboardingController read error for', file, e?.message || e);
+        return { success: false, problems: [], error: String(e?.message || e), path: file };
       }
     }
 
@@ -97,10 +66,7 @@ export class OnboardingController {
     @Body() body: { solutions: SolutionInput[]; totalSeconds: number },
   ) {
     const { solutions = [], totalSeconds = 900 } = body;
-    const result = await this.onboardingService.classifySolutions(
-      solutions,
-      totalSeconds,
-    );
+    const result = await this.onboardingService.classifySolutions(solutions, totalSeconds);
     return result;
   }
 
@@ -112,19 +78,13 @@ export class OnboardingController {
   ) {
     const title = String(body?.title || '').trim();
     const description = String(body?.description || '').trim();
-    const hintLevel = Number.isFinite(Number(body?.hintLevel))
-      ? Number(body?.hintLevel)
-      : 1;
+    const hintLevel = Number.isFinite(Number(body?.hintLevel)) ? Number(body?.hintLevel) : 1;
 
     if (!title || !description) {
       return { hint: 'No problem details available for this hint.' };
     }
 
-    const hint = await this.onboardingService.generateSpeedChallengeHint(
-      title,
-      description,
-      hintLevel,
-    );
+    const hint = await this.onboardingService.generateSpeedChallengeHint(title, description, hintLevel);
     return { hint };
   }
 }

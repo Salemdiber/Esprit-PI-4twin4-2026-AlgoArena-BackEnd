@@ -1,14 +1,4 @@
-import {
-  Controller,
-  Post,
-  Body,
-  BadRequestException,
-  Logger,
-  UseGuards,
-  Get,
-  Param,
-  Req,
-} from '@nestjs/common';
+import { Controller, Post, Body, BadRequestException, Logger, UseGuards, Get, Param, Req } from '@nestjs/common';
 import { I18nContext, I18nService } from 'nestjs-i18n';
 import { JudgeService } from './judge.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -26,7 +16,7 @@ export class JudgeController {
 
   private tr(key: string): string {
     const lang = I18nContext.current()?.lang ?? 'en';
-    return this.i18n.translate(key, { lang });
+    return this.i18n.translate(key, { lang }) as string;
   }
 
   @UseGuards(JwtAuthGuard)
@@ -60,8 +50,7 @@ export class JudgeController {
   @UseGuards(JwtAuthGuard)
   @Post('hint')
   async getHint(
-    @Body()
-    body: {
+    @Body() body: {
       challengeId: string;
       elapsedTimeSeconds: number;
       attemptCount: number;
@@ -70,11 +59,7 @@ export class JudgeController {
     if (!body.challengeId) {
       throw new BadRequestException(this.tr('judge.challengeIdRequired'));
     }
-    return this.judgeService.getHint(
-      body.challengeId,
-      body.attemptCount || 0,
-      body.elapsedTimeSeconds || 0,
-    );
+    return this.judgeService.getHint(body.challengeId, body.attemptCount || 0, body.elapsedTimeSeconds || 0);
   }
 
   @UseGuards(JwtAuthGuard)

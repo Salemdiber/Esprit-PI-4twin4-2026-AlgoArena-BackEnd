@@ -1,12 +1,4 @@
-import {
-  Body,
-  Controller,
-  Param,
-  Post,
-  Put,
-  Req,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Param, Post, Put, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -35,13 +27,7 @@ export class ChallengeAttemptController {
   async leaveAttempt(
     @CurrentUser() user: { userId: string },
     @Param('challengeId') challengeId: string,
-    @Body()
-    body: {
-      reason?: 'left_page' | 'tab_closed';
-      savedCode?: string;
-      elapsedTime?: number;
-      attemptId?: string | null;
-    },
+    @Body() body: { reason?: 'left_page' | 'tab_closed'; savedCode?: string; elapsedTime?: number; attemptId?: string | null },
     @Req() req: Request,
   ) {
     return this.judgeService.leaveChallengeAttempt(
@@ -62,8 +48,7 @@ export class ChallengeAttemptController {
   async saveAttempt(
     @CurrentUser() user: { userId: string },
     @Param('challengeId') challengeId: string,
-    @Body()
-    body: {
+    @Body() body: {
       attemptId?: string | null;
       savedCode?: string;
       elapsedTime?: number;

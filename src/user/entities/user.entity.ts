@@ -1,4 +1,8 @@
-import { Entity, Column, ObjectIdColumn } from 'typeorm';
+import {
+  Entity,
+  Column,
+  ObjectIdColumn,
+} from 'typeorm';
 
 export enum Role {
   Player = 'Player',

@@ -14,8 +14,7 @@ const REPLY_PREVIEW_MAX = 100;
 @Injectable()
 export class ChatService {
   constructor(
-    @InjectModel(Message.name)
-    private readonly messageModel: Model<MessageDocument>,
+    @InjectModel(Message.name) private readonly messageModel: Model<MessageDocument>,
     private readonly userService: UserService,
   ) {}
 
@@ -48,17 +47,10 @@ export class ChatService {
     };
   }
 
-  async sendMessage(
-    userId: string,
-    username: string,
-    roomId: string,
-    content: string,
-    replyTo?: string,
-  ) {
+  async sendMessage(userId: string, username: string, roomId: string, content: string, replyTo?: string) {
     const trimmed = String(content || '').trim();
     if (!trimmed) throw new BadRequestException('Message cannot be empty');
-    if (trimmed.length > 2000)
-      throw new BadRequestException('Message too long');
+    if (trimmed.length > 2000) throw new BadRequestException('Message too long');
 
     const user = (await this.userService.findOne(userId)) as any;
     let replyToSnapshot: any = null;
@@ -94,12 +86,7 @@ export class ChatService {
     return created.toObject();
   }
 
-  async toggleReaction(
-    userId: string,
-    messageId: string,
-    emoji: string,
-    shouldAdd = true,
-  ) {
+  async toggleReaction(userId: string, messageId: string, emoji: string, shouldAdd = true) {
     const message = await this.messageModel.findById(messageId).exec();
     if (!message) throw new NotFoundException('Message not found');
 
@@ -116,8 +103,7 @@ export class ChatService {
       const reaction = message.reactions[idx];
       const has = reaction.userIds.some((id) => String(id) === uid);
       if (shouldAdd && !has) reaction.userIds.push(new Types.ObjectId(userId));
-      if (!shouldAdd && has)
-        reaction.userIds = reaction.userIds.filter((id) => String(id) !== uid);
+      if (!shouldAdd && has) reaction.userIds = reaction.userIds.filter((id) => String(id) !== uid);
       if (!shouldAdd && !has) return message.toObject();
       if (!shouldAdd && reaction.userIds.length === 0) {
         message.reactions.splice(idx, 1);
@@ -135,12 +121,10 @@ export class ChatService {
   async editMessage(userId: string, messageId: string, content: string) {
     const message = await this.messageModel.findById(messageId).exec();
     if (!message) throw new NotFoundException('Message not found');
-    if (String(message.senderId) !== String(userId))
-      throw new ForbiddenException('Not allowed');
+    if (String(message.senderId) !== String(userId)) throw new ForbiddenException('Not allowed');
     const trimmed = String(content || '').trim();
     if (!trimmed) throw new BadRequestException('Message cannot be empty');
-    if (trimmed.length > 2000)
-      throw new BadRequestException('Message too long');
+    if (trimmed.length > 2000) throw new BadRequestException('Message too long');
     message.content = trimmed;
     message.editedAt = new Date();
     await message.save();
@@ -150,8 +134,7 @@ export class ChatService {
   async deleteMessage(userId: string, messageId: string) {
     const message = await this.messageModel.findById(messageId).exec();
     if (!message) throw new NotFoundException('Message not found');
-    if (String(message.senderId) !== String(userId))
-      throw new ForbiddenException('Not allowed');
+    if (String(message.senderId) !== String(userId)) throw new ForbiddenException('Not allowed');
     message.isDeleted = true;
     message.content = '';
     message.editedAt = new Date();
@@ -160,3 +143,4 @@ export class ChatService {
     return message.toObject();
   }
 }
+

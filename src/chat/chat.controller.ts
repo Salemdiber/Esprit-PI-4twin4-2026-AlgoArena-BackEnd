@@ -13,11 +13,7 @@ export class ChatController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
-    return this.chatService.getHistory(
-      roomId || 'general',
-      Number(page || 1),
-      Number(limit || 50),
-    );
+    return this.chatService.getHistory(roomId || 'general', Number(page || 1), Number(limit || 50));
   }
 
   @Get('rooms')
@@ -25,3 +21,4 @@ export class ChatController {
     return this.chatService.getRooms();
   }
 }
+

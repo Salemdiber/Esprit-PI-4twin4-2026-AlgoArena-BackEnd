@@ -4,10 +4,11 @@ import type { Request } from 'express';
 
 @Controller('sessions')
 export class SessionsController {
-  constructor(private readonly sessionsService: SessionsService) {}
+    constructor(private readonly sessionsService: SessionsService) { }
 
-  @Get('active')
-  getActiveSession(@Req() req: Request) {
-    return this.sessionsService.detectActiveSession(req);
-  }
+    @Get('active')
+    getActiveSession(@Req() req: Request) {
+        return this.sessionsService.detectActiveSession(req);
+    }
 }
+

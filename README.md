@@ -1,11 +1,7 @@
-  <img src="https://raw.githubusercontent.com/Salemdiber/Esprit-PI-4twin4-2026-AlgoArena-FrontEnd/main/public/logo_algoarena.png" alt="AlgoArena Logo" width="220" />
-  <h1>üõ†Ô∏è AlgoArena | Backend API</h1>
-  <p><strong>High-performance NestJS engine powering the world's most advanced competitive coding arena.</strong></p>
-  <div align="center">
-    <img src="https://img.shields.io/badge/Status-Stable-success?style=for-the-badge" />
-    <img src="https://img.shields.io/badge/Security-Hardened-orange?style=for-the-badge" />
-    <img src="https://img.shields.io/badge/Sandbox-Docker-blue?style=for-the-badge" />
-  </div>
+<div align="center">
+  <img src="https://raw.githubusercontent.com/Salemdiber/Esprit-PI-4twin4-2026-AlgoArena-FrontEnd/main/public/logo_algoarena.png" alt="AlgoArena Logo" width="200" />
+  <h1>AlgoArena ó Backend API</h1>
+  <p><strong>A competitive programming platform where developers sharpen their algorithmic skills</strong></p>
 </div>
 
 ![NestJS](https://img.shields.io/badge/NestJS-11.0.1-E0234E?logo=nestjs)
@@ -39,52 +35,68 @@ For stakeholders, this service is where business rules and platform reliability 
 
 The backend integrates external services (Groq and Docker) to enable AI generation and isolated code execution while persisting user progression and audit history.
 
-### üîê Identity & Access
-- üõ°Ô∏è **Authentication**: Secure registration with reCAPTCHA v3 & JWT strategy
-- üîÑ **Persistence**: Robust access & refresh token rotation flow
-- üåê **OAuth2**: Seamless Google and GitHub social integration
-- üîë **Self-Service**: Full password recovery and reset infrastructure
-- üöî **Authorization**: Advanced RBAC (Role-Based Access Control) with custom decorators
+## Key Features
+**Authentication And Identity**
+- ? Registration and login with reCAPTCHA validation
+- ? JWT-based auth and refresh token flow
+- ? Google and GitHub OAuth callbacks
+- ? Password reset and verification workflow
+- ? Role-based authorization using guards and roles decorator
 
-### üé® Challenge & Content Engine
-- üèóÔ∏è **Orchestration**: Full Challenge CRUD with lifecycle states (Draft/Published)
-- üß© **Discovery**: High-performance public browsing and search endpoints
-- üìù **Evaluation**: Complex judge flow with per-test-case validation
-- üí° **Hints**: Dynamic AI-driven hint generation for stuck users
-- üìà **Progression**: Accurate solve tracking and XP/rank calculations
+**Challenge And Judge System**
+- ? Challenge CRUD and publish/unpublish endpoints
+- ? Public challenge browsing endpoints
+- ? Judge submission endpoint with per-test-case evaluation
+- ? Hint generation endpoint for challenge solving flow
+- ? Progress endpoints for challenge/user solve tracking
 
-### ü§ñ AI Core
-- ü™Ñ **Generation**: Automated challenge creation via LLMs (Groq integration)
-- üîç **Detection**: AI-detection and analysis of user-provided content
-- üß† **Insights**: AI-powered code analysis and suggestion engine
+**AI And Content Automation**
+- ? AI challenge generation endpoint under admin scope (`/admin/challenges/generate-ai`)
+- ? AI analysis service integration in judge flows
+- ? AI detection endpoint for challenge content (`/challenges/ai-detection/analyze`)
 
-### üê≥ Sandboxed Execution
-- üß± **Isolation**: Secure Docker sandbox execution for multi-language logic
-- üõ°Ô∏è **Hardening**: Resource-limited containers (no network, limited CPU/RAM)
-- üìä **Telemetry**: Real-time metrics collection and health monitoring
-- üè• **Health**: Dedicated `/admin/sandbox/status` for real-time visibility
+**Sandboxed Execution And Monitoring**
+- ? Docker sandbox execution service for JavaScript/Python code
+- ? Container naming pattern with `AlgoArenaSandbox-*`
+- ? Execution timeout/resource limits in container host config
+- ? Persistent sandbox metrics storage (`sandbox_metrics` collection)
+- ? Admin sandbox monitoring endpoint (`/admin/sandbox/status`)
 
-### üìä Operations & Governance
-- üìâ **Analytics**: Comprehensive stats overview for users, challenges, and subs
-- üìú **Audit Logs**: Deep platform transparency with point-in-time recovery
-- ‚öôÔ∏è **Control**: Centralized platform settings and maintenance mode toggles
-- üè• **Observability**: Real-time health metrics and session monitoring
+**Admin And Operations**
+- ? Admin analytics endpoints (`/admin/stats/*`)
+- ? Settings management endpoints
+- ? System health endpoint
+- ? Sessions endpoint
+- ? Audit log endpoints with confirm/rollback operations
 
-## üèóÔ∏è Architecture Overview
+**Additional Platform Services**
+- ? User profile, rank stats, XP updates, avatar upload, and speed challenge session APIs
+- ? Plagiarism detection API namespace (`/api/plagiarism/*`)
+- ? Swagger docs setup (`/api/docs`) with production protection logic
 
-```mermaid
-graph LR
-    A[Public/Admin API] --> B{Guard Layer}
-    B --> C[Auth Module]
-    B --> D[Challenge Module]
-    B --> E[Judge Module]
-    B --> F[Audit Module]
-    
-    E --> G[Docker Engine]
-    E --> H[AI Engine]
-    D --> H
-    
-    C & D & E & F --> I[(MongoDB)]
+## Architecture Overview
+```text
++------------------------------------------------------------------------------+
+¶                               NestJS Backend                                ¶
+¶                                                                              ¶
+¶  +---------------+  +----------------+  +----------------+  +------------+  ¶
+¶  ¶ Auth Module   ¶  ¶ Challenges     ¶  ¶ Judge Module   ¶  ¶ User Module¶  ¶
+¶  ¶ OAuth + JWT   ¶  ¶ CRUD + Public  ¶  ¶ Docker Exec +  ¶  ¶ Profile +  ¶  ¶
+¶  ¶ + Password    ¶  ¶ listing + AI   ¶  ¶ AI Analysis    ¶  ¶ Rank/XP    ¶  ¶
+¶  +---------------+  +----------------+  +----------------+  +------------+  ¶
+¶         ¶                    ¶                   ¶                 ¶         ¶
+¶  +------------------------------------------------------------------------+  ¶
+¶  ¶                    Core Platform Services Layer                         ¶  ¶
+¶  ¶  Analytics  |  Settings  |  Sessions  |  Audit Logs  |  Onboarding     ¶  ¶
+¶  +--------------------------------------------------------------------------+  ¶
+¶                ¶                          ¶                          ¶         ¶
++----------------+--------------------------+--------------------------+---------+
+                 ¶                          ¶                          ¶
+                 ?                          ?                          ?
+        +----------------+         +-----------------+         +-----------------+
+        ¶ MongoDB        ¶         ¶ Docker Engine   ¶         ¶ External AI APIs ¶
+        ¶ via Mongoose   ¶         ¶ sandbox runtime ¶         ¶ Groq / Anthropic ¶
+        +----------------+         +-----------------+         +-----------------+
 ```
 
 ## Tech Stack

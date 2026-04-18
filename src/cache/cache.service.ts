@@ -9,9 +9,7 @@ export class CacheService implements OnModuleInit {
   private enabled: boolean;
 
   constructor() {
-    this.enabled =
-      process.env.REDIS_CACHE === 'true' ||
-      !!process.env.UPSTASH_REDIS_REST_URL;
+    this.enabled = process.env.REDIS_CACHE === 'true' || !!process.env.UPSTASH_REDIS_REST_URL;
   }
 
   async onModuleInit() {
@@ -48,9 +46,7 @@ export class CacheService implements OnModuleInit {
         return;
       }
 
-      console.warn(
-        'No Redis configuration found (set UPSTASH_REDIS_REST_URL/UPSTASH_REDIS_REST_TOKEN or REDIS_URL)',
-      );
+      console.warn('No Redis configuration found (set UPSTASH_REDIS_REST_URL/UPSTASH_REDIS_REST_TOKEN or REDIS_URL)');
       this.enabled = false;
     } catch (err) {
       console.warn('Redis cache unavailable:', err?.message);
@@ -58,9 +54,7 @@ export class CacheService implements OnModuleInit {
     }
   }
 
-  private async upstashCommand<T = unknown>(
-    command: unknown[],
-  ): Promise<T | null> {
+  private async upstashCommand<T = unknown>(command: unknown[]): Promise<T | null> {
     if (!this.upstashUrl || !this.upstashToken) return null;
 
     const response = await fetch(this.upstashUrl, {
@@ -77,7 +71,7 @@ export class CacheService implements OnModuleInit {
       throw new Error(`Upstash cache ${response.status}: ${errorText}`);
     }
 
-    const payload = (await response.json()) as { result?: T };
+    const payload = await response.json() as { result?: T };
     return (payload?.result ?? null) as T | null;
   }
 

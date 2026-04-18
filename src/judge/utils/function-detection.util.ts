@@ -24,10 +24,7 @@ function findFirstMatch(code: string, patterns: RegExp[]): string | null {
   return earliest?.name ?? null;
 }
 
-export function detectFunctionName(
-  code: string,
-  language: SupportedLanguage,
-): string | null {
+export function detectFunctionName(code: string, language: SupportedLanguage): string | null {
   if (!code?.trim()) return null;
   if (language === 'javascript') return findFirstMatch(code, JS_PATTERNS);
   return findFirstMatch(code, [PY_PATTERN]);

@@ -21,26 +21,16 @@ export class JudgeService {
 
   private tr(key: string): string {
     const lang = I18nContext.current()?.lang ?? 'en';
-    return this.i18n.translate(key, { lang });
+    return this.i18n.translate(key, { lang }) as string;
   }
 
-  async startChallengeAttempt(
-    userId: string,
-    challengeId: string,
-    ipAddress?: string | null,
-  ) {
+  async startChallengeAttempt(userId: string, challengeId: string, ipAddress?: string | null) {
     const challenge = await this.challengeService.findById(challengeId);
-    const userProfile: any = await this.userService
-      .findOne(userId)
-      .catch(() => null);
+    const userProfile: any = await this.userService.findOne(userId).catch(() => null);
     const actorName = userProfile?.username || `user:${userId}`;
 
     const challengeMode = (challenge as any)?.mode || 'challenge';
-    const attempt = await this.userService.startChallengeAttempt(
-      userId,
-      challengeId,
-      challengeMode,
-    );
+    const attempt = await this.userService.startChallengeAttempt(userId, challengeId, challengeMode);
     await this.auditLogService.create({
       actionType: 'CHALLENGE_STARTED',
       actor: actorName,
@@ -63,25 +53,14 @@ export class JudgeService {
     userId: string,
     challengeId: string,
     reason: 'left_page' | 'tab_closed' = 'left_page',
-    snapshot?: {
-      savedCode?: string;
-      elapsedTime?: number;
-      attemptId?: string | null;
-    },
+    snapshot?: { savedCode?: string; elapsedTime?: number; attemptId?: string | null },
     ipAddress?: string | null,
   ) {
     const challenge = await this.challengeService.findById(challengeId);
-    const userProfile: any = await this.userService
-      .findOne(userId)
-      .catch(() => null);
+    const userProfile: any = await this.userService.findOne(userId).catch(() => null);
     const actorName = userProfile?.username || `user:${userId}`;
 
-    const result = await this.userService.leaveChallengeAttempt(
-      userId,
-      challengeId,
-      reason,
-      snapshot,
-    );
+    const result = await this.userService.leaveChallengeAttempt(userId, challengeId, reason, snapshot);
     await this.auditLogService.create({
       actionType: 'CHALLENGE_STARTED',
       actor: actorName,
@@ -113,18 +92,10 @@ export class JudgeService {
     },
     ipAddress?: string | null,
   ) {
-    const challenge = await this.challengeService
-      .findById(challengeId)
-      .catch(() => null);
-    const userProfile: any = await this.userService
-      .findOne(userId)
-      .catch(() => null);
+    const challenge = await this.challengeService.findById(challengeId).catch(() => null);
+    const userProfile: any = await this.userService.findOne(userId).catch(() => null);
     const actorName = userProfile?.username || `user:${userId}`;
-    const result = await this.userService.saveChallengeAttempt(
-      userId,
-      challengeId,
-      payload,
-    );
+    const result = await this.userService.saveChallengeAttempt(userId, challengeId, payload);
 
     if (challenge) {
       await this.auditLogService.create({
@@ -148,28 +119,15 @@ export class JudgeService {
     return result;
   }
 
-  async returnChallengeAttempt(
-    userId: string,
-    challengeId: string,
-    ipAddress?: string | null,
-  ) {
-    const challenge = await this.challengeService
-      .findById(challengeId)
-      .catch(() => null);
-    const userProfile: any = await this.userService
-      .findOne(userId)
-      .catch(() => null);
+  async returnChallengeAttempt(userId: string, challengeId: string, ipAddress?: string | null) {
+    const challenge = await this.challengeService.findById(challengeId).catch(() => null);
+    const userProfile: any = await this.userService.findOne(userId).catch(() => null);
     const actorName = userProfile?.username || `user:${userId}`;
 
-    const result = await this.userService.returnChallengeAttempt(
-      userId,
-      challengeId,
-    );
+    const result = await this.userService.returnChallengeAttempt(userId, challengeId);
     if (challenge) {
       await this.auditLogService.create({
-        actionType: result.allowed
-          ? 'CHALLENGE_STARTED'
-          : 'CHALLENGE_ABANDONED',
+        actionType: result.allowed ? 'CHALLENGE_STARTED' : 'CHALLENGE_ABANDONED',
         actor: actorName,
         actorId: userId,
         entityType: 'challenge',
@@ -205,18 +163,10 @@ export class JudgeService {
     reason: 'timeout' | 'left_page' | 'tab_closed' = 'timeout',
     ipAddress?: string | null,
   ) {
-    const challenge = await this.challengeService
-      .findById(challengeId)
-      .catch(() => null);
-    const userProfile: any = await this.userService
-      .findOne(userId)
-      .catch(() => null);
+    const challenge = await this.challengeService.findById(challengeId).catch(() => null);
+    const userProfile: any = await this.userService.findOne(userId).catch(() => null);
     const actorName = userProfile?.username || `user:${userId}`;
-    const result = await this.userService.abandonChallengeAttempt(
-      userId,
-      challengeId,
-      reason,
-    );
+    const result = await this.userService.abandonChallengeAttempt(userId, challengeId, reason);
 
     if (challenge) {
       await this.auditLogService.create({
@@ -256,14 +206,9 @@ export class JudgeService {
     if (!challenge) {
       throw new BadRequestException(this.tr('judge.challengeNotFound'));
     }
-    const existingProgress = await this.userService.getChallengeProgressEntry(
-      userId,
-      challengeId,
-    );
+    const existingProgress = await this.userService.getChallengeProgressEntry(userId, challengeId);
     if (mode === 'submit' && existingProgress?.status === 'SOLVED') {
-      const successful = (existingProgress.submissions || []).filter(
-        (submission: any) => submission.passed,
-      );
+      const successful = (existingProgress.submissions || []).filter((submission: any) => submission.passed);
       const latest = successful[successful.length - 1] || null;
       return {
         success: true,
@@ -275,28 +220,19 @@ export class JudgeService {
       };
     }
 
-    const userProfile: any = await this.userService
-      .findOne(userId)
-      .catch(() => null);
+    const userProfile: any = await this.userService.findOne(userId).catch(() => null);
     const actorName = userProfile?.username || `user:${userId}`;
 
-    const testCases = challenge.testCases.map((tc) => ({
+    const testCases = challenge.testCases.map(tc => ({
       input: tc.input,
       expectedOutput: tc.output,
     }));
 
-    this.logger.debug(
-      `Judging challenge "${challenge.title}" with ${testCases.length} test cases, language=${language}`,
-    );
+    this.logger.debug(`Judging challenge "${challenge.title}" with ${testCases.length} test cases, language=${language}`);
     this.logger.debug(`Test cases: ${JSON.stringify(testCases)}`);
 
     // AI fast check for syntax and signature
-    const aiCheck = await this.aiService.quickCodeCheck(
-      userCode,
-      language,
-      challenge.title,
-      challenge.description || '',
-    );
+    const aiCheck = await this.aiService.quickCodeCheck(userCode, language, challenge.title, challenge.description || '');
     if (aiCheck.hasSyntaxError) {
       const submissionDetails = {
         submittedAt: new Date(),
@@ -313,26 +249,20 @@ export class JudgeService {
         spaceComplexity: 'Unknown',
         aiDetection: 'MANUAL',
         recommendations: [],
-        aiAnalysis:
-          'Syntax error prevented execution. Please fix and try again.',
+        aiAnalysis: 'Syntax error prevented execution. Please fix and try again.',
         results: [],
         error: {
-          type: 'SyntaxError',
+          type: "SyntaxError",
           message: aiCheck.errorMessage || this.tr('judge.syntaxError'),
-          line: aiCheck.errorLine,
+          line: aiCheck.errorLine
         },
         source: 'ai-syntax-check',
       };
       if (mode === 'submit') {
-        await this.userService.recordChallengeSubmission(
-          userId,
-          challengeId,
-          submissionDetails,
-          {
-            xpReward: Number(challenge.xpReward || 0),
-            solveTimeSeconds: solveTimeSeconds ?? null,
-          },
-        );
+        await this.userService.recordChallengeSubmission(userId, challengeId, submissionDetails, {
+          xpReward: Number(challenge.xpReward || 0),
+          solveTimeSeconds: solveTimeSeconds ?? null,
+        });
         await this.auditLogService.create({
           actionType: 'CHALLENGE_SUBMITTED',
           actor: actorName,
@@ -359,14 +289,13 @@ export class JudgeService {
         total: testCases.length,
         results: [],
         error: {
-          type: 'SyntaxError',
+          type: "SyntaxError",
           message: aiCheck.errorMessage || this.tr('judge.syntaxError'),
-          line: aiCheck.errorLine,
+          line: aiCheck.errorLine
         },
-        aiAnalysis:
-          'Syntax error prevented execution. Please fix and try again.',
-        source: 'ai-syntax-check',
-        executionTime: '0ms',
+        aiAnalysis: "Syntax error prevented execution. Please fix and try again.",
+        source: "ai-syntax-check",
+        executionTime: "0ms",
         submissionDetails,
       };
     }
@@ -374,7 +303,7 @@ export class JudgeService {
     // Docker Execution
     const dockerResult = await this.dockerService.executeCode(
       userCode,
-      language,
+      language as 'javascript'|'python',
       testCases,
       {
         challengeTitle: challenge.title,
@@ -384,9 +313,7 @@ export class JudgeService {
       },
     );
 
-    this.logger.debug(
-      `Docker result: error=${JSON.stringify(dockerResult.error)}, resultCount=${dockerResult.results.length}`,
-    );
+    this.logger.debug(`Docker result: error=${JSON.stringify(dockerResult.error)}, resultCount=${dockerResult.results.length}`);
 
     if (dockerResult.error) {
       const submissionDetails = {
@@ -404,22 +331,16 @@ export class JudgeService {
         spaceComplexity: 'Unknown',
         aiDetection: 'MANUAL',
         recommendations: [],
-        aiAnalysis:
-          'A runtime error prevented completion. Review the error message.',
+        aiAnalysis: "A runtime error prevented completion. Review the error message.",
         results: [],
         error: dockerResult.error,
         source: 'docker',
       };
       if (mode === 'submit') {
-        await this.userService.recordChallengeSubmission(
-          userId,
-          challengeId,
-          submissionDetails,
-          {
-            xpReward: Number(challenge.xpReward || 0),
-            solveTimeSeconds: solveTimeSeconds ?? null,
-          },
-        );
+        await this.userService.recordChallengeSubmission(userId, challengeId, submissionDetails, {
+          xpReward: Number(challenge.xpReward || 0),
+          solveTimeSeconds: solveTimeSeconds ?? null,
+        });
         await this.auditLogService.create({
           actionType: 'CHALLENGE_SUBMITTED',
           actor: actorName,
@@ -446,16 +367,15 @@ export class JudgeService {
         total: testCases.length,
         results: [],
         error: dockerResult.error,
-        aiAnalysis:
-          'A runtime error prevented completion. Review the error message.',
-        source: 'docker',
+        aiAnalysis: "A runtime error prevented completion. Review the error message.",
+        source: "docker",
         executionTime: `${dockerResult.executionTimeMs}ms`,
         submissionDetails,
       };
     }
 
     // Keep full result data for the frontend (input, expected, actual, etc.)
-    const results = dockerResult.results.map((r) => ({
+    const results = dockerResult.results.map(r => ({
       testCase: r.testCase,
       input: r.input,
       expected: r.expected ?? r.expectedOutput,
@@ -470,14 +390,12 @@ export class JudgeService {
       source: 'docker',
     }));
 
-    const passedCount = results.filter((r) => r.passed).length;
+    const passedCount = results.filter(r => r.passed).length;
     const allPassed = passedCount === testCases.length;
 
     this.logger.debug(`Results: ${passedCount}/${testCases.length} passed`);
     for (const r of results) {
-      this.logger.debug(
-        `  TC${r.testCase}: passed=${r.passed}, expected=${JSON.stringify(r.expected)}, got=${JSON.stringify(r.got)}, error=${r.error}`,
-      );
+      this.logger.debug(`  TC${r.testCase}: passed=${r.passed}, expected=${JSON.stringify(r.expected)}, got=${JSON.stringify(r.got)}, error=${r.error}`);
     }
 
     // AI Analysis
@@ -486,7 +404,7 @@ export class JudgeService {
       language,
       challenge.title,
       challenge.description || '',
-      results,
+      results
     );
     const details = await this.aiService.analyzeSubmissionDetails(
       userCode,
@@ -522,23 +440,17 @@ export class JudgeService {
       solveTimeSeconds: solveSecondsValue,
     };
     let xpGranted = 0;
-    const xpFull = Number(challenge.xpReward || 0);
+    let xpFull = Number(challenge.xpReward || 0);
     let xpReduced = false;
     if (mode === 'submit') {
-      const persisted = await this.userService.recordChallengeSubmission(
-        userId,
-        challengeId,
-        submissionDetails,
-        {
-          xpReward: Number(challenge.xpReward || 0),
-          solveTimeSeconds: solveSecondsValue,
-        },
-      );
+      const persisted = await this.userService.recordChallengeSubmission(userId, challengeId, submissionDetails, {
+        xpReward: Number(challenge.xpReward || 0),
+        solveTimeSeconds: solveSecondsValue,
+      });
       xpGranted = persisted.xpGranted;
       xpReduced = Boolean(persisted?.progressEntry?.wasReduced);
       submissionDetails.xpGained = xpGranted;
-      submissionDetails.totalElapsedTime =
-        persisted?.progressEntry?.totalElapsedTime ?? solveSecondsValue ?? 0;
+      submissionDetails.totalElapsedTime = persisted?.progressEntry?.totalElapsedTime ?? solveSecondsValue ?? 0;
       submissionDetails.wasReduced = xpReduced;
 
       await this.auditLogService.create({
@@ -592,7 +504,7 @@ export class JudgeService {
       results,
       error: null,
       aiAnalysis,
-      source: 'docker',
+      source: "docker",
       executionTime: `${dockerResult.executionTimeMs}ms`,
       submissionDetails,
       solveTimeSeconds: solveSecondsValue,
@@ -603,18 +515,14 @@ export class JudgeService {
     };
   }
 
-  async getHint(
-    challengeId: string,
-    attemptCount: number,
-    elapsedTimeSeconds: number,
-  ) {
+  async getHint(challengeId: string, attemptCount: number, elapsedTimeSeconds: number) {
     const challenge = await this.challengeService.findById(challengeId);
     if (!challenge) {
       throw new BadRequestException(this.tr('judge.challengeNotFound'));
     }
 
     const isUnlocked = attemptCount >= 3 || elapsedTimeSeconds >= 300;
-
+    
     if (!isUnlocked) {
       return { unlocked: false, hint: null };
     }
@@ -623,11 +531,7 @@ export class JudgeService {
     if (attemptCount >= 5 || elapsedTimeSeconds >= 600) hintLevel = 2;
     if (attemptCount >= 7 || elapsedTimeSeconds >= 900) hintLevel = 3;
 
-    const hint = await this.aiService.generateHint(
-      challenge.title,
-      challenge.description || '',
-      hintLevel,
-    );
+    const hint = await this.aiService.generateHint(challenge.title, challenge.description || '', hintLevel);
 
     return { unlocked: true, hint };
   }
@@ -638,14 +542,13 @@ export class JudgeService {
       progress: progress.map((entry: any) => ({
         challengeId: entry.challengeId,
         status: entry.status || 'UNSOLVED',
-        userStatus:
-          entry.status === 'SOLVED'
-            ? 'completed'
-            : entry.attemptStatus === 'abandoned'
-              ? 'abandoned'
-              : entry.attemptStatus === 'in_progress'
-                ? 'in_progress'
-                : 'not_started',
+        userStatus: entry.status === 'SOLVED'
+          ? 'completed'
+          : entry.attemptStatus === 'abandoned'
+            ? 'abandoned'
+            : entry.attemptStatus === 'in_progress'
+              ? 'in_progress'
+              : 'not_started',
         failedAttempts: Number(entry.failedAttempts || 0),
         solveTimeSeconds: entry.solveTimeSeconds ?? null,
         xpAwarded: Number(entry.xpAwarded || 0),
@@ -664,14 +567,11 @@ export class JudgeService {
         returnedAt: entry.returnedAt || null,
         abandonmentReason: entry.abandonmentReason || null,
         incompleteAttemptCount: Number(entry.incompleteAttemptCount || 0),
-        latestSubmission:
-          Array.isArray(entry.submissions) && entry.submissions.length
-            ? entry.submissions[entry.submissions.length - 1]
-            : null,
+        latestSubmission: Array.isArray(entry.submissions) && entry.submissions.length
+          ? entry.submissions[entry.submissions.length - 1]
+          : null,
         latestSuccessfulSubmission: Array.isArray(entry.submissions)
-          ? [...entry.submissions]
-              .reverse()
-              .find((submission: any) => submission.passed) || null
+          ? [...entry.submissions].reverse().find((submission: any) => submission.passed) || null
           : null,
       })),
     };
@@ -684,12 +584,8 @@ export class JudgeService {
     logStart = false,
   ) {
     await this.userService.expireChallengeAttempt(userId, challengeId);
-    const challenge = await this.challengeService
-      .findById(challengeId)
-      .catch(() => null);
-    const userProfile: any = await this.userService
-      .findOne(userId)
-      .catch(() => null);
+    const challenge = await this.challengeService.findById(challengeId).catch(() => null);
+    const userProfile: any = await this.userService.findOne(userId).catch(() => null);
     const actorName = userProfile?.username || `user:${userId}`;
     if (logStart && challenge) {
       await this.auditLogService.create({
@@ -708,10 +604,7 @@ export class JudgeService {
       });
     }
 
-    const entry = await this.userService.getChallengeProgressEntry(
-      userId,
-      challengeId,
-    );
+    const entry = await this.userService.getChallengeProgressEntry(userId, challengeId);
     if (!entry) {
       return {
         challengeId,

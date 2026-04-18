@@ -12,3 +12,4 @@ export class SendMessageDto {
   @IsMongoId()
   replyTo?: string;
 }
+
