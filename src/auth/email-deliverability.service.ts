@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { I18nContext, I18nService } from 'nestjs-i18n';
 import { promises as dns } from 'dns';
 import disposableDomainsList from 'disposable-email-domains';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
+
 const emailExistence = require('email-existence');
 
 type CacheValue = { valid: boolean; expiresAt: number };
@@ -75,7 +75,9 @@ export class EmailDeliverabilityService {
   );
 
   async validate(email: string): Promise<EmailValidationResult> {
-    const normalizedEmail = String(email || '').trim().toLowerCase();
+    const normalizedEmail = String(email || '')
+      .trim()
+      .toLowerCase();
     if (!this.isFormatValid(normalizedEmail)) {
       return this.result(false, 'invalid_format', false);
     }
@@ -100,9 +102,15 @@ export class EmailDeliverabilityService {
     return this.result(true, 'ok', suspicious);
   }
 
-  private result(valid: boolean, reason: EmailValidationReason, suspicious: boolean): EmailValidationResult {
+  private result(
+    valid: boolean,
+    reason: EmailValidationReason,
+    suspicious: boolean,
+  ): EmailValidationResult {
     const lang = I18nContext.current()?.lang ?? 'en';
-    const message = this.i18n.translate(`emailValidation.${reason}`, { lang }) as string;
+    const message = this.i18n.translate(`emailValidation.${reason}`, {
+      lang,
+    });
     return {
       valid,
       reason,
@@ -131,8 +139,13 @@ export class EmailDeliverabilityService {
 
     if (exactFakePairs.has(`${localPart}@${domain}`)) return true;
     if (this.blockedDomains.has(domain)) return true;
-    if (localNoDigits === domainNoDigits && localNoDigits.length >= 3) return true;
-    if (this.fakeTokens.has(localNoDigits) && this.fakeTokens.has(domainNoDigits)) return true;
+    if (localNoDigits === domainNoDigits && localNoDigits.length >= 3)
+      return true;
+    if (
+      this.fakeTokens.has(localNoDigits) &&
+      this.fakeTokens.has(domainNoDigits)
+    )
+      return true;
     if (/^([a-z0-9])\1{2,}$/i.test(localPart)) return true;
     if (/^([a-z]{2,4})\1{1,}$/i.test(localPart)) return true;
     if (/^(test|fake|example)\d*$/i.test(localPart)) return true;
@@ -159,16 +172,26 @@ export class EmailDeliverabilityService {
     const cached = this.domainCache.get(domain);
     if (cached && cached.expiresAt > now) return cached.valid;
 
-    const mxLookupPromise = dns.resolveMx(domain).then((records) =>
-      records.some((record) => !!record.exchange && !/^localhost$/i.test(record.exchange)),
-    );
+    const mxLookupPromise = dns
+      .resolveMx(domain)
+      .then((records) =>
+        records.some(
+          (record) =>
+            !!record.exchange && !/^localhost$/i.test(record.exchange),
+        ),
+      );
 
     const timeoutPromise = new Promise<boolean>((resolve) =>
       setTimeout(() => resolve(false), this.mxTimeoutMs),
     );
 
-    const hasMx = await Promise.race([mxLookupPromise, timeoutPromise]).catch(() => false);
-    this.domainCache.set(domain, { valid: hasMx, expiresAt: now + this.cacheTtlMs });
+    const hasMx = await Promise.race([mxLookupPromise, timeoutPromise]).catch(
+      () => false,
+    );
+    this.domainCache.set(domain, {
+      valid: hasMx,
+      expiresAt: now + this.cacheTtlMs,
+    });
     return hasMx;
   }
 

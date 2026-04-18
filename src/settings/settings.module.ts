@@ -14,4 +14,4 @@ import { AuditLogModule } from '../audit-logs/audit-log.module';
   providers: [SettingsService],
   exports: [SettingsService],
 })
-export class SettingsModule { }
+export class SettingsModule {}

@@ -1,4 +1,10 @@
-import { IsString, IsNumber, IsEnum, IsOptional, IsDateString } from 'class-validator';
+import {
+  IsString,
+  IsNumber,
+  IsEnum,
+  IsOptional,
+  IsDateString,
+} from 'class-validator';
 import { BattleStatus, BattleType, BotDifficulty } from '../battle.enums';
 
 export class CreateBattleDto {

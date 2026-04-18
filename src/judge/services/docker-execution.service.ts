@@ -8,8 +8,14 @@ import { randomUUID } from 'node:crypto';
 import Docker from 'dockerode';
 import { Model } from 'mongoose';
 import { isDeepEqual } from '../utils/comparison.util';
-import { detectFunctionName, SupportedLanguage } from '../utils/function-detection.util';
-import { parseExpectedOutput, parseInputArguments } from '../utils/input-parser.util';
+import {
+  detectFunctionName,
+  SupportedLanguage,
+} from '../utils/function-detection.util';
+import {
+  parseExpectedOutput,
+  parseInputArguments,
+} from '../utils/input-parser.util';
 
 export interface TestCase {
   input: unknown;
@@ -70,13 +76,14 @@ export class DockerExecutionService implements OnModuleInit {
   private readonly timeoutMs = 3000;
 
   constructor(
-    @InjectModel('SandboxMetric') private readonly sandboxMetricModel: Model<any>,
+    @InjectModel('SandboxMetric')
+    private readonly sandboxMetricModel: Model<any>,
     private readonly i18n: I18nService,
   ) {}
 
   private tr(key: string, args?: Record<string, unknown>): string {
     const lang = I18nContext.current()?.lang ?? 'en';
-    return this.i18n.translate(key, { lang, args }) as string;
+    return this.i18n.translate(key, { lang, args });
   }
 
   async onModuleInit() {
@@ -86,7 +93,9 @@ export class DockerExecutionService implements OnModuleInit {
       return;
     }
 
-    this.logger.warn('Docker daemon is unavailable. Judge sandbox features will return a service-unavailable error until Docker Desktop is running.');
+    this.logger.warn(
+      'Docker daemon is unavailable. Judge sandbox features will return a service-unavailable error until Docker Desktop is running.',
+    );
   }
 
   async executeCode(
@@ -110,8 +119,13 @@ export class DockerExecutionService implements OnModuleInit {
 
     const functionName = detectFunctionName(userCode, language);
     const executionMode = this.determineExecutionMode(userCode, context);
-    const expectedArity = this.detectFunctionArity(userCode, language, functionName || '');
-    const coerceNumericScalarsToStrings = this.shouldCoerceNumericScalarsToStrings(context, userCode);
+    const expectedArity = this.detectFunctionArity(
+      userCode,
+      language,
+      functionName || '',
+    );
+    const coerceNumericScalarsToStrings =
+      this.shouldCoerceNumericScalarsToStrings(context, userCode);
 
     if (!functionName) {
       return {
@@ -125,7 +139,12 @@ export class DockerExecutionService implements OnModuleInit {
       };
     }
 
-    const prepared = this.prepareTestCases(testCases, executionMode, expectedArity, coerceNumericScalarsToStrings);
+    const prepared = this.prepareTestCases(
+      testCases,
+      executionMode,
+      expectedArity,
+      coerceNumericScalarsToStrings,
+    );
     if (prepared.error) {
       return {
         results: [],
@@ -134,12 +153,24 @@ export class DockerExecutionService implements OnModuleInit {
       };
     }
 
-    const image = language === 'javascript' ? 'node:18-alpine' : 'python:3.10-alpine';
-    const scriptFileName = language === 'javascript' ? 'script.js' : 'script.py';
+    const image =
+      language === 'javascript' ? 'node:18-alpine' : 'python:3.10-alpine';
+    const scriptFileName =
+      language === 'javascript' ? 'script.js' : 'script.py';
     const scriptContent =
       language === 'javascript'
-        ? this.buildJavaScriptScript(userCode, functionName, prepared.data, executionMode)
-        : this.buildPythonScript(userCode, functionName, prepared.data, executionMode);
+        ? this.buildJavaScriptScript(
+            userCode,
+            functionName,
+            prepared.data,
+            executionMode,
+          )
+        : this.buildPythonScript(
+            userCode,
+            functionName,
+            prepared.data,
+            executionMode,
+          );
 
     let tempDir: string | null = null;
     let container: Docker.Container | null = null;
@@ -169,15 +200,24 @@ export class DockerExecutionService implements OnModuleInit {
 
     try {
       await this.ensureImage(image);
-      tempDir = await fs.mkdtemp(path.join(os.tmpdir(), `algoarena-${randomUUID()}-`));
-      await fs.writeFile(path.join(tempDir, scriptFileName), scriptContent, 'utf8');
+      tempDir = await fs.mkdtemp(
+        path.join(os.tmpdir(), `algoarena-${randomUUID()}-`),
+      );
+      await fs.writeFile(
+        path.join(tempDir, scriptFileName),
+        scriptContent,
+        'utf8',
+      );
 
       const containerName = `${this.sandboxContainerPrefix}-${Date.now()}-${randomUUID().slice(0, 8)}`;
       metricRecord.containerName = containerName;
       container = await this.docker.createContainer({
         Image: image,
         name: containerName,
-        Cmd: language === 'javascript' ? ['node', `/workspace/${scriptFileName}`] : ['python', `/workspace/${scriptFileName}`],
+        Cmd:
+          language === 'javascript'
+            ? ['node', `/workspace/${scriptFileName}`]
+            : ['python', `/workspace/${scriptFileName}`],
         WorkingDir: '/workspace',
         HostConfig: {
           NetworkMode: 'none',
@@ -221,30 +261,50 @@ export class DockerExecutionService implements OnModuleInit {
         if (sampled) {
           metricRecord.peakCpuPercent = sampled.peakCpuPercent;
           metricRecord.peakMemoryMb = sampled.peakMemoryMb;
-          metricRecord.statsSamplesCount = Number(sampled.statsSamplesCount || 0);
+          metricRecord.statsSamplesCount = Number(
+            sampled.statsSamplesCount || 0,
+          );
           samplerMerged = true;
         }
       }
 
-      const finalSnapshot = await this.collectContainerStatsSnapshot(container!);
-      metricRecord.peakCpuPercent = this.maxNullable(metricRecord.peakCpuPercent, finalSnapshot.cpuPercent);
-      metricRecord.peakMemoryMb = this.maxNullable(metricRecord.peakMemoryMb, finalSnapshot.memoryMb);
-      metricRecord.statsSamplesCount = Number(metricRecord.statsSamplesCount || 0) + (finalSnapshot.hadSample ? 1 : 0);
+      const finalSnapshot = await this.collectContainerStatsSnapshot(
+        container!,
+      );
+      metricRecord.peakCpuPercent = this.maxNullable(
+        metricRecord.peakCpuPercent,
+        finalSnapshot.cpuPercent,
+      );
+      metricRecord.peakMemoryMb = this.maxNullable(
+        metricRecord.peakMemoryMb,
+        finalSnapshot.memoryMb,
+      );
+      metricRecord.statsSamplesCount =
+        Number(metricRecord.statsSamplesCount || 0) +
+        (finalSnapshot.hadSample ? 1 : 0);
       snapshotMerged = true;
 
       try {
         const inspect = await container!.inspect();
-        metricRecord.containerId = (inspect?.Id || '').slice(0, 12) || metricRecord.containerId;
+        metricRecord.containerId =
+          (inspect?.Id || '').slice(0, 12) || metricRecord.containerId;
         metricRecord.image = inspect?.Config?.Image || metricRecord.image;
-        if (inspect?.State?.StartedAt) metricRecord.startedAt = new Date(inspect.State.StartedAt);
-        if (inspect?.State?.FinishedAt && inspect.State.FinishedAt !== '0001-01-01T00:00:00Z') {
+        if (inspect?.State?.StartedAt)
+          metricRecord.startedAt = new Date(inspect.State.StartedAt);
+        if (
+          inspect?.State?.FinishedAt &&
+          inspect.State.FinishedAt !== '0001-01-01T00:00:00Z'
+        ) {
           metricRecord.stoppedAt = new Date(inspect.State.FinishedAt);
         }
       } catch {
         // Ignore inspect errors for rapidly exiting containers.
       }
 
-      const logs = (await container!.logs({ stdout: true, stderr: true })) as unknown as Buffer;
+      const logs = (await container!.logs({
+        stdout: true,
+        stderr: true,
+      })) as unknown as Buffer;
       const { stdout, stderr } = this.demultiplexLogs(logs);
 
       if (timedOut) {
@@ -285,55 +345,57 @@ export class DockerExecutionService implements OnModuleInit {
         resultByCase.set(item.testCase, item);
       }
 
-      const normalizedResults: ExecutionResult[] = prepared.data.map((testCase) => {
-        const raw = resultByCase.get(testCase.testCase);
-        if (!raw) {
-          return {
-            testCase: testCase.testCase,
-            input: testCase.input,
-            expected: testCase.expected,
-            output: null,
-            got: null,
-            expectedOutput: testCase.expected,
-            actualOutput: null,
-            passed: false,
-            error: this.tr('docker.noResultForCase'),
-            executionTimeMs: 0,
-            executionTime: '0ms',
-          };
-        }
+      const normalizedResults: ExecutionResult[] = prepared.data.map(
+        (testCase) => {
+          const raw = resultByCase.get(testCase.testCase);
+          if (!raw) {
+            return {
+              testCase: testCase.testCase,
+              input: testCase.input,
+              expected: testCase.expected,
+              output: null,
+              got: null,
+              expectedOutput: testCase.expected,
+              actualOutput: null,
+              passed: false,
+              error: this.tr('docker.noResultForCase'),
+              executionTimeMs: 0,
+              executionTime: '0ms',
+            };
+          }
 
-        if (raw.error) {
+          if (raw.error) {
+            return {
+              testCase: testCase.testCase,
+              input: testCase.input,
+              expected: testCase.expected,
+              output: null,
+              got: null,
+              expectedOutput: testCase.expected,
+              actualOutput: null,
+              passed: false,
+              error: raw.error,
+              executionTimeMs: raw.executionTimeMs || 0,
+              executionTime: `${raw.executionTimeMs || 0}ms`,
+            };
+          }
+
+          const passed = isDeepEqual(raw.output, testCase.expected);
           return {
             testCase: testCase.testCase,
             input: testCase.input,
             expected: testCase.expected,
-            output: null,
-            got: null,
+            output: raw.output,
+            got: raw.output,
             expectedOutput: testCase.expected,
-            actualOutput: null,
-            passed: false,
-            error: raw.error,
+            actualOutput: raw.output,
+            passed,
+            error: null,
             executionTimeMs: raw.executionTimeMs || 0,
             executionTime: `${raw.executionTimeMs || 0}ms`,
           };
-        }
-
-        const passed = isDeepEqual(raw.output, testCase.expected);
-        return {
-          testCase: testCase.testCase,
-          input: testCase.input,
-          expected: testCase.expected,
-          output: raw.output,
-          got: raw.output,
-          expectedOutput: testCase.expected,
-          actualOutput: raw.output,
-          passed,
-          error: null,
-          executionTimeMs: raw.executionTimeMs || 0,
-          executionTime: `${raw.executionTimeMs || 0}ms`,
-        };
-      });
+        },
+      );
 
       executionSucceeded = true;
       metricRecord.status = 'success';
@@ -343,7 +405,9 @@ export class DockerExecutionService implements OnModuleInit {
         error: null,
       };
     } catch (error: any) {
-      this.logger.error(`Execution pipeline failed: ${error?.message || 'Unknown error'}`);
+      this.logger.error(
+        `Execution pipeline failed: ${error?.message || 'Unknown error'}`,
+      );
       return {
         results: [],
         executionTimeMs: Date.now() - startedAt,
@@ -360,24 +424,46 @@ export class DockerExecutionService implements OnModuleInit {
       if (statsSamplerPromise && !samplerMerged) {
         const sampled = await statsSamplerPromise.catch(() => null);
         if (sampled) {
-          metricRecord.peakCpuPercent = this.maxNullable(metricRecord.peakCpuPercent, sampled.peakCpuPercent);
-          metricRecord.peakMemoryMb = this.maxNullable(metricRecord.peakMemoryMb, sampled.peakMemoryMb);
-          metricRecord.statsSamplesCount = Number(metricRecord.statsSamplesCount || 0) + Number(sampled.statsSamplesCount || 0);
+          metricRecord.peakCpuPercent = this.maxNullable(
+            metricRecord.peakCpuPercent,
+            sampled.peakCpuPercent,
+          );
+          metricRecord.peakMemoryMb = this.maxNullable(
+            metricRecord.peakMemoryMb,
+            sampled.peakMemoryMb,
+          );
+          metricRecord.statsSamplesCount =
+            Number(metricRecord.statsSamplesCount || 0) +
+            Number(sampled.statsSamplesCount || 0);
         }
       }
       if (container && !snapshotMerged) {
-        const finalSnapshot = await this.collectContainerStatsSnapshot(container);
-        metricRecord.peakCpuPercent = this.maxNullable(metricRecord.peakCpuPercent, finalSnapshot.cpuPercent);
-        metricRecord.peakMemoryMb = this.maxNullable(metricRecord.peakMemoryMb, finalSnapshot.memoryMb);
-        metricRecord.statsSamplesCount = Number(metricRecord.statsSamplesCount || 0) + (finalSnapshot.hadSample ? 1 : 0);
+        const finalSnapshot =
+          await this.collectContainerStatsSnapshot(container);
+        metricRecord.peakCpuPercent = this.maxNullable(
+          metricRecord.peakCpuPercent,
+          finalSnapshot.cpuPercent,
+        );
+        metricRecord.peakMemoryMb = this.maxNullable(
+          metricRecord.peakMemoryMb,
+          finalSnapshot.memoryMb,
+        );
+        metricRecord.statsSamplesCount =
+          Number(metricRecord.statsSamplesCount || 0) +
+          (finalSnapshot.hadSample ? 1 : 0);
       }
       if (container) {
         try {
           const inspect = await container.inspect();
-          metricRecord.containerId = (inspect?.Id || '').slice(0, 12) || metricRecord.containerId;
+          metricRecord.containerId =
+            (inspect?.Id || '').slice(0, 12) || metricRecord.containerId;
           metricRecord.image = inspect?.Config?.Image || metricRecord.image;
-          if (inspect?.State?.StartedAt) metricRecord.startedAt = new Date(inspect.State.StartedAt);
-          if (inspect?.State?.FinishedAt && inspect.State.FinishedAt !== '0001-01-01T00:00:00Z') {
+          if (inspect?.State?.StartedAt)
+            metricRecord.startedAt = new Date(inspect.State.StartedAt);
+          if (
+            inspect?.State?.FinishedAt &&
+            inspect.State.FinishedAt !== '0001-01-01T00:00:00Z'
+          ) {
             metricRecord.stoppedAt = new Date(inspect.State.FinishedAt);
           }
         } catch {
@@ -387,8 +473,12 @@ export class DockerExecutionService implements OnModuleInit {
 
       metricRecord.status = executionSucceeded ? 'success' : 'failed';
       metricRecord.stoppedAt = metricRecord.stoppedAt || new Date();
-      const startedAtMs = new Date(metricRecord.startedAt || Date.now()).getTime();
-      const stoppedAtMs = new Date(metricRecord.stoppedAt || Date.now()).getTime();
+      const startedAtMs = new Date(
+        metricRecord.startedAt || Date.now(),
+      ).getTime();
+      const stoppedAtMs = new Date(
+        metricRecord.stoppedAt || Date.now(),
+      ).getTime();
       metricRecord.durationMs = Number(Math.max(0, stoppedAtMs - startedAtMs));
       await this.persistSandboxMetric(metricRecord);
 
@@ -415,7 +505,10 @@ export class DockerExecutionService implements OnModuleInit {
     executionMode: ExecutionMode,
     expectedArity: number | null,
     coerceNumericScalarsToStrings: boolean,
-  ): { data: PreparedTestCase[]; error: { type: string; message: string; line: number | null } | null } {
+  ): {
+    data: PreparedTestCase[];
+    error: { type: string; message: string; line: number | null } | null;
+  } {
     try {
       const prepared = testCases.map((testCase, index) => ({
         testCase: index + 1,
@@ -428,7 +521,7 @@ export class DockerExecutionService implements OnModuleInit {
         expected: this.normalizeExpectedForMode(
           parseExpectedOutput(testCase.expectedOutput),
           executionMode,
-          coerceNumericScalarsToStrings
+          coerceNumericScalarsToStrings,
         ),
       }));
       return { data: prepared, error: null };
@@ -447,21 +540,24 @@ export class DockerExecutionService implements OnModuleInit {
   private normalizeExpectedForMode(
     expected: unknown,
     executionMode: ExecutionMode,
-    coerceNumericScalarsToStrings: boolean
+    coerceNumericScalarsToStrings: boolean,
   ): unknown {
     let coercedExpected = expected;
     if (coerceNumericScalarsToStrings) {
       if (typeof expected === 'number' && Number.isFinite(expected)) {
         coercedExpected = String(expected);
       } else if (Array.isArray(expected)) {
-        coercedExpected = expected.map(item =>
-          typeof item === 'number' && Number.isFinite(item) ? String(item) : item
+        coercedExpected = expected.map((item) =>
+          typeof item === 'number' && Number.isFinite(item)
+            ? String(item)
+            : item,
         );
       }
     }
 
     if (executionMode !== 'linked-list') return coercedExpected;
-    if (coercedExpected === null || coercedExpected === undefined) return coercedExpected;
+    if (coercedExpected === null || coercedExpected === undefined)
+      return coercedExpected;
     if (Array.isArray(coercedExpected)) return coercedExpected;
     return [coercedExpected];
   }
@@ -473,17 +569,23 @@ export class DockerExecutionService implements OnModuleInit {
   ): unknown[] {
     const coerce = (value: unknown): unknown => {
       if (!coerceNumericScalarsToStrings) return value;
-      if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+      if (typeof value === 'number' && Number.isFinite(value))
+        return String(value);
       return value;
     };
 
     const normalizedArgs = args.map((arg) => coerce(arg));
-    if (!Number.isInteger(expectedArity) || expectedArity === null || expectedArity < 0) {
+    if (
+      !Number.isInteger(expectedArity) ||
+      expectedArity === null ||
+      expectedArity < 0
+    ) {
       return normalizedArgs;
     }
     if (expectedArity === 0) return [];
     if (normalizedArgs.length === expectedArity) return normalizedArgs;
-    if (normalizedArgs.length > expectedArity) return normalizedArgs.slice(0, expectedArity);
+    if (normalizedArgs.length > expectedArity)
+      return normalizedArgs.slice(0, expectedArity);
     if (normalizedArgs.length === 0) return new Array(expectedArity).fill(null);
 
     if (normalizedArgs.length === 1) {
@@ -493,7 +595,8 @@ export class DockerExecutionService implements OnModuleInit {
       }
       if (only && typeof only === 'object' && !Array.isArray(only)) {
         const values = Object.values(only as Record<string, unknown>);
-        if (values.length >= expectedArity) return values.slice(0, expectedArity);
+        if (values.length >= expectedArity)
+          return values.slice(0, expectedArity);
       }
       if (expectedArity === 2) {
         return [only, only];
@@ -514,25 +617,41 @@ export class DockerExecutionService implements OnModuleInit {
     return padded;
   }
 
-  private shouldCoerceNumericScalarsToStrings(context?: ExecutionContext, userCode?: string): boolean {
-    const combined = `${context?.challengeTitle ?? ''} ${context?.challengeDescription ?? ''}`.toLowerCase();
+  private shouldCoerceNumericScalarsToStrings(
+    context?: ExecutionContext,
+    userCode?: string,
+  ): boolean {
+    const combined =
+      `${context?.challengeTitle ?? ''} ${context?.challengeDescription ?? ''}`.toLowerCase();
     const looksLikeStringAdditionChallenge =
       /without conversion/.test(combined) ||
       /strings representing integers/.test(combined) ||
-      (/num1/.test(userCode ?? '') && /num2/.test(userCode ?? '') && /\.length/.test(userCode ?? ''));
+      (/num1/.test(userCode ?? '') &&
+        /num2/.test(userCode ?? '') &&
+        /\.length/.test(userCode ?? ''));
     return looksLikeStringAdditionChallenge;
   }
 
-  private detectFunctionArity(code: string, language: SupportedLanguage, functionName: string): number | null {
+  private detectFunctionArity(
+    code: string,
+    language: SupportedLanguage,
+    functionName: string,
+  ): number | null {
     if (!functionName) return null;
     const escaped = functionName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    
+
     if (language === 'javascript') {
       const patterns = [
         new RegExp(`function\\s+${escaped}\\s*\\(([^)]*)\\)`),
-        new RegExp(`(?:const|let|var)\\s+${escaped}\\s*=\\s*(?:async\\s*)?function\\s*\\(([^)]*)\\)`),
-        new RegExp(`(?:const|let|var)\\s+${escaped}\\s*=\\s*(?:async\\s*)?\\(([^)]*)\\)\\s*=>`),
-        new RegExp(`(?:const|let|var)\\s+${escaped}\\s*=\\s*(?:async\\s*)?([A-Za-z_$][\\w$]*)\\s*=>`),
+        new RegExp(
+          `(?:const|let|var)\\s+${escaped}\\s*=\\s*(?:async\\s*)?function\\s*\\(([^)]*)\\)`,
+        ),
+        new RegExp(
+          `(?:const|let|var)\\s+${escaped}\\s*=\\s*(?:async\\s*)?\\(([^)]*)\\)\\s*=>`,
+        ),
+        new RegExp(
+          `(?:const|let|var)\\s+${escaped}\\s*=\\s*(?:async\\s*)?([A-Za-z_$][\\w$]*)\\s*=>`,
+        ),
       ];
       for (const pattern of patterns) {
         const match = code.match(pattern);
@@ -543,16 +662,24 @@ export class DockerExecutionService implements OnModuleInit {
         return raw.split(',').length;
       }
     } else {
-      const match = code.match(new RegExp(`def\\s+${escaped}\\s*\\(([^)]*)\\)`));
+      const match = code.match(
+        new RegExp(`def\\s+${escaped}\\s*\\(([^)]*)\\)`),
+      );
       if (match) {
         const raw = (match[1] || '').trim();
         if (!raw) return 0;
-        return raw.split(',').filter(item => item && !item.trim().startsWith('*')).length;
+        return raw
+          .split(',')
+          .filter((item) => item && !item.trim().startsWith('*')).length;
       }
     }
-    
+
     // Fallback: estimate arity from first line resembling function declaration
-    const firstLineMatch = code.match(language === 'javascript' ? /function\s*\w*\s*\(([^)]*)\)/ : /def\s+\w+\s*\(([^)]*)\)/);
+    const firstLineMatch = code.match(
+      language === 'javascript'
+        ? /function\s*\w*\s*\(([^)]*)\)/
+        : /def\s+\w+\s*\(([^)]*)\)/,
+    );
     if (firstLineMatch) {
       const raw = (firstLineMatch[1] || '').trim();
       return raw ? raw.split(',').length : 0;
@@ -561,12 +688,20 @@ export class DockerExecutionService implements OnModuleInit {
     return null;
   }
 
-  private determineExecutionMode(userCode: string, context?: ExecutionContext): ExecutionMode {
-    const combined = `${context?.challengeTitle ?? ''} ${context?.challengeDescription ?? ''}`.toLowerCase();
+  private determineExecutionMode(
+    userCode: string,
+    context?: ExecutionContext,
+  ): ExecutionMode {
+    const combined =
+      `${context?.challengeTitle ?? ''} ${context?.challengeDescription ?? ''}`.toLowerCase();
     const hasLinkedListPrompt = /\blinked\s*list\b/.test(combined);
     const usesNextPointer = /\.\s*next\b/.test(userCode);
-    const likelyLinkedListFunction = /\breverse(list|linkedlist)\b/i.test(userCode);
-    return hasLinkedListPrompt || usesNextPointer || likelyLinkedListFunction ? 'linked-list' : 'default';
+    const likelyLinkedListFunction = /\breverse(list|linkedlist)\b/i.test(
+      userCode,
+    );
+    return hasLinkedListPrompt || usesNextPointer || likelyLinkedListFunction
+      ? 'linked-list'
+      : 'default';
   }
 
   private buildJavaScriptScript(
@@ -851,7 +986,9 @@ print(json.dumps({"results": results}, default=str))
     };
   }
 
-  private parseExecutionStdout(stdout: string): { results: RawExecutionResult[] } | null {
+  private parseExecutionStdout(
+    stdout: string,
+  ): { results: RawExecutionResult[] } | null {
     const lines = stdout
       .split(/\r?\n/)
       .map((line) => line.trim())
@@ -859,7 +996,9 @@ print(json.dumps({"results": results}, default=str))
 
     for (let i = lines.length - 1; i >= 0; i -= 1) {
       try {
-        const payload = JSON.parse(lines[i]) as { results?: RawExecutionResult[] };
+        const payload = JSON.parse(lines[i]) as {
+          results?: RawExecutionResult[];
+        };
         if (Array.isArray(payload.results)) {
           return { results: payload.results };
         }
@@ -871,7 +1010,10 @@ print(json.dumps({"results": results}, default=str))
     return null;
   }
 
-  private parseRuntimeError(stderr: string, language: SupportedLanguage): { type: string; message: string; line: number | null } {
+  private parseRuntimeError(
+    stderr: string,
+    language: SupportedLanguage,
+  ): { type: string; message: string; line: number | null } {
     const output = stderr?.trim() || 'Runtime error';
     let type = 'RuntimeError';
     let message = output;
@@ -900,8 +1042,11 @@ print(json.dumps({"results": results}, default=str))
 
   private calculateCpuPercent(stats: any): number {
     const cpuDelta =
-      (stats?.cpu_stats?.cpu_usage?.total_usage || 0) - (stats?.precpu_stats?.cpu_usage?.total_usage || 0);
-    const systemDelta = (stats?.cpu_stats?.system_cpu_usage || 0) - (stats?.precpu_stats?.system_cpu_usage || 0);
+      (stats?.cpu_stats?.cpu_usage?.total_usage || 0) -
+      (stats?.precpu_stats?.cpu_usage?.total_usage || 0);
+    const systemDelta =
+      (stats?.cpu_stats?.system_cpu_usage || 0) -
+      (stats?.precpu_stats?.system_cpu_usage || 0);
     const onlineCpus = stats?.cpu_stats?.online_cpus || 1;
     if (cpuDelta > 0 && systemDelta > 0) {
       return Number(((cpuDelta / systemDelta) * onlineCpus * 100).toFixed(2));
@@ -911,7 +1056,11 @@ print(json.dumps({"results": results}, default=str))
 
   private startStatsSampler(container: Docker.Container): {
     stop: () => void;
-    done: Promise<{ peakCpuPercent: number | null; peakMemoryMb: number | null; statsSamplesCount: number }>;
+    done: Promise<{
+      peakCpuPercent: number | null;
+      peakMemoryMb: number | null;
+      statsSamplesCount: number;
+    }>;
   } {
     let active = true;
     const done = (async () => {
@@ -923,10 +1072,19 @@ print(json.dumps({"results": results}, default=str))
           const stats: any = await container.stats({ stream: false });
           const cpuPercent = this.calculateCpuPercent(stats);
           const memoryUsageBytes = Number(stats?.memory_stats?.usage || 0);
-          const memoryMaxUsageBytes = Number(stats?.memory_stats?.max_usage || 0);
-          const memoryUsageMb = Math.max(memoryUsageBytes, memoryMaxUsageBytes) / (1024 * 1024);
-          peakCpuPercent = this.maxNullable(peakCpuPercent, cpuPercent > 0 ? cpuPercent : null);
-          peakMemoryMb = this.maxNullable(peakMemoryMb, memoryUsageMb > 0 ? memoryUsageMb : null);
+          const memoryMaxUsageBytes = Number(
+            stats?.memory_stats?.max_usage || 0,
+          );
+          const memoryUsageMb =
+            Math.max(memoryUsageBytes, memoryMaxUsageBytes) / (1024 * 1024);
+          peakCpuPercent = this.maxNullable(
+            peakCpuPercent,
+            cpuPercent > 0 ? cpuPercent : null,
+          );
+          peakMemoryMb = this.maxNullable(
+            peakMemoryMb,
+            memoryUsageMb > 0 ? memoryUsageMb : null,
+          );
           if (cpuPercent > 0 || memoryUsageMb > 0) {
             statsSamplesCount += 1;
           }
@@ -938,8 +1096,10 @@ print(json.dumps({"results": results}, default=str))
         await new Promise((resolve) => setTimeout(resolve, 250));
       }
       return {
-        peakCpuPercent: peakCpuPercent != null ? Number(peakCpuPercent.toFixed(2)) : null,
-        peakMemoryMb: peakMemoryMb != null ? Number(peakMemoryMb.toFixed(2)) : null,
+        peakCpuPercent:
+          peakCpuPercent != null ? Number(peakCpuPercent.toFixed(2)) : null,
+        peakMemoryMb:
+          peakMemoryMb != null ? Number(peakMemoryMb.toFixed(2)) : null,
         statsSamplesCount,
       };
     })();
@@ -952,13 +1112,18 @@ print(json.dumps({"results": results}, default=str))
     };
   }
 
-  private maxNullable(current: number | null, next: number | null): number | null {
+  private maxNullable(
+    current: number | null,
+    next: number | null,
+  ): number | null {
     if (next == null || Number.isNaN(Number(next))) return current;
     if (current == null || Number.isNaN(Number(current))) return Number(next);
     return Number(Math.max(Number(current), Number(next)).toFixed(2));
   }
 
-  private async collectContainerStatsSnapshot(container: Docker.Container): Promise<{
+  private async collectContainerStatsSnapshot(
+    container: Docker.Container,
+  ): Promise<{
     cpuPercent: number | null;
     memoryMb: number | null;
     hadSample: boolean;
@@ -966,11 +1131,15 @@ print(json.dumps({"results": results}, default=str))
     try {
       const stats: any = await container.stats({ stream: false });
       const cpuPercentRaw = this.calculateCpuPercent(stats);
-      const cpuPercent = cpuPercentRaw > 0 ? Number(cpuPercentRaw.toFixed(2)) : null;
+      const cpuPercent =
+        cpuPercentRaw > 0 ? Number(cpuPercentRaw.toFixed(2)) : null;
       const usage = Number(stats?.memory_stats?.usage || 0);
       const maxUsage = Number(stats?.memory_stats?.max_usage || 0);
       const memoryBytes = Math.max(usage, maxUsage);
-      const memoryMb = memoryBytes > 0 ? Number((memoryBytes / (1024 * 1024)).toFixed(2)) : null;
+      const memoryMb =
+        memoryBytes > 0
+          ? Number((memoryBytes / (1024 * 1024)).toFixed(2))
+          : null;
       return {
         cpuPercent,
         memoryMb,
@@ -984,7 +1153,8 @@ print(json.dumps({"results": results}, default=str))
   private async persistSandboxMetric(metricRecord: any): Promise<void> {
     try {
       const payload = {
-        containerName: metricRecord.containerName || this.sandboxContainerPrefix,
+        containerName:
+          metricRecord.containerName || this.sandboxContainerPrefix,
         containerId: metricRecord.containerId || null,
         image: metricRecord.image || null,
         status: metricRecord.status === 'success' ? 'success' : 'failed',
@@ -992,11 +1162,13 @@ print(json.dumps({"results": results}, default=str))
         stoppedAt: metricRecord.stoppedAt || new Date(),
         durationMs: Number(metricRecord.durationMs || 0),
         peakCpuPercent:
-          metricRecord.peakCpuPercent == null || Number.isNaN(Number(metricRecord.peakCpuPercent))
+          metricRecord.peakCpuPercent == null ||
+          Number.isNaN(Number(metricRecord.peakCpuPercent))
             ? null
             : Number(metricRecord.peakCpuPercent),
         peakMemoryMb:
-          metricRecord.peakMemoryMb == null || Number.isNaN(Number(metricRecord.peakMemoryMb))
+          metricRecord.peakMemoryMb == null ||
+          Number.isNaN(Number(metricRecord.peakMemoryMb))
             ? null
             : Number(metricRecord.peakMemoryMb),
         statsSamplesCount: Number(metricRecord.statsSamplesCount || 0),
@@ -1005,11 +1177,16 @@ print(json.dumps({"results": results}, default=str))
       };
       await this.sandboxMetricModel.create(payload);
     } catch (error: any) {
-      this.logger.warn(`Failed to persist sandbox metric: ${error?.message || 'Unknown error'}`);
+      this.logger.warn(
+        `Failed to persist sandbox metric: ${error?.message || 'Unknown error'}`,
+      );
     }
   }
 
-  private deriveHealth(successRate: number | null, totalExecutions: number): 'healthy' | 'degraded' | 'unhealthy' | 'no_data' {
+  private deriveHealth(
+    successRate: number | null,
+    totalExecutions: number,
+  ): 'healthy' | 'degraded' | 'unhealthy' | 'no_data' {
     if (!totalExecutions || successRate === null) return 'no_data';
     if (successRate > 90) return 'healthy';
     if (successRate >= 50) return 'degraded';
@@ -1044,7 +1221,11 @@ print(json.dumps({"results": results}, default=str))
     try {
       const containers = await this.docker.listContainers({ all: true });
       const sandboxContainers = containers
-        .filter((container) => (container.Names || []).some((name) => name.includes(this.sandboxContainerPrefix)))
+        .filter((container) =>
+          (container.Names || []).some((name) =>
+            name.includes(this.sandboxContainerPrefix),
+          ),
+        )
         .sort((a, b) => (b.Created || 0) - (a.Created || 0));
 
       if (sandboxContainers.length === 0) {
@@ -1065,7 +1246,9 @@ print(json.dumps({"results": results}, default=str))
       const container = this.docker.getContainer(latest.Id);
       const inspect = await container.inspect();
       const isRunning = inspect?.State?.Running === true;
-      const isStarting = ['created', 'restarting'].includes(inspect?.State?.Status);
+      const isStarting = ['created', 'restarting'].includes(
+        inspect?.State?.Status,
+      );
 
       let cpuUsagePercent: number | null = null;
       let memoryUsageBytes: number | null = null;
@@ -1086,14 +1269,19 @@ print(json.dumps({"results": results}, default=str))
         state: inspect?.State?.Status || 'unknown',
         containerId: latest.Id?.slice(0, 12) || null,
         image: latest.Image || inspect?.Config?.Image || null,
-        uptimeMs: isRunning && inspect?.State?.StartedAt ? Date.now() - new Date(inspect.State.StartedAt).getTime() : null,
+        uptimeMs:
+          isRunning && inspect?.State?.StartedAt
+            ? Date.now() - new Date(inspect.State.StartedAt).getTime()
+            : null,
         runningSince: inspect?.State?.StartedAt || null,
         cpuUsagePercent,
         memoryUsageBytes,
         memoryLimitBytes,
       };
     } catch (error: any) {
-      this.logger.warn(`Live sandbox inspection unavailable: ${error?.message || 'Unknown error'}`);
+      this.logger.warn(
+        `Live sandbox inspection unavailable: ${error?.message || 'Unknown error'}`,
+      );
       return {
         status: 'idle',
         state: 'unreachable',
@@ -1111,11 +1299,22 @@ print(json.dumps({"results": results}, default=str))
   async getSandboxStatus() {
     try {
       const live = await this.getLiveSandboxData();
-      const [latestMetricRaw, totalExecutions, successfulExecutions, recentMetricsRaw, peakAggRaw] = await Promise.all([
+      const [
+        latestMetricRaw,
+        totalExecutions,
+        successfulExecutions,
+        recentMetricsRaw,
+        peakAggRaw,
+      ] = await Promise.all([
         this.sandboxMetricModel.findOne().sort({ createdAt: -1 }).lean().exec(),
         this.sandboxMetricModel.countDocuments().exec(),
         this.sandboxMetricModel.countDocuments({ status: 'success' }).exec(),
-        this.sandboxMetricModel.find({ statsSamplesCount: { $gt: 0 } }).sort({ createdAt: -1 }).limit(50).lean().exec(),
+        this.sandboxMetricModel
+          .find({ statsSamplesCount: { $gt: 0 } })
+          .sort({ createdAt: -1 })
+          .limit(50)
+          .lean()
+          .exec(),
         this.sandboxMetricModel
           .aggregate([
             { $match: { statsSamplesCount: { $gt: 0 } } },
@@ -1130,11 +1329,19 @@ print(json.dumps({"results": results}, default=str))
           .exec(),
       ]);
       const latestMetric: any = latestMetricRaw || null;
-      const recentMetrics: any[] = Array.isArray(recentMetricsRaw) ? recentMetricsRaw : [];
+      const recentMetrics: any[] = Array.isArray(recentMetricsRaw)
+        ? recentMetricsRaw
+        : [];
       const peakAgg: any[] = Array.isArray(peakAggRaw) ? peakAggRaw : [];
 
-      const failedExecutions = Math.max(0, totalExecutions - successfulExecutions);
-      const successRate = totalExecutions > 0 ? Number(((successfulExecutions / totalExecutions) * 100).toFixed(2)) : null;
+      const failedExecutions = Math.max(
+        0,
+        totalExecutions - successfulExecutions,
+      );
+      const successRate =
+        totalExecutions > 0
+          ? Number(((successfulExecutions / totalExecutions) * 100).toFixed(2))
+          : null;
       const cpuSamples = recentMetrics
         .map((row: any) => Number(row?.peakCpuPercent))
         .filter((value: number) => Number.isFinite(value) && value > 0);
@@ -1145,8 +1352,10 @@ print(json.dumps({"results": results}, default=str))
         cpuSamples.length > 0
           ? Number(
               (
-                cpuSamples.reduce((sum: number, value: number) => sum + value, 0) /
-                cpuSamples.length
+                cpuSamples.reduce(
+                  (sum: number, value: number) => sum + value,
+                  0,
+                ) / cpuSamples.length
               ).toFixed(2),
             )
           : null;
@@ -1154,18 +1363,29 @@ print(json.dumps({"results": results}, default=str))
         memorySamples.length > 0
           ? Number(
               (
-                memorySamples.reduce((sum: number, value: number) => sum + value, 0) /
-                memorySamples.length
+                memorySamples.reduce(
+                  (sum: number, value: number) => sum + value,
+                  0,
+                ) / memorySamples.length
               ).toFixed(2),
             )
           : null;
-      const peakCpuPercent = peakAgg?.[0]?.peakCpuPercent != null ? Number(peakAgg[0].peakCpuPercent) : null;
-      const peakMemoryMb = peakAgg?.[0]?.peakMemoryMb != null ? Number(peakAgg[0].peakMemoryMb) : null;
+      const peakCpuPercent =
+        peakAgg?.[0]?.peakCpuPercent != null
+          ? Number(peakAgg[0].peakCpuPercent)
+          : null;
+      const peakMemoryMb =
+        peakAgg?.[0]?.peakMemoryMb != null
+          ? Number(peakAgg[0].peakMemoryMb)
+          : null;
 
       const health = this.deriveHealth(successRate, totalExecutions);
       const containerId = live.containerId || latestMetric?.containerId || null;
       const image = live.image || latestMetric?.image || null;
-      const lastUptimeMs = latestMetric?.durationMs != null ? Number(latestMetric.durationMs) : null;
+      const lastUptimeMs =
+        latestMetric?.durationMs != null
+          ? Number(latestMetric.durationMs)
+          : null;
       const now = new Date();
 
       return {
@@ -1196,15 +1416,24 @@ print(json.dumps({"results": results}, default=str))
         peakCpuPercent,
         avgMemoryMb,
         peakMemoryMb,
-        lastExecutionAt: latestMetric?.stoppedAt || latestMetric?.createdAt || null,
+        lastExecutionAt:
+          latestMetric?.stoppedAt || latestMetric?.createdAt || null,
         health,
         healthLabel:
-          health === 'healthy' ? 'Healthy' : health === 'degraded' ? 'Degraded' : health === 'unhealthy' ? 'Unhealthy' : 'No Data',
+          health === 'healthy'
+            ? 'Healthy'
+            : health === 'degraded'
+              ? 'Degraded'
+              : health === 'unhealthy'
+                ? 'Unhealthy'
+                : 'No Data',
         hasData: totalExecutions > 0,
         lastUpdatedAt: now.toISOString(),
       };
     } catch (error: any) {
-      this.logger.error(`Failed to build sandbox status payload: ${error?.message || 'Unknown error'}`);
+      this.logger.error(
+        `Failed to build sandbox status payload: ${error?.message || 'Unknown error'}`,
+      );
       const now = new Date().toISOString();
       return {
         containerName: this.sandboxContainerPrefix,

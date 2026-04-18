@@ -1,4 +1,10 @@
-import { Injectable, Logger, BadRequestException, HttpException, HttpStatus } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  BadRequestException,
+  HttpException,
+  HttpStatus,
+} from '@nestjs/common';
 import { I18nContext, I18nService } from 'nestjs-i18n';
 import { ConfigService } from '@nestjs/config';
 import { BattlesService } from './battle.service';
@@ -46,27 +52,35 @@ export class BattleAiService {
     if (grokKey) {
       this.provider = 'grok';
       this.apiKey = grokKey;
-      this.baseUrl = this.config.get<string>('GROK_API_BASE_URL') || 'https://api.x.ai/v1';
+      this.baseUrl =
+        this.config.get<string>('GROK_API_BASE_URL') || 'https://api.x.ai/v1';
       this.model = this.config.get<string>('GROK_MODEL') || 'grok-2-latest';
     } else if (groqKey) {
       this.provider = 'groq';
       this.apiKey = groqKey;
-      this.baseUrl = this.config.get<string>('GROQ_API_BASE_URL') || 'https://api.groq.com/openai/v1';
-      this.model = this.config.get<string>('GROQ_MODEL') || 'llama-3.3-70b-versatile';
+      this.baseUrl =
+        this.config.get<string>('GROQ_API_BASE_URL') ||
+        'https://api.groq.com/openai/v1';
+      this.model =
+        this.config.get<string>('GROQ_MODEL') || 'llama-3.3-70b-versatile';
     } else {
       this.provider = 'unknown';
       this.apiKey = undefined;
-      this.baseUrl = this.config.get<string>('GROK_API_BASE_URL') || 'https://api.x.ai/v1';
+      this.baseUrl =
+        this.config.get<string>('GROK_API_BASE_URL') || 'https://api.x.ai/v1';
       this.model = this.config.get<string>('GROK_MODEL') || 'grok-2-latest';
     }
   }
 
   private tr(key: string, args?: Record<string, unknown>): string {
     const lang = I18nContext.current()?.lang ?? 'en';
-    return this.i18n.translate(key, { lang, args }) as string;
+    return this.i18n.translate(key, { lang, args });
   }
 
-  async submitAiSolution(battleId: string, language: 'javascript' | 'python' = 'javascript'): Promise<AiSubmissionResult> {
+  async submitAiSolution(
+    battleId: string,
+    language: 'javascript' | 'python' = 'javascript',
+  ): Promise<AiSubmissionResult> {
     if (!battleId) {
       throw new BadRequestException(this.tr('battleAi.battleIdRequired'));
     }
@@ -77,7 +91,9 @@ export class BattleAiService {
         throw new BadRequestException(this.tr('battleAi.missingChallengeId'));
       }
 
-      const challenge = await this.challengeService.findById(battle.challengeId);
+      const challenge = await this.challengeService.findById(
+        battle.challengeId,
+      );
       if (!challenge) {
         throw new BadRequestException(this.tr('battleAi.challengeNotFound'));
       }
@@ -91,16 +107,31 @@ export class BattleAiService {
         throw new BadRequestException(this.tr('battleAi.noTestCases'));
       }
 
-      const botDifficulty = (battle as any)?.botDifficulty as BotDifficulty | undefined;
-      const effectiveDifficulty = botDifficulty || this.mapChallengeDifficultyToBotDifficulty((challenge as any)?.difficulty);
+      const botDifficulty = (battle as any)?.botDifficulty as
+        | BotDifficulty
+        | undefined;
+      const effectiveDifficulty =
+        botDifficulty ||
+        this.mapChallengeDifficultyToBotDifficulty(
+          (challenge as any)?.difficulty,
+        );
 
-      const code = await this.generateSolution(challenge, language, effectiveDifficulty);
-      const execution = await this.dockerService.executeCode(code, language, testCases, {
-        challengeTitle: challenge.title,
-        challengeDescription: challenge.description || '',
-        challengeId: String((challenge as any)._id || battle.challengeId),
-        userId: 'ai-opponent',
-      });
+      const code = await this.generateSolution(
+        challenge,
+        language,
+        effectiveDifficulty,
+      );
+      const execution = await this.dockerService.executeCode(
+        code,
+        language,
+        testCases,
+        {
+          challengeTitle: challenge.title,
+          challengeDescription: challenge.description || '',
+          challengeId: String((challenge as any)._id || battle.challengeId),
+          userId: 'ai-opponent',
+        },
+      );
 
       const passedCount = execution.results.filter((r) => r.passed).length;
       const total = testCases.length;
@@ -196,17 +227,27 @@ export class BattleAiService {
     if (!total) return 0;
 
     const correctnessFactor = Math.max(0, Math.min(1, passedCount / total));
-    const complexityScore = Math.round((
-      this.mapComplexityScore(timeComplexity) + this.mapComplexityScore(spaceComplexity)
-    ) / 2);
+    const complexityScore = Math.round(
+      (this.mapComplexityScore(timeComplexity) +
+        this.mapComplexityScore(spaceComplexity)) /
+        2,
+    );
     const solveSeconds = Math.max(0, executionTimeMs / 1000);
-    const runtimeScore = Math.round(100 * (1 - Math.min(1, solveSeconds / (timeLimitSeconds || 900))));
-    const quality = Number.isFinite(Number(codeQualityScore)) ? Number(codeQualityScore) : 60;
+    const runtimeScore = Math.round(
+      100 * (1 - Math.min(1, solveSeconds / (timeLimitSeconds || 900))),
+    );
+    const quality = Number.isFinite(Number(codeQualityScore))
+      ? Number(codeQualityScore)
+      : 60;
     const qualityScore = Math.max(0, Math.min(100, Math.round(quality)));
 
     // Priority: complexity -> runtime -> code quality (then gated by correctness)
-    const composite = complexityScore * 0.45 + runtimeScore * 0.35 + qualityScore * 0.2;
-    return Math.max(0, Math.round((maxPoints || 500) * (composite / 100) * correctnessFactor));
+    const composite =
+      complexityScore * 0.45 + runtimeScore * 0.35 + qualityScore * 0.2;
+    return Math.max(
+      0,
+      Math.round((maxPoints || 500) * (composite / 100) * correctnessFactor),
+    );
   }
 
   private mapComplexityScore(value?: string): number {
@@ -226,18 +267,30 @@ export class BattleAiService {
     difficulty: BotDifficulty,
   ): Promise<string> {
     if (!this.apiKey) {
-      this.logger.warn('GROK_API_KEY or GROQ_API_KEY is not configured, using fallback solution');
+      this.logger.warn(
+        'GROK_API_KEY or GROQ_API_KEY is not configured, using fallback solution',
+      );
       return this.fallbackSolution(challenge, language);
     }
 
     const starter = challenge?.starterCode?.[language] || '';
-    const constraints = Array.isArray(challenge.constraints) ? challenge.constraints.join('\n') : '';
-    const examples = Array.isArray(challenge.examples) ? JSON.stringify(challenge.examples) : '[]';
-    const tests = Array.isArray(challenge.testCases) ? JSON.stringify(challenge.testCases.slice(0, 6)) : '[]';
+    const constraints = Array.isArray(challenge.constraints)
+      ? challenge.constraints.join('\n')
+      : '';
+    const examples = Array.isArray(challenge.examples)
+      ? JSON.stringify(challenge.examples)
+      : '[]';
+    const tests = Array.isArray(challenge.testCases)
+      ? JSON.stringify(challenge.testCases.slice(0, 6))
+      : '[]';
 
-    const systemPrompt = 'You are a competitive programming assistant. Return only the final code. Do not include markdown or explanations.';
+    const systemPrompt =
+      'You are a competitive programming assistant. Return only the final code. Do not include markdown or explanations.';
 
-    const difficultyDirectives: Record<BotDifficulty, { extra: string; temperature: number; maxTokens: number }> = {
+    const difficultyDirectives: Record<
+      BotDifficulty,
+      { extra: string; temperature: number; maxTokens: number }
+    > = {
       [BotDifficulty.EASY]: {
         extra:
           'Difficulty: EASY BOT. Prefer the simplest correct approach. Avoid heavy optimizations and advanced tricks. Keep code short and straightforward even if performance is not optimal, but it MUST pass the provided tests.',
@@ -258,7 +311,9 @@ export class BattleAiService {
       },
     };
 
-    const directive = difficultyDirectives[difficulty] || difficultyDirectives[BotDifficulty.MEDIUM];
+    const directive =
+      difficultyDirectives[difficulty] ||
+      difficultyDirectives[BotDifficulty.MEDIUM];
     const userPrompt = [
       `Solve the following challenge in ${language}.`,
       `Title: ${challenge.title}`,
@@ -269,7 +324,9 @@ export class BattleAiService {
       starter ? `StarterCode:\n${starter}` : null,
       directive.extra,
       'Return a complete solution that matches the starter code signature if provided.',
-    ].filter(Boolean).join('\n\n');
+    ]
+      .filter(Boolean)
+      .join('\n\n');
 
     try {
       const response = await fetch(`${this.baseUrl}/chat/completions`, {
@@ -310,7 +367,10 @@ export class BattleAiService {
     }
   }
 
-  private fallbackSolution(challenge: any, language: 'javascript' | 'python'): string {
+  private fallbackSolution(
+    challenge: any,
+    language: 'javascript' | 'python',
+  ): string {
     const reference = challenge?.referenceSolution || '';
     if (reference.trim()) return reference;
 
@@ -330,8 +390,11 @@ export class BattleAiService {
   }
 
   private mapChallengeDifficultyToBotDifficulty(value?: string): BotDifficulty {
-    const v = String(value || '').toLowerCase().trim();
-    if (v === 'easy' || v === 'eas' || v === 'beginner') return BotDifficulty.EASY;
+    const v = String(value || '')
+      .toLowerCase()
+      .trim();
+    if (v === 'easy' || v === 'eas' || v === 'beginner')
+      return BotDifficulty.EASY;
     if (v === 'hard' || v === 'expert') return BotDifficulty.HARD;
     if (v === 'medium' || v === 'med') return BotDifficulty.MEDIUM;
     // Handles older enum values like 'EASY'/'MEDIUM'/'HARD'

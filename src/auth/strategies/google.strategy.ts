@@ -5,29 +5,42 @@ import { AuthService } from '../auth.service';
 
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
-    constructor(private readonly authService: AuthService) {
-        super({
-            clientID: process.env.GOOGLE_CLIENT_ID || 'dummy_client_id_google',
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'dummy_client_secret_google',
-            callbackURL: 'http://localhost:3000/auth/google/callback',
-            scope: ['email', 'profile'],
-        });
-    }
+  constructor(private readonly authService: AuthService) {
+    const proxy =
+      process.env.HTTPS_PROXY || process.env.HTTP_PROXY || undefined;
+    super({
+      clientID: process.env.GOOGLE_CLIENT_ID || 'dummy_client_id_google',
+      clientSecret:
+        process.env.GOOGLE_CLIENT_SECRET || 'dummy_client_secret_google',
+      callbackURL:
+        process.env.GOOGLE_CALLBACK_URL ||
+        'http://localhost:3000/auth/google/callback',
+      scope: ['email', 'profile'],
+      proxy,
+    });
+  }
 
-    async validate(accessToken: string, refreshToken: string, profile: any, done: VerifyCallback): Promise<any> {
-        try {
-            const { id, name, emails, photos } = profile;
-            const pInfo = {
-                id,
-                email: emails && emails[0].value,
-                username: name ? `${name.givenName || ''}_${name.familyName || ''}`.trim() : null,
-                avatar: photos && photos[0].value,
-            };
+  async validate(
+    accessToken: string,
+    refreshToken: string,
+    profile: any,
+    done: VerifyCallback,
+  ): Promise<any> {
+    try {
+      const { id, name, emails, photos } = profile;
+      const pInfo = {
+        id,
+        email: emails && emails[0].value,
+        username: name
+          ? `${name.givenName || ''}_${name.familyName || ''}`.trim()
+          : null,
+        avatar: photos && photos[0].value,
+      };
 
-            const user = await this.authService.validateOAuthLogin(pInfo, 'google');
-            done(null, user);
-        } catch (err) {
-            done(err, false);
-        }
+      const user = await this.authService.validateOAuthLogin(pInfo, 'google');
+      done(null, user);
+    } catch (err) {
+      done(err, false);
     }
+  }
 }

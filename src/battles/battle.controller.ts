@@ -71,6 +71,9 @@ export class BattlesController {
     @Param('id') id: string,
     @Body() body: { language?: 'javascript' | 'python' },
   ) {
-    return this.battleAiService.submitAiSolution(id, body?.language || 'javascript');
+    return this.battleAiService.submitAiSolution(
+      id,
+      body?.language || 'javascript',
+    );
   }
 }

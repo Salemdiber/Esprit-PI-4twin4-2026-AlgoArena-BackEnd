@@ -4,7 +4,10 @@ import { BattlesController } from './battle.controller';
 import { BattlesService } from './battle.service';
 import { BattleAiService } from './battle-ai.service';
 import { Battle, BattleSchema } from './schemas/battle.schema';
-import { BattleHistory, BattleHistorySchema } from './schemas/battle-history.schema';
+import {
+  BattleHistory,
+  BattleHistorySchema,
+} from './schemas/battle-history.schema';
 import { ChallengeModule } from '../challenges/challenge.module';
 import { JudgeModule } from '../judge/judge.module';
 

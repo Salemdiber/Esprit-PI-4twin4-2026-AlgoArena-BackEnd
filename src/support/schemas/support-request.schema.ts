@@ -82,8 +82,19 @@ class BugDetails {
     timezone?: string;
     buildVersion?: string;
     featureFlags?: string[];
-    consoleErrors?: Array<{ message: string; source?: string; line?: number; col?: number; timestamp: number }>;
-    networkFailures?: Array<{ url: string; method: string; status: number; timestamp: number }>;
+    consoleErrors?: Array<{
+      message: string;
+      source?: string;
+      line?: number;
+      col?: number;
+      timestamp: number;
+    }>;
+    networkFailures?: Array<{
+      url: string;
+      method: string;
+      status: number;
+      timestamp: number;
+    }>;
     clientTimestamp?: number;
     sessionId?: string;
   } | null;
@@ -106,12 +117,18 @@ export class SupportRequest {
   @Prop({ required: true, maxlength: 3000 }) description: string;
   @Prop({ enum: ['low', 'medium', 'high'], required: true }) priority: string;
   @Prop({ type: [String], default: [] }) attachmentUrls: string[];
-  @Prop({ type: MeetingDetails, default: null }) meetingDetails: MeetingDetails | null;
+  @Prop({ type: MeetingDetails, default: null })
+  meetingDetails: MeetingDetails | null;
   @Prop({ type: BugDetails, default: null }) bugDetails: BugDetails | null;
   @Prop({ type: Date, default: null }) resolvedAt: Date | null;
   @Prop({ required: true, unique: true }) referenceNumber: string;
 }
 
-export const SupportRequestSchema = SchemaFactory.createForClass(SupportRequest);
-SupportRequestSchema.index({ userId: 1, category: 1, status: 1, createdAt: -1 });
-
+export const SupportRequestSchema =
+  SchemaFactory.createForClass(SupportRequest);
+SupportRequestSchema.index({
+  userId: 1,
+  category: 1,
+  status: 1,
+  createdAt: -1,
+});

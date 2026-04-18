@@ -16,10 +16,16 @@ import { ChallengeAttemptController } from './challenge-attempt.controller';
     ChallengeModule,
     UserModule,
     AuditLogModule,
-    MongooseModule.forFeature([{ name: 'SandboxMetric', schema: SandboxMetricSchema }]),
+    MongooseModule.forFeature([
+      { name: 'SandboxMetric', schema: SandboxMetricSchema },
+    ]),
   ],
   providers: [JudgeService, DockerExecutionService, AIAnalysisService],
-  controllers: [JudgeController, SandboxAdminController, ChallengeAttemptController],
+  controllers: [
+    JudgeController,
+    SandboxAdminController,
+    ChallengeAttemptController,
+  ],
   exports: [JudgeService, DockerExecutionService, AIAnalysisService],
 })
 export class JudgeModule {}
