@@ -44,9 +44,3 @@ export class Battle {
 }
 
 export const BattleSchema = SchemaFactory.createForClass(Battle);
-
-BattleSchema.index({ battleStatus: 1 });
-BattleSchema.index({ createdAt: -1 });
-BattleSchema.index({ userId: 1, createdAt: -1 });
-BattleSchema.index({ opponentId: 1, createdAt: -1 });
-BattleSchema.index({ challengeId: 1 });

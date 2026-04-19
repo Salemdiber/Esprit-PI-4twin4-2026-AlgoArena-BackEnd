@@ -15,7 +15,6 @@ import {
   Body,
   UseGuards,
   Req,
-  Header,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { SettingsService } from './settings.service';
@@ -94,7 +93,6 @@ Content-Type: application/json
     description: 'Forbidden - Insufficient permissions',
   })
   @Get()
-  @Header('Cache-Control', 'private, max-age=300')
   async getSettings() {
     return this.settingsService.getSettings();
   }

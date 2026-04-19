@@ -69,7 +69,6 @@ export const AuditLogSchema = new Schema(
     actorId: {
       type: String,
       default: null,
-      index: true,
     },
 
     // What was affected
@@ -127,4 +126,3 @@ export const AuditLogSchema = new Schema(
 AuditLogSchema.index({ createdAt: -1 });
 AuditLogSchema.index({ actionType: 1, createdAt: -1 });
 AuditLogSchema.index({ entityType: 1, createdAt: -1 });
-AuditLogSchema.index({ actorId: 1, createdAt: -1 });

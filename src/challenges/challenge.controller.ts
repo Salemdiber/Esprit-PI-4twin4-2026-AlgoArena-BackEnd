@@ -17,7 +17,6 @@ import {
   Param,
   Query,
   UseGuards,
-  Header,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
@@ -76,22 +75,17 @@ Content-Type: application/json
     description: 'Forbidden - Insufficient permissions',
   })
   @Get('public')
-  @Header('Cache-Control', 'public, max-age=60')
   async getPublished(
     @Query('difficulty') difficulty?: string,
     @Query('tag') tag?: string,
     @Query('search') search?: string,
     @Query('sort') sort?: string,
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
   ) {
     return this.challengeService.findPublished({
       difficulty,
       tag,
       search,
       sort,
-      page: Number(page) || 1,
-      limit: Number(limit) || 20,
     });
   }
 
@@ -136,7 +130,6 @@ Content-Type: application/json
     description: 'Forbidden - Insufficient permissions',
   })
   @Get('public/:id')
-  @Header('Cache-Control', 'public, max-age=60')
   async getPublishedById(@Param('id') id: string) {
     const ch = await this.challengeService.findById(id);
     if ((ch as any).status !== 'published') {

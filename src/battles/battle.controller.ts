@@ -6,8 +6,6 @@ import {
   Delete,
   Param,
   Body,
-  Query,
-  Header,
   HttpCode,
   HttpStatus,
   UseGuards,
@@ -35,18 +33,14 @@ export class BattlesController {
 
   // GET /battles - Retrieve all battles
   @Get()
-  @Header('Cache-Control', 'public, max-age=30')
-  async findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
-    return this.service.findAll({
-      page: Number(page) || 1,
-      limit: Number(limit) || 20,
-    });
+  async findAll() {
+    const battles = await this.service.findAll();
+    return { battles };
   }
 
   // GET /battles/me - Retrieve battles for current user
   @UseGuards(JwtAuthGuard)
   @Get('me')
-  @Header('Cache-Control', 'private, max-age=30')
   async findMine(@CurrentUser() user: { userId: string }) {
     const battles = await this.service.findByUserId(user.userId);
     return { battles };

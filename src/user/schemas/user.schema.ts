@@ -124,11 +124,3 @@ export const UserSchema = new Schema(
   },
   { timestamps: true },
 );
-
-UserSchema.index({ email: 1 }, { unique: true });
-UserSchema.index({ username: 1 });
-UserSchema.index({ role: 1 });
-UserSchema.index({ rank: 1 });
-UserSchema.index({ createdAt: -1 });
-UserSchema.index({ 'challengeProgress.challengeId': 1 });
-UserSchema.index({ 'challengeProgress.solvedAt': -1 });

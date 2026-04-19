@@ -388,15 +388,7 @@ export class ChallengeService {
     tag?: string;
     search?: string;
     sort?: string;
-    page?: number;
-    limit?: number;
-  }): Promise<{
-    challenges: ChallengeDocument[];
-    total: number;
-    page: number;
-    limit: number;
-    pages: number;
-  }> {
+  }): Promise<ChallengeDocument[]> {
     const filter: any = { status: 'published' };
 
     if (query?.difficulty) filter.difficulty = query.difficulty;
@@ -424,29 +416,11 @@ export class ChallengeService {
         break;
     }
 
-    const page = Math.max(1, Number(query?.page) || 1);
-    const limit = Math.min(20, Math.max(1, Number(query?.limit) || 20));
-    const skip = (page - 1) * limit;
-
-    const [challenges, total] = await Promise.all([
-      this.challengeModel
-        .find(filter)
-        .select('_id title difficulty tags xpReward acceptanceRate solvedCount estimatedTime mode createdAt')
-        .sort(sortObj)
-        .skip(skip)
-        .limit(limit)
-        .lean()
-        .exec(),
-      this.challengeModel.countDocuments(filter).exec(),
-    ]);
-
-    return {
-      challenges: challenges as ChallengeDocument[],
-      total,
-      page,
-      limit,
-      pages: Math.ceil(total / limit),
-    };
+    return this.challengeModel
+      .find(filter)
+      .sort(sortObj)
+      .lean()
+      .exec() as Promise<ChallengeDocument[]>;
   }
 
   async incrementSolvedCount(id: string): Promise<void> {
