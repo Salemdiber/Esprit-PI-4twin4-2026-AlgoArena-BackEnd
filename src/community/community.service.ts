@@ -11,6 +11,8 @@ export class CommunityService {
   constructor(
     @InjectModel('CommunityPost')
     private readonly postModel: Model<any>,
+    @InjectModel('CommunityComment')
+    private readonly commentModel: Model<any>,
   ) { }
 
   private ensureValidObjectId(id: string) {
@@ -23,18 +25,113 @@ export class CommunityService {
     return String(role || '').toUpperCase() === 'ADMIN';
   }
 
-  private findCommentById(comments: any[], commentId: string): any | null {
-    if (!Array.isArray(comments)) return null;
+  private buildCommentTree(flatComments: any[]) {
+    const normalized = Array.isArray(flatComments)
+      ? flatComments.map((comment) => ({
+          ...(comment || {}),
+          _id: String(comment?._id || ''),
+          postId: String(comment?.postId || ''),
+          parentCommentId: comment?.parentCommentId ? String(comment.parentCommentId) : null,
+          replies: [],
+        }))
+      : [];
 
-    for (const comment of comments) {
-      if (String(comment?._id) === String(commentId)) {
-        return comment;
+    const byId = new Map<string, any>();
+    normalized.forEach((comment) => {
+      if (comment?._id) byId.set(String(comment._id), comment);
+    });
+
+    const roots: any[] = [];
+    normalized.forEach((comment) => {
+      const parentId = comment?.parentCommentId ? String(comment.parentCommentId) : '';
+      if (parentId && byId.has(parentId)) {
+        const parent = byId.get(parentId);
+        parent.replies = Array.isArray(parent.replies) ? parent.replies : [];
+        parent.replies.push(comment);
+      } else {
+        roots.push(comment);
       }
-      const nested = this.findCommentById(comment?.replies || [], commentId);
-      if (nested) return nested;
-    }
+    });
 
-    return null;
+    const sortTree = (items: any[]) => {
+      if (!Array.isArray(items)) return [];
+      const sorted = [...items].sort((a, b) => {
+        const aPinned = a?.pinned ? 1 : 0;
+        const bPinned = b?.pinned ? 1 : 0;
+        if (aPinned !== bPinned) return bPinned - aPinned;
+
+        const aDate = new Date(a?.createdAt || 0).getTime();
+        const bDate = new Date(b?.createdAt || 0).getTime();
+        return bDate - aDate;
+      });
+
+      return sorted.map((item) => ({
+        ...item,
+        replies: sortTree(item?.replies || []),
+      }));
+    };
+
+    return sortTree(roots);
+  }
+
+  private async migrateEmbeddedCommentsToCollection() {
+    const posts = await this.postModel.find({}, { comments: 1 }).lean().exec();
+
+    for (const post of posts as any[]) {
+      const postId = String(post?._id || '');
+      if (!postId) continue;
+
+      const embedded = Array.isArray(post?.comments) ? post.comments : [];
+      if (embedded.length === 0) continue;
+
+      const alreadyMigrated = await this.commentModel.exists({ postId }).exec();
+      if (alreadyMigrated) continue;
+
+      const toInsert: any[] = [];
+
+      const walk = (comments: any[], parentCommentId: string | null = null) => {
+        if (!Array.isArray(comments)) return;
+
+        comments.forEach((comment) => {
+          const currentId = String(comment?._id || new Types.ObjectId().toString());
+
+          toInsert.push({
+            _id: currentId,
+            postId,
+            parentCommentId,
+            authorId: String(comment?.authorId || ''),
+            authorUsername: String(comment?.authorUsername || 'unknown'),
+            authorAvatar: comment?.authorAvatar || null,
+            text: String(comment?.text || ''),
+            imageUrl: comment?.imageUrl || null,
+            videoUrl: comment?.videoUrl || null,
+            pinned: Boolean(comment?.pinned),
+            pinnedAt: comment?.pinnedAt || null,
+            createdAt: comment?.createdAt || new Date(),
+            updatedAt: comment?.updatedAt || new Date(),
+          });
+
+          walk(comment?.replies || [], currentId);
+        });
+      };
+
+      walk(embedded);
+
+      if (toInsert.length > 0) {
+        await this.commentModel.insertMany(toInsert, { ordered: false }).catch(() => undefined);
+      }
+    }
+  }
+
+  private async getPostWithComments(postId: string) {
+    const post = (await this.postModel.findById(postId).lean().exec()) as any;
+    if (!post) throw new NotFoundException('Post not found');
+
+    const flatComments = await this.commentModel.find({ postId: String(postId) }).lean().exec();
+    return {
+      ...post,
+      comments: this.buildCommentTree(flatComments),
+    };
   }
 
   private buildLegacySeedPosts() {
@@ -118,35 +215,57 @@ export class CommunityService {
 
   async listPosts() {
     await this.restoreLegacyPostsIfMissing();
-    return this.postModel.find().sort({ pinned: -1, pinnedAt: -1, createdAt: -1 }).lean().exec();
+    await this.migrateEmbeddedCommentsToCollection();
+
+    const posts = (await this.postModel
+      .find()
+      .sort({ pinned: -1, pinnedAt: -1, createdAt: -1 })
+      .lean()
+      .exec()) as any[];
+
+    if (posts.length === 0) return [];
+
+    const postIds = posts.map((post) => String(post?._id || '')).filter(Boolean);
+    const flatComments = await this.commentModel
+      .find({ postId: { $in: postIds } })
+      .lean()
+      .exec();
+
+    const commentsByPostId = new Map<string, any[]>();
+    flatComments.forEach((comment: any) => {
+      const key = String(comment?.postId || '');
+      if (!commentsByPostId.has(key)) commentsByPostId.set(key, []);
+      commentsByPostId.get(key)?.push(comment);
+    });
+
+    return posts.map((post) => {
+      const key = String(post?._id || '');
+      const postComments = commentsByPostId.get(key) || [];
+      return {
+        ...post,
+        comments: this.buildCommentTree(postComments),
+      };
+    });
   }
 
   async listComments(postId?: string) {
-    const flatten = (targetPostId: string, comments: any[], parentCommentId: string | null = null): any[] => {
-      if (!Array.isArray(comments)) return [];
-      return comments.flatMap((comment) => {
-        const mapped = {
-          ...(comment || {}),
-          postId: targetPostId,
-          parentCommentId,
-        };
-        return [
-          mapped,
-          ...flatten(targetPostId, comment?.replies || [], String(comment?._id || '')),
-        ];
-      });
-    };
-
     if (postId) {
-      const post = (await this.postModel.findById(postId).lean().exec()) as any;
-      if (!post) {
-        throw new NotFoundException('Post not found');
-      }
-      return flatten(String(post?._id || ''), post?.comments || []);
+      this.ensureValidObjectId(postId);
+      const postExists = await this.postModel.exists({ _id: postId }).exec();
+      if (!postExists) throw new NotFoundException('Post not found');
+
+      return this.commentModel
+        .find({ postId: String(postId) })
+        .sort({ createdAt: -1 })
+        .lean()
+        .exec();
     }
 
-    const posts = await this.postModel.find().lean().exec();
-    return posts.flatMap((post: any) => flatten(String(post?._id || ''), post?.comments || []));
+    return this.commentModel
+      .find()
+      .sort({ createdAt: -1 })
+      .lean()
+      .exec();
   }
 
   async createPost(dto: CreatePostDto, user: { userId: string; username: string; avatar?: string }) {
@@ -178,37 +297,35 @@ export class CommunityService {
     this.ensureValidObjectId(postId);
 
     const text = dto.text.trim();
-    const post = await this.postModel.findById(postId).exec();
+    const postExists = await this.postModel.exists({ _id: postId }).exec();
+    if (!postExists) throw new NotFoundException('Post not found');
 
-    if (!post) {
-      throw new NotFoundException('Post not found');
+    let normalizedParentCommentId: string | null = null;
+    if (dto.parentCommentId) {
+      this.ensureValidObjectId(dto.parentCommentId);
+      const parentExists = await this.commentModel
+        .exists({ _id: dto.parentCommentId, postId: String(postId) })
+        .exec();
+      if (!parentExists) {
+        throw new NotFoundException('Parent comment not found');
+      }
+      normalizedParentCommentId = String(dto.parentCommentId);
     }
 
-    const commentPayload = {
+    await this.commentModel.create({
+      postId: String(postId),
+      parentCommentId: normalizedParentCommentId,
       authorId: user.userId,
       authorUsername: user.username,
       authorAvatar: user.avatar || null,
       text,
       imageUrl: dto.imageUrl || null,
       videoUrl: dto.videoUrl || null,
-      replies: [],
-    };
+      pinned: false,
+      pinnedAt: null,
+    });
 
-    if (dto.parentCommentId) {
-      this.ensureValidObjectId(dto.parentCommentId);
-      const parent = this.findCommentById(post.comments || [], dto.parentCommentId);
-      if (!parent) {
-        throw new NotFoundException('Parent comment not found');
-      }
-      parent.replies = parent.replies || [];
-      parent.replies.push(commentPayload);
-    } else {
-      post.comments.push(commentPayload);
-    }
-
-    await post.save();
-
-    return post.toObject();
+    return this.getPostWithComments(postId);
   }
 
   async addCommentAndReturnSaved(
@@ -219,44 +336,38 @@ export class CommunityService {
     this.ensureValidObjectId(postId);
 
     const text = dto.text.trim();
-    const post = await this.postModel.findById(postId).exec();
+    const postExists = await this.postModel.exists({ _id: postId }).exec();
+    if (!postExists) throw new NotFoundException('Post not found');
 
-    if (!post) {
-      throw new NotFoundException('Post not found');
+    let normalizedParentCommentId: string | null = null;
+    if (dto.parentCommentId) {
+      this.ensureValidObjectId(dto.parentCommentId);
+      const parentExists = await this.commentModel
+        .exists({ _id: dto.parentCommentId, postId: String(postId) })
+        .exec();
+      if (!parentExists) {
+        throw new NotFoundException('Parent comment not found');
+      }
+      normalizedParentCommentId = String(dto.parentCommentId);
     }
 
-    const commentPayload = {
+    const createdComment = await this.commentModel.create({
+      postId: String(postId),
+      parentCommentId: normalizedParentCommentId,
       authorId: user.userId,
       authorUsername: user.username,
       authorAvatar: user.avatar || null,
       text,
       imageUrl: dto.imageUrl || null,
       videoUrl: dto.videoUrl || null,
-      replies: [],
-    };
-
-    let createdComment: any;
-
-    if (dto.parentCommentId) {
-      this.ensureValidObjectId(dto.parentCommentId);
-      const parent = this.findCommentById(post.comments || [], dto.parentCommentId);
-      if (!parent) {
-        throw new NotFoundException('Parent comment not found');
-      }
-      parent.replies = parent.replies || [];
-      parent.replies.push(commentPayload);
-      createdComment = parent.replies[parent.replies.length - 1];
-    } else {
-      post.comments.push(commentPayload);
-      createdComment = post.comments[post.comments.length - 1];
-    }
-
-    await post.save();
+      pinned: false,
+      pinnedAt: null,
+    });
 
     return {
       ...(createdComment?.toObject ? createdComment.toObject() : createdComment),
       postId,
-      parentCommentId: dto.parentCommentId || null,
+      parentCommentId: normalizedParentCommentId,
     };
   }
 
@@ -316,12 +427,10 @@ export class CommunityService {
     this.ensureValidObjectId(postId);
     this.ensureValidObjectId(commentId);
 
-    const post = await this.postModel.findById(postId).exec();
-    if (!post) {
-      throw new NotFoundException('Post not found');
-    }
+    const postExists = await this.postModel.exists({ _id: postId }).exec();
+    if (!postExists) throw new NotFoundException('Post not found');
 
-    const comment = post.comments?.id(commentId);
+    const comment = await this.commentModel.findOne({ _id: commentId, postId: String(postId) }).exec();
     if (!comment) {
       throw new NotFoundException('Comment not found');
     }
@@ -342,8 +451,8 @@ export class CommunityService {
       comment.pinnedAt = comment.pinned ? new Date() : null;
     }
 
-    await post.save();
-    return post.toObject();
+    await comment.save();
+    return this.getPostWithComments(postId);
   }
 
   async deletePost(postId: string, user: { userId: string; role?: string }) {
@@ -356,6 +465,7 @@ export class CommunityService {
     }
 
     await this.postModel.deleteOne({ _id: postId }).exec();
+    await this.commentModel.deleteMany({ postId: String(postId) }).exec();
     return { ok: true };
   }
 
@@ -363,29 +473,52 @@ export class CommunityService {
     this.ensureValidObjectId(postId);
     this.ensureValidObjectId(commentId);
 
-    const post = await this.postModel.findById(postId).exec();
-    if (!post) throw new NotFoundException('Post not found');
+    const postExists = await this.postModel.exists({ _id: postId }).exec();
+    if (!postExists) throw new NotFoundException('Post not found');
 
-    const removeRecursively = (comments: any[]): boolean => {
-      if (!Array.isArray(comments)) return false;
-      for (let i = 0; i < comments.length; i += 1) {
-        const item = comments[i];
-        if (String(item?._id) === String(commentId)) {
-          if (String(item.authorId) !== String(user.userId) && !this.isAdmin(user.role)) {
-            throw new BadRequestException('You can only delete your own comment');
-          }
-          comments.splice(i, 1);
-          return true;
+    const targetComment: any = await this.commentModel
+      .findOne({ _id: commentId, postId: String(postId) })
+      .lean()
+      .exec();
+
+    if (!targetComment) throw new NotFoundException('Comment not found');
+
+    if (String(targetComment.authorId) !== String(user.userId) && !this.isAdmin(user.role)) {
+      throw new BadRequestException('You can only delete your own comment');
+    }
+
+    const postComments = await this.commentModel
+      .find({ postId: String(postId) }, { _id: 1, parentCommentId: 1 })
+      .lean()
+      .exec();
+
+    const childrenByParent = new Map<string, string[]>();
+    postComments.forEach((comment: any) => {
+      const parentKey = String(comment?.parentCommentId || '');
+      const currentId = String(comment?._id || '');
+      if (!parentKey || !currentId) return;
+      if (!childrenByParent.has(parentKey)) childrenByParent.set(parentKey, []);
+      childrenByParent.get(parentKey)?.push(currentId);
+    });
+
+    const toDelete = new Set<string>([String(commentId)]);
+    const stack = [String(commentId)];
+    while (stack.length > 0) {
+      const current = stack.pop() as string;
+      const children = childrenByParent.get(current) || [];
+      children.forEach((childId) => {
+        if (!toDelete.has(childId)) {
+          toDelete.add(childId);
+          stack.push(childId);
         }
-        if (removeRecursively(item?.replies || [])) return true;
-      }
-      return false;
-    };
+      });
+    }
 
-    const removed = removeRecursively(post.comments || []);
-    if (!removed) throw new NotFoundException('Comment not found');
+    await this.commentModel.deleteMany({
+      _id: { $in: [...toDelete] },
+      postId: String(postId),
+    }).exec();
 
-    await post.save();
-    return post.toObject();
+    return this.getPostWithComments(postId);
   }
 }

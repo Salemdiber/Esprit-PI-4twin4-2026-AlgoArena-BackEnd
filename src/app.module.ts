@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import * as path from 'path';
+import { existsSync } from 'fs';
 import { I18nModule, AcceptLanguageResolver } from 'nestjs-i18n';
 import { I18nJsonLoader } from 'nestjs-i18n/dist/loaders';
 import { AppController } from './app.controller';
@@ -26,6 +27,12 @@ import { ChatModule } from './chat/chat.module';
 import { SupportModule } from './support/support.module';
 import { CommunityModule } from './community/community.module';
 
+const i18nPath = (() => {
+  const distPath = path.join(__dirname, 'i18n');
+  const srcPath = path.join(process.cwd(), 'src', 'i18n');
+  return existsSync(distPath) ? distPath : srcPath;
+})();
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -42,7 +49,7 @@ import { CommunityModule } from './community/community.module';
       fallbackLanguage: 'en',
       loader: I18nJsonLoader,
       loaderOptions: {
-        path: path.join(__dirname, 'i18n'),
+        path: i18nPath,
         watch: process.env.NODE_ENV !== 'production',
       },
       resolvers: [AcceptLanguageResolver],
