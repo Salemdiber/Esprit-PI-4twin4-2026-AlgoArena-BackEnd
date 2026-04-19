@@ -37,8 +37,116 @@ export class CommunityService {
     return null;
   }
 
+  private buildLegacySeedPosts() {
+    const now = Date.now();
+    return [
+      {
+        title: 'React state is not updating in my challenge form',
+        content: 'My input values lag behind after submit. Any clean approach for stable state updates?',
+        type: 'problem',
+        problemType: 'bug',
+        tags: ['react', 'state', 'form'],
+        imageUrl: null,
+        videoUrl: null,
+        authorId: 'u-lina',
+        authorUsername: 'lina',
+        authorAvatar: null,
+        createdAt: new Date(now - 1000 * 60 * 60 * 8),
+        updatedAt: new Date(now - 1000 * 60 * 60 * 8),
+        pinned: false,
+        solved: false,
+        comments: [
+          {
+            authorId: 'u-omar',
+            authorUsername: 'omar',
+            authorAvatar: null,
+            text: 'I hit the same issue with state updates not batching as expected.',
+            imageUrl: null,
+            videoUrl: null,
+            pinned: false,
+            replies: [],
+            createdAt: new Date(now - 1000 * 60 * 60 * 5),
+            updatedAt: new Date(now - 1000 * 60 * 60 * 5),
+          },
+        ],
+      },
+      {
+        title: 'API authorization keeps failing after reload',
+        content: 'Calls work after login but fail after refreshing the page. How should I persist auth?',
+        type: 'normal',
+        tags: ['api', 'auth', 'token'],
+        imageUrl: null,
+        videoUrl: null,
+        authorId: 'u-omar',
+        authorUsername: 'omar',
+        authorAvatar: null,
+        createdAt: new Date(now - 1000 * 60 * 60 * 4),
+        updatedAt: new Date(now - 1000 * 60 * 60 * 4),
+        pinned: false,
+        solved: false,
+        comments: [
+          {
+            authorId: 'u-lina',
+            authorUsername: 'lina',
+            authorAvatar: null,
+            text: 'The auth token is missing on refresh, maybe persisted state issue.',
+            imageUrl: null,
+            videoUrl: null,
+            pinned: false,
+            replies: [],
+            createdAt: new Date(now - 1000 * 60 * 60 * 2),
+            updatedAt: new Date(now - 1000 * 60 * 60 * 2),
+          },
+        ],
+      },
+    ];
+  }
+
+  async restoreLegacyPostsIfMissing() {
+    const seedPosts = this.buildLegacySeedPosts();
+
+    for (const seed of seedPosts) {
+      const exists = await this.postModel
+        .exists({ title: seed.title, authorUsername: seed.authorUsername })
+        .exec();
+
+      if (exists) continue;
+
+      await this.postModel.create(seed);
+    }
+  }
+
   async listPosts() {
+    await this.restoreLegacyPostsIfMissing();
     return this.postModel.find().sort({ pinned: -1, pinnedAt: -1, createdAt: -1 }).lean().exec();
+  }
+
+  async listComments(postId?: string) {
+    const flatten = (targetPostId: string, comments: any[], parentCommentId: string | null = null): any[] => {
+      if (!Array.isArray(comments)) return [];
+      return comments.flatMap((comment) => {
+        const mapped = {
+          ...(comment || {}),
+          postId: targetPostId,
+          parentCommentId,
+        };
+        return [
+          mapped,
+          ...flatten(targetPostId, comment?.replies || [], String(comment?._id || '')),
+        ];
+      });
+    };
+
+    if (postId) {
+      const post = (await this.postModel.findById(postId).lean().exec()) as any;
+      if (!post) {
+        throw new NotFoundException('Post not found');
+      }
+      return flatten(String(post?._id || ''), post?.comments || []);
+    }
+
+    const posts = await this.postModel.find().lean().exec();
+    return posts.flatMap((post: any) => flatten(String(post?._id || ''), post?.comments || []));
   }
 
   async createPost(dto: CreatePostDto, user: { userId: string; username: string; avatar?: string }) {
@@ -101,6 +209,55 @@ export class CommunityService {
     await post.save();
 
     return post.toObject();
+  }
+
+  async addCommentAndReturnSaved(
+    postId: string,
+    dto: CreateCommentDto,
+    user: { userId: string; username: string; avatar?: string },
+  ) {
+    this.ensureValidObjectId(postId);
+
+    const text = dto.text.trim();
+    const post = await this.postModel.findById(postId).exec();
+
+    if (!post) {
+      throw new NotFoundException('Post not found');
+    }
+
+    const commentPayload = {
+      authorId: user.userId,
+      authorUsername: user.username,
+      authorAvatar: user.avatar || null,
+      text,
+      imageUrl: dto.imageUrl || null,
+      videoUrl: dto.videoUrl || null,
+      replies: [],
+    };
+
+    let createdComment: any;
+
+    if (dto.parentCommentId) {
+      this.ensureValidObjectId(dto.parentCommentId);
+      const parent = this.findCommentById(post.comments || [], dto.parentCommentId);
+      if (!parent) {
+        throw new NotFoundException('Parent comment not found');
+      }
+      parent.replies = parent.replies || [];
+      parent.replies.push(commentPayload);
+      createdComment = parent.replies[parent.replies.length - 1];
+    } else {
+      post.comments.push(commentPayload);
+      createdComment = post.comments[post.comments.length - 1];
+    }
+
+    await post.save();
+
+    return {
+      ...(createdComment?.toObject ? createdComment.toObject() : createdComment),
+      postId,
+      parentCommentId: dto.parentCommentId || null,
+    };
   }
 
   async updatePost(postId: string, dto: UpdatePostDto, user: { userId: string; username: string }) {

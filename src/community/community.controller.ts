@@ -132,6 +132,7 @@ export class CommunityController {
     @Body() dto: CreatePostDto,
     @CurrentUser() user: { userId: string; username: string; avatar?: string; role?: string },
   ) {
+    console.log('Saving post:', dto);
     const created = await this.communityService.createPost(dto, user);
     await this.writeAudit({
       actionType: 'COMMUNITY_POST_CREATED',
