@@ -1,4 +1,12 @@
-import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiParam,
+  ApiQuery,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import {
   Controller,
   Get,
@@ -42,12 +50,12 @@ export class SettingsController {
   constructor(
     private readonly settingsService: SettingsService,
     private readonly auditLogService: AuditLogService,
-  ) { }
+  ) {}
 
   // GET /settings → Returns current settings
-          @ApiOperation({
-        summary: 'GetBaseRoute_1 operation',
-        description: `
+  @ApiOperation({
+    summary: 'GetBaseRoute_1 operation',
+    description: `
 ### Required Permissions
 - Public or authenticated User
 
@@ -69,21 +77,30 @@ Content-Type: application/json
 - **Valid Test Case**: Call \`GET /api/\` with valid data -> Returns \`200 OK\` or \`201 Created\`.
 - **Invalid Test Case**: Call with malformed data or missing fields -> Returns \`400 Bad Request\`.
 - **Authentication Test Case**: Call without token (if protected) -> Returns \`401 Unauthorized\`.
-        `
-    })
-    @ApiResponse({ status: 200, description: 'Successful operation' })
-    @ApiResponse({ status: 400, description: 'Bad Request - Invalid parameters/body' })
-    @ApiResponse({ status: 401, description: 'Unauthorized - Missing or invalid token' })
-    @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
-    @Get()
+        `,
+  })
+  @ApiResponse({ status: 200, description: 'Successful operation' })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request - Invalid parameters/body',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - Missing or invalid token',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Insufficient permissions',
+  })
+  @Get()
   async getSettings() {
     return this.settingsService.getSettings();
   }
 
   // PUT /settings → Update all settings (admin only)
-          @ApiOperation({
-        summary: 'PutBaseRoute_2 operation',
-        description: `
+  @ApiOperation({
+    summary: 'PutBaseRoute_2 operation',
+    description: `
 ### Required Permissions
 - Public or authenticated User
 
@@ -105,13 +122,22 @@ Content-Type: application/json
 - **Valid Test Case**: Call \`PUT /api/\` with valid data -> Returns \`200 OK\` or \`201 Created\`.
 - **Invalid Test Case**: Call with malformed data or missing fields -> Returns \`400 Bad Request\`.
 - **Authentication Test Case**: Call without token (if protected) -> Returns \`401 Unauthorized\`.
-        `
-    })
-    @ApiResponse({ status: 200, description: 'Successful operation' })
-    @ApiResponse({ status: 400, description: 'Bad Request - Invalid parameters/body' })
-    @ApiResponse({ status: 401, description: 'Unauthorized - Missing or invalid token' })
-    @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
-    @Put()
+        `,
+  })
+  @ApiResponse({ status: 200, description: 'Successful operation' })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request - Invalid parameters/body',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - Missing or invalid token',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Insufficient permissions',
+  })
+  @Put()
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('Admin')
   async updateSettings(
@@ -119,7 +145,7 @@ Content-Type: application/json
     @CurrentUser() actor: { userId: string; username?: string },
     @Req() req: any,
   ) {
-    const previous = await this.settingsService.getSettings() as any;
+    const previous = (await this.settingsService.getSettings()) as any;
     const result = await this.settingsService.updateSettings(dto);
 
     // Generate per-field audit logs for every changed setting
@@ -129,7 +155,9 @@ Content-Type: application/json
       const prevVal = previous?.[key];
       if (prevVal !== newVal) {
         const label = SETTING_LABELS[key] || key;
-        changedFields.push(`${label}: ${formatValue(prevVal)} → ${formatValue(newVal)}`);
+        changedFields.push(
+          `${label}: ${formatValue(prevVal)} → ${formatValue(newVal)}`,
+        );
 
         await this.auditLogService.create({
           actionType: 'SYSTEM_CONFIG_UPDATED',
@@ -151,9 +179,9 @@ Content-Type: application/json
   }
 
   // PATCH /settings/user-registration → Toggle user registration on/off (admin only)
-          @ApiOperation({
-        summary: 'Patch_user_registration_3 operation',
-        description: `
+  @ApiOperation({
+    summary: 'Patch_user_registration_3 operation',
+    description: `
 ### Required Permissions
 - Public or authenticated User
 
@@ -175,13 +203,22 @@ Content-Type: application/json
 - **Valid Test Case**: Call \`PATCH /api/user-registration\` with valid data -> Returns \`200 OK\` or \`201 Created\`.
 - **Invalid Test Case**: Call with malformed data or missing fields -> Returns \`400 Bad Request\`.
 - **Authentication Test Case**: Call without token (if protected) -> Returns \`401 Unauthorized\`.
-        `
-    })
-    @ApiResponse({ status: 200, description: 'Successful operation' })
-    @ApiResponse({ status: 400, description: 'Bad Request - Invalid parameters/body' })
-    @ApiResponse({ status: 401, description: 'Unauthorized - Missing or invalid token' })
-    @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
-    @Patch('user-registration')
+        `,
+  })
+  @ApiResponse({ status: 200, description: 'Successful operation' })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request - Invalid parameters/body',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - Missing or invalid token',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Insufficient permissions',
+  })
+  @Patch('user-registration')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('Admin')
   async toggleUserRegistration(
@@ -189,8 +226,10 @@ Content-Type: application/json
     @CurrentUser() actor: { userId: string; username?: string },
     @Req() req: any,
   ) {
-    const previous = await this.settingsService.getSettings() as any;
-    const result = await this.settingsService.updateSettings({ userRegistration: value });
+    const previous = (await this.settingsService.getSettings()) as any;
+    const result = await this.settingsService.updateSettings({
+      userRegistration: value,
+    });
 
     if (previous?.userRegistration !== value) {
       await this.auditLogService.create({
@@ -212,9 +251,9 @@ Content-Type: application/json
   }
 
   // PATCH /settings/ai-battles → Toggle AI battles on/off (admin only)
-          @ApiOperation({
-        summary: 'Patch_ai_battles_4 operation',
-        description: `
+  @ApiOperation({
+    summary: 'Patch_ai_battles_4 operation',
+    description: `
 ### Required Permissions
 - Public or authenticated User
 
@@ -236,13 +275,22 @@ Content-Type: application/json
 - **Valid Test Case**: Call \`PATCH /api/ai-battles\` with valid data -> Returns \`200 OK\` or \`201 Created\`.
 - **Invalid Test Case**: Call with malformed data or missing fields -> Returns \`400 Bad Request\`.
 - **Authentication Test Case**: Call without token (if protected) -> Returns \`401 Unauthorized\`.
-        `
-    })
-    @ApiResponse({ status: 200, description: 'Successful operation' })
-    @ApiResponse({ status: 400, description: 'Bad Request - Invalid parameters/body' })
-    @ApiResponse({ status: 401, description: 'Unauthorized - Missing or invalid token' })
-    @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
-    @Patch('ai-battles')
+        `,
+  })
+  @ApiResponse({ status: 200, description: 'Successful operation' })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request - Invalid parameters/body',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - Missing or invalid token',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Insufficient permissions',
+  })
+  @Patch('ai-battles')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('Admin')
   async toggleAiBattles(
@@ -250,8 +298,10 @@ Content-Type: application/json
     @CurrentUser() actor: { userId: string; username?: string },
     @Req() req: any,
   ) {
-    const previous = await this.settingsService.getSettings() as any;
-    const result = await this.settingsService.updateSettings({ aiBattles: value });
+    const previous = (await this.settingsService.getSettings()) as any;
+    const result = await this.settingsService.updateSettings({
+      aiBattles: value,
+    });
 
     if (previous?.aiBattles !== value) {
       await this.auditLogService.create({
@@ -273,9 +323,9 @@ Content-Type: application/json
   }
 
   // PATCH /settings/maintenance-mode → Toggle maintenance mode on/off (admin only)
-          @ApiOperation({
-        summary: 'Patch_maintenance_mode_5 operation',
-        description: `
+  @ApiOperation({
+    summary: 'Patch_maintenance_mode_5 operation',
+    description: `
 ### Required Permissions
 - Public or authenticated User
 
@@ -297,13 +347,22 @@ Content-Type: application/json
 - **Valid Test Case**: Call \`PATCH /api/maintenance-mode\` with valid data -> Returns \`200 OK\` or \`201 Created\`.
 - **Invalid Test Case**: Call with malformed data or missing fields -> Returns \`400 Bad Request\`.
 - **Authentication Test Case**: Call without token (if protected) -> Returns \`401 Unauthorized\`.
-        `
-    })
-    @ApiResponse({ status: 200, description: 'Successful operation' })
-    @ApiResponse({ status: 400, description: 'Bad Request - Invalid parameters/body' })
-    @ApiResponse({ status: 401, description: 'Unauthorized - Missing or invalid token' })
-    @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
-    @Patch('maintenance-mode')
+        `,
+  })
+  @ApiResponse({ status: 200, description: 'Successful operation' })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request - Invalid parameters/body',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - Missing or invalid token',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Insufficient permissions',
+  })
+  @Patch('maintenance-mode')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('Admin')
   async toggleMaintenanceMode(
@@ -311,8 +370,10 @@ Content-Type: application/json
     @CurrentUser() actor: { userId: string; username?: string },
     @Req() req: any,
   ) {
-    const previous = await this.settingsService.getSettings() as any;
-    const result = await this.settingsService.updateSettings({ maintenanceMode: value });
+    const previous = (await this.settingsService.getSettings()) as any;
+    const result = await this.settingsService.updateSettings({
+      maintenanceMode: value,
+    });
 
     if (previous?.maintenanceMode !== value) {
       await this.auditLogService.create({
@@ -334,9 +395,9 @@ Content-Type: application/json
   }
 
   // PATCH /settings/ai-enabled → Toggle AI classification on/off (admin only)
-          @ApiOperation({
-        summary: 'Patch_ai_enabled operation',
-        description: `
+  @ApiOperation({
+    summary: 'Patch_ai_enabled operation',
+    description: `
 ### Required Permissions
 - Public or authenticated User
 
@@ -358,13 +419,22 @@ Content-Type: application/json
 - **Valid Test Case**: Call \`PATCH /api/ollama-enabled\` with valid data -> Returns \`200 OK\` or \`201 Created\`.
 - **Invalid Test Case**: Call with malformed data or missing fields -> Returns \`400 Bad Request\`.
 - **Authentication Test Case**: Call without token (if protected) -> Returns \`401 Unauthorized\`.
-        `
-    })
-    @ApiResponse({ status: 200, description: 'Successful operation' })
-    @ApiResponse({ status: 400, description: 'Bad Request - Invalid parameters/body' })
-    @ApiResponse({ status: 401, description: 'Unauthorized - Missing or invalid token' })
-    @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
-    @Patch('ollama-enabled')
+        `,
+  })
+  @ApiResponse({ status: 200, description: 'Successful operation' })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request - Invalid parameters/body',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - Missing or invalid token',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Insufficient permissions',
+  })
+  @Patch('ollama-enabled')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('Admin')
   async toggleOllamaEnabled(@Body('ollamaEnabled') value: boolean) {
@@ -372,9 +442,9 @@ Content-Type: application/json
   }
 
   // PATCH /settings/api-rate-limit → Update API rate limit (admin only)
-          @ApiOperation({
-        summary: 'Patch_api_rate_limit_7 operation',
-        description: `
+  @ApiOperation({
+    summary: 'Patch_api_rate_limit_7 operation',
+    description: `
 ### Required Permissions
 - Public or authenticated User
 
@@ -396,13 +466,22 @@ Content-Type: application/json
 - **Valid Test Case**: Call \`PATCH /api/api-rate-limit\` with valid data -> Returns \`200 OK\` or \`201 Created\`.
 - **Invalid Test Case**: Call with malformed data or missing fields -> Returns \`400 Bad Request\`.
 - **Authentication Test Case**: Call without token (if protected) -> Returns \`401 Unauthorized\`.
-        `
-    })
-    @ApiResponse({ status: 200, description: 'Successful operation' })
-    @ApiResponse({ status: 400, description: 'Bad Request - Invalid parameters/body' })
-    @ApiResponse({ status: 401, description: 'Unauthorized - Missing or invalid token' })
-    @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
-    @Patch('api-rate-limit')
+        `,
+  })
+  @ApiResponse({ status: 200, description: 'Successful operation' })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request - Invalid parameters/body',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - Missing or invalid token',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Insufficient permissions',
+  })
+  @Patch('api-rate-limit')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('Admin')
   async updateApiRateLimit(
@@ -410,8 +489,10 @@ Content-Type: application/json
     @CurrentUser() actor: { userId: string; username?: string },
     @Req() req: any,
   ) {
-    const previous = await this.settingsService.getSettings() as any;
-    const result = await this.settingsService.updateSettings({ apiRateLimit: value });
+    const previous = (await this.settingsService.getSettings()) as any;
+    const result = await this.settingsService.updateSettings({
+      apiRateLimit: value,
+    });
 
     if (previous?.apiRateLimit !== value) {
       await this.auditLogService.create({
@@ -433,9 +514,9 @@ Content-Type: application/json
   }
 
   // PATCH /settings/code-execution-limit → Update code execution limit (admin only)
-          @ApiOperation({
-        summary: 'Patch_code_execution_limit_8 operation',
-        description: `
+  @ApiOperation({
+    summary: 'Patch_code_execution_limit_8 operation',
+    description: `
 ### Required Permissions
 - Public or authenticated User
 
@@ -457,13 +538,22 @@ Content-Type: application/json
 - **Valid Test Case**: Call \`PATCH /api/code-execution-limit\` with valid data -> Returns \`200 OK\` or \`201 Created\`.
 - **Invalid Test Case**: Call with malformed data or missing fields -> Returns \`400 Bad Request\`.
 - **Authentication Test Case**: Call without token (if protected) -> Returns \`401 Unauthorized\`.
-        `
-    })
-    @ApiResponse({ status: 200, description: 'Successful operation' })
-    @ApiResponse({ status: 400, description: 'Bad Request - Invalid parameters/body' })
-    @ApiResponse({ status: 401, description: 'Unauthorized - Missing or invalid token' })
-    @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
-    @Patch('code-execution-limit')
+        `,
+  })
+  @ApiResponse({ status: 200, description: 'Successful operation' })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request - Invalid parameters/body',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - Missing or invalid token',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Insufficient permissions',
+  })
+  @Patch('code-execution-limit')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('Admin')
   async updateCodeExecutionLimit(
@@ -471,8 +561,10 @@ Content-Type: application/json
     @CurrentUser() actor: { userId: string; username?: string },
     @Req() req: any,
   ) {
-    const previous = await this.settingsService.getSettings() as any;
-    const result = await this.settingsService.updateSettings({ codeExecutionLimit: value });
+    const previous = (await this.settingsService.getSettings()) as any;
+    const result = await this.settingsService.updateSettings({
+      codeExecutionLimit: value,
+    });
 
     if (previous?.codeExecutionLimit !== value) {
       await this.auditLogService.create({
@@ -521,12 +613,21 @@ Content-Type: application/json
 - **Valid Test Case**: Call \`PATCH /api/settings/disable-speed-challenges\` with valid data -> Returns \`200 OK\`.
 - **Invalid Test Case**: Call with malformed data -> Returns \`400 Bad Request\`.
 - **Authentication Test Case**: Call without token -> Returns \`401 Unauthorized\`.
-    `
+    `,
   })
   @ApiResponse({ status: 200, description: 'Successful operation' })
-  @ApiResponse({ status: 400, description: 'Bad Request - Invalid parameters/body' })
-  @ApiResponse({ status: 401, description: 'Unauthorized - Missing or invalid token' })
-  @ApiResponse({ status: 403, description: 'Forbidden - Insufficient permissions' })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request - Invalid parameters/body',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized - Missing or invalid token',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden - Insufficient permissions',
+  })
   @Patch('disable-speed-challenges')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('Admin')
@@ -535,8 +636,10 @@ Content-Type: application/json
     @CurrentUser() actor: { userId: string; username?: string },
     @Req() req: any,
   ) {
-    const previous = await this.settingsService.getSettings() as any;
-    const result = await this.settingsService.updateSettings({ disableSpeedChallenges: value });
+    const previous = (await this.settingsService.getSettings()) as any;
+    const result = await this.settingsService.updateSettings({
+      disableSpeedChallenges: value,
+    });
 
     if (previous?.disableSpeedChallenges !== value) {
       await this.auditLogService.create({
@@ -546,7 +649,9 @@ Content-Type: application/json
         entityType: 'system',
         targetId: 'settings',
         targetLabel: 'Speed Challenges',
-        previousState: { disableSpeedChallenges: previous?.disableSpeedChallenges },
+        previousState: {
+          disableSpeedChallenges: previous?.disableSpeedChallenges,
+        },
         newState: { disableSpeedChallenges: value },
         description: `Admin "${actor?.username || 'System'}" ${value ? 'disabled' : 'enabled'} Speed Challenges`,
         status: 'active',

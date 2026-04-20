@@ -1,110 +1,125 @@
 import { Schema } from 'mongoose';
 
 export const AuditLogSchema = new Schema(
-    {
-        // What happened
-        actionType: {
-            type: String,
-            required: true,
-            enum: [
-                // User events
-                'USER_REGISTERED',
-                'USER_BANNED',
-                'USER_UNBANNED',
-                'USER_DELETED',
-                'USER_DISABLED',
-                'USER_REACTIVATED',
-                'USER_ROLE_CHANGED',
-                'PASSWORD_RESET',
-                // Admin events
-                'ADMIN_ADDED',
-                'ADMIN_REMOVED',
-                'ADMIN_ROLE_UPDATED',
-                'PERMISSION_CHANGED',
-                // Challenge events
-                'CHALLENGE_CREATED',
-                'CHALLENGE_PUBLISHED',
-                'CHALLENGE_UNPUBLISHED',
-                'CHALLENGE_EDITED',
-                'CHALLENGE_DELETED',
-                'CHALLENGE_STARTED',
-                'CHALLENGE_SUBMITTED',
-                'CHALLENGE_SOLVED',
-                'DIFFICULTY_CHANGED',
-                'TAGS_UPDATED',
-                // System events
-                'SYSTEM_CONFIG_UPDATED',
-                'SETTINGS_UPDATED',
-                'FEATURE_FLAG_CHANGED',
-                'SECURITY_SETTINGS_CHANGED',
-                '2FA_ENFORCEMENT_UPDATED',
-                // Audit meta-events
-                'ACTION_CONFIRMED',
-                'ACTION_ROLLED_BACK',
-            ],
-            index: true,
-        },
-
-        // Who did it
-        actor: {
-            type: String,
-            required: true,
-            index: true,
-        },
-        actorId: {
-            type: String,
-            default: null,
-        },
-
-        // What was affected
-        entityType: {
-            type: String,
-            required: true,
-            enum: ['user', 'admin', 'challenge', 'system', 'audit'],
-            index: true,
-        },
-        targetId: {
-            type: String,
-            default: null,
-        },
-        targetLabel: {
-            type: String,
-            default: null,
-        },
-
-        // State tracking for rollback
-        previousState: {
-            type: Schema.Types.Mixed,
-            default: null,
-        },
-        newState: {
-            type: Schema.Types.Mixed,
-            default: null,
-        },
-
-        // Human-readable description
-        description: {
-            type: String,
-            required: true,
-        },
-
-        // Status lifecycle
-        status: {
-            type: String,
-            enum: ['active', 'confirmed', 'rolled_back', 'pending'],
-            default: 'active',
-            index: true,
-        },
-
-        // Optional metadata
-        metadata: {
-            type: Schema.Types.Mixed,
-            default: {},
-        },
+  {
+    // What happened
+    actionType: {
+      type: String,
+      required: true,
+      enum: [
+        // User events
+        'USER_REGISTERED',
+        'USER_BANNED',
+        'USER_UNBANNED',
+        'USER_DELETED',
+        'USER_DISABLED',
+        'USER_REACTIVATED',
+        'USER_ROLE_CHANGED',
+        'XP_UPDATED',
+        'RANK_PROMOTED',
+        'RANK_DEMOTED',
+        'PASSWORD_RESET',
+        // Admin events
+        'ADMIN_ADDED',
+        'ADMIN_REMOVED',
+        'ADMIN_ROLE_UPDATED',
+        'PERMISSION_CHANGED',
+        // Challenge events
+        'CHALLENGE_CREATED',
+        'CHALLENGE_PUBLISHED',
+        'CHALLENGE_UNPUBLISHED',
+        'CHALLENGE_EDITED',
+        'CHALLENGE_DELETED',
+        'CHALLENGE_STARTED',
+        'CHALLENGE_ABANDONED',
+        'CHALLENGE_SUBMITTED',
+        'CHALLENGE_SOLVED',
+        'DIFFICULTY_CHANGED',
+        'TAGS_UPDATED',
+        // Community events
+        'COMMUNITY_POST_CREATED',
+        'COMMUNITY_POST_UPDATED',
+        'COMMUNITY_POST_DELETED',
+        'COMMUNITY_POST_SOLVED_TOGGLED',
+        'COMMUNITY_POST_PINNED_TOGGLED',
+        'COMMUNITY_COMMENT_ADDED',
+        'COMMUNITY_COMMENT_UPDATED',
+        'COMMUNITY_COMMENT_DELETED',
+        'COMMUNITY_COMMENT_PINNED_TOGGLED',
+        'COMMUNITY_MEDIA_UPLOADED',
+        // System events
+        'SYSTEM_CONFIG_UPDATED',
+        'SETTINGS_UPDATED',
+        'FEATURE_FLAG_CHANGED',
+        'SECURITY_SETTINGS_CHANGED',
+        '2FA_ENFORCEMENT_UPDATED',
+        // Audit meta-events
+        'ACTION_CONFIRMED',
+        'ACTION_ROLLED_BACK',
+      ],
+      index: true,
     },
-    {
-        timestamps: true,
+
+    // Who did it
+    actor: {
+      type: String,
+      required: true,
+      index: true,
     },
+    actorId: {
+      type: String,
+      default: null,
+    },
+
+    // What was affected
+    entityType: {
+      type: String,
+      required: true,
+      enum: ['user', 'admin', 'challenge', 'community', 'system', 'audit'],
+      index: true,
+    },
+    targetId: {
+      type: String,
+      default: null,
+    },
+    targetLabel: {
+      type: String,
+      default: null,
+    },
+
+    // State tracking for rollback
+    previousState: {
+      type: Schema.Types.Mixed,
+      default: null,
+    },
+    newState: {
+      type: Schema.Types.Mixed,
+      default: null,
+    },
+
+    // Human-readable description
+    description: {
+      type: String,
+      required: true,
+    },
+
+    // Status lifecycle
+    status: {
+      type: String,
+      enum: ['active', 'confirmed', 'rolled_back', 'pending'],
+      default: 'active',
+      index: true,
+    },
+
+    // Optional metadata
+    metadata: {
+      type: Schema.Types.Mixed,
+      default: {},
+    },
+  },
+  {
+    timestamps: true,
+  },
 );
 
 // Compound index for efficient querying

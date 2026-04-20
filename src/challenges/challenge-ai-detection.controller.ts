@@ -12,7 +12,10 @@ export class ChallengeAiDetectionController {
       throw new Error('`code` is required');
     }
 
-    const result = await this.aiService.analyzeSubmission(body.code, body.reference);
+    const result = await this.aiService.analyzeSubmission(
+      body.code,
+      body.reference,
+    );
     return { success: true, data: result };
   }
 }

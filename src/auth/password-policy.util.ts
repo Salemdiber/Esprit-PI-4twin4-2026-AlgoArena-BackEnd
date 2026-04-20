@@ -36,7 +36,9 @@ function collectSensitiveTokens(username: string, email: string): string[] {
     candidateTokens.add(part);
   }
 
-  return [...candidateTokens].filter((token) => token.length >= MIN_TOKEN_LENGTH);
+  return [...candidateTokens].filter(
+    (token) => token.length >= MIN_TOKEN_LENGTH,
+  );
 }
 
 export function passwordContainsIdentityData(
@@ -51,6 +53,7 @@ export function passwordContainsIdentityData(
   return sensitiveTokens.some(
     (token) =>
       normalizedPassword.includes(token) ||
-      (passwordAlphaNumeric.includes(toAlphaNumeric(token)) && toAlphaNumeric(token).length >= MIN_TOKEN_LENGTH),
+      (passwordAlphaNumeric.includes(toAlphaNumeric(token)) &&
+        toAlphaNumeric(token).length >= MIN_TOKEN_LENGTH),
   );
 }

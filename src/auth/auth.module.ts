@@ -28,8 +28,18 @@ import { AiModule } from '../ai/ai.module';
     CacheModule,
     AiModule,
   ],
-  providers: [AuthService, JwtStrategy, GoogleStrategy, GithubStrategy, RolesGuard, SpeedChallengeGuard, RecaptchaService, EmailService, EmailDeliverabilityService],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    GoogleStrategy,
+    GithubStrategy,
+    RolesGuard,
+    SpeedChallengeGuard,
+    RecaptchaService,
+    EmailService,
+    EmailDeliverabilityService,
+  ],
   controllers: [AuthController],
   exports: [AuthService],
 })
-export class AuthModule { }
+export class AuthModule {}

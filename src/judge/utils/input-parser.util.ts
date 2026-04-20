@@ -205,10 +205,13 @@ function findTopLevelEquals(source: string): number {
 }
 
 function convertSingleQuotedStrings(input: string): string {
-  return input.replace(/'([^'\\]*(?:\\.[^'\\]*)*)'/g, (_match, content: string) => {
-    const escaped = content.replace(/"/g, '\\"');
-    return `"${escaped}"`;
-  });
+  return input.replace(
+    /'([^'\\]*(?:\\.[^'\\]*)*)'/g,
+    (_match, content: string) => {
+      const escaped = content.replace(/"/g, '\\"');
+      return `"${escaped}"`;
+    },
+  );
 }
 
 function normalizeJsonLike(input: string): string {
@@ -233,7 +236,10 @@ function parsePrimitive(input: string): unknown {
     if (parts.length > 0) return parts;
   }
 
-  if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+  if (
+    (value.startsWith('"') && value.endsWith('"')) ||
+    (value.startsWith("'") && value.endsWith("'"))
+  ) {
     return value.slice(1, -1);
   }
 
@@ -273,7 +279,9 @@ export function parseStructuredValue(raw: unknown): unknown {
   if (value.startsWith('(') && value.endsWith(')')) {
     const tupleBody = value.slice(1, -1).trim();
     if (!tupleBody) return [];
-    return splitTopLevelByComma(tupleBody).map((part) => parseStructuredValue(part));
+    return splitTopLevelByComma(tupleBody).map((part) =>
+      parseStructuredValue(part),
+    );
   }
 
   return parsePrimitive(value);
@@ -306,7 +314,10 @@ export function parseInputArguments(rawInput: unknown): unknown[] {
     // Multiple comma-separated segments found – parse each one
     return commaSegments.map((segment) => {
       const equalsIndex = findTopLevelEquals(segment);
-      const valuePortion = equalsIndex >= 0 ? segment.slice(equalsIndex + 1).trim() : segment.trim();
+      const valuePortion =
+        equalsIndex >= 0
+          ? segment.slice(equalsIndex + 1).trim()
+          : segment.trim();
       return parseStructuredValue(valuePortion);
     });
   }
@@ -317,7 +328,10 @@ export function parseInputArguments(rawInput: unknown): unknown[] {
 
   // Strip "name = " prefix if present (e.g., "s = \"babad\"")
   const equalsIndex = findTopLevelEquals(singleSegment);
-  const valueOnly = equalsIndex >= 0 ? singleSegment.slice(equalsIndex + 1).trim() : singleSegment.trim();
+  const valueOnly =
+    equalsIndex >= 0
+      ? singleSegment.slice(equalsIndex + 1).trim()
+      : singleSegment.trim();
 
   // Try splitting by top-level spaces
   const spaceTokens = splitTopLevelBySpace(valueOnly);

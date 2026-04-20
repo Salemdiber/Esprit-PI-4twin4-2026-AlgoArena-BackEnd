@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { I18nContext, I18nService } from 'nestjs-i18n';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { CreateBattleDto } from './dto/create-battle.dto';
@@ -10,7 +11,13 @@ import { BattleStatus } from './battle.enums';
 export class BattlesService {
   constructor(
     @InjectModel(Battle.name) private readonly model: Model<BattleDocument>,
+    private readonly i18n: I18nService,
   ) {}
+
+  private tr(key: string, args?: Record<string, unknown>): string {
+    const lang = I18nContext.current()?.lang ?? 'en';
+    return this.i18n.translate(key, { lang, args });
+  }
 
   private async generateIdBattle(): Promise<string> {
     let base = (await this.model.countDocuments().exec()) + 1;
@@ -47,13 +54,15 @@ export class BattlesService {
 
   async findOne(id: string): Promise<Battle> {
     const found = await this.model.findById(id).exec();
-    if (!found) throw new NotFoundException(`Battle with id ${id} not found`);
+    if (!found)
+      throw new NotFoundException(this.tr('battles.notFoundById', { id }));
     return found;
   }
 
   async update(id: string, dto: UpdateBattleDto): Promise<Battle> {
     const existing = await this.model.findById(id).exec();
-    if (!existing) throw new NotFoundException(`Battle with id ${id} not found`);
+    if (!existing)
+      throw new NotFoundException(this.tr('battles.notFoundById', { id }));
 
     const nextStatus = dto.battleStatus || existing.battleStatus;
     const updatePayload: any = { ...dto };
@@ -62,13 +71,17 @@ export class BattlesService {
       updatePayload.winnerUserId = null;
     }
 
-    const updated = await this.model.findByIdAndUpdate(id, updatePayload, { new: true }).exec();
-    if (!updated) throw new NotFoundException(`Battle with id ${id} not found`);
+    const updated = await this.model
+      .findByIdAndUpdate(id, updatePayload, { new: true })
+      .exec();
+    if (!updated)
+      throw new NotFoundException(this.tr('battles.notFoundById', { id }));
     return updated;
   }
 
   async remove(id: string): Promise<void> {
     const deleted = await this.model.findByIdAndDelete(id).exec();
-    if (!deleted) throw new NotFoundException(`Battle with id ${id} not found`);
+    if (!deleted)
+      throw new NotFoundException(this.tr('battles.notFoundById', { id }));
   }
 }

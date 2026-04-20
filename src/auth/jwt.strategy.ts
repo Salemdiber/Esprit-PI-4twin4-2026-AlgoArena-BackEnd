@@ -21,6 +21,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         // Streak syncing must never block authentication
       }
     }
-    return { userId: payload.sub, username: payload.username, role: payload.role };
+    return {
+      userId: payload.sub,
+      username: payload.username,
+      role: payload.role,
+    };
   }
 }

@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { I18nContext, I18nService } from 'nestjs-i18n';
 import { ConfigService } from '@nestjs/config';
 import { SettingsService } from '../settings/settings.service';
 import { CacheService } from '../cache/cache.service';
@@ -22,11 +23,11 @@ export interface ProblemScore {
   difficulty: string;
   exactitude: number; // 0-100
   complexity: number; // 0-100 (time efficiency)
-  space: number;      // 0-100 (space/memory efficiency)
+  space: number; // 0-100 (space/memory efficiency)
   timeComplexity?: string; // e.g. "O(n)", optional
   complexite?: string; // french label alias for timeComplexity
-  style: number;      // 0-100
-  composite: number;  // 0-100 weighted
+  style: number; // 0-100
+  composite: number; // 0-100 weighted
   notes: string;
 }
 
@@ -38,27 +39,59 @@ export interface ClassificationResult {
   xp: number;
   totalScore: number;
   breakdown: ProblemScore[];
-  aiScores: { exactitude: number; complexity: number; space: number; style: number };
+  aiScores: {
+    exactitude: number;
+    complexity: number;
+    space: number;
+    style: number;
+  };
   message: string;
 }
 
 // ─── Rank tiers (highest first) ───────────────────────────────────────────────
 
 const RANK_TIERS = [
-  { min: 85, rank: 'DIAMOND', label: 'Diamond', color: '#a855f7', gradient: ['#a855f7', '#7c3aed'] as [string, string], xp: 500 },
-  { min: 70, rank: 'PLATINUM', label: 'Platinum', color: '#22d3ee', gradient: ['#22d3ee', '#06b6d4'] as [string, string], xp: 380 },
-  { min: 55, rank: 'GOLD', label: 'Gold', color: '#facc15', gradient: ['#facc15', '#f59e0b'] as [string, string], xp: 250 },
-  { min: 35, rank: 'SILVER', label: 'Silver', color: '#c0c0c0', gradient: ['#c0c0c0', '#a8a8a8'] as [string, string], xp: 120 },
-  { min: 0, rank: 'BRONZE', label: 'Bronze', color: '#cd7f32', gradient: ['#cd7f32', '#a0522d'] as [string, string], xp: 0 },
+  {
+    min: 85,
+    rank: 'DIAMOND',
+    label: 'Diamond',
+    color: '#a855f7',
+    gradient: ['#a855f7', '#7c3aed'] as [string, string],
+    xp: 500,
+  },
+  {
+    min: 70,
+    rank: 'PLATINUM',
+    label: 'Platinum',
+    color: '#22d3ee',
+    gradient: ['#22d3ee', '#06b6d4'] as [string, string],
+    xp: 380,
+  },
+  {
+    min: 55,
+    rank: 'GOLD',
+    label: 'Gold',
+    color: '#facc15',
+    gradient: ['#facc15', '#f59e0b'] as [string, string],
+    xp: 250,
+  },
+  {
+    min: 35,
+    rank: 'SILVER',
+    label: 'Silver',
+    color: '#c0c0c0',
+    gradient: ['#c0c0c0', '#a8a8a8'] as [string, string],
+    xp: 120,
+  },
+  {
+    min: 0,
+    rank: 'BRONZE',
+    label: 'Bronze',
+    color: '#cd7f32',
+    gradient: ['#cd7f32', '#a0522d'] as [string, string],
+    xp: 0,
+  },
 ];
-
-const RANK_MESSAGES: Record<string, string> = {
-  DIAMOND: 'Exceptional! Your code correctness, efficiency and style are top-tier.',
-  PLATINUM: 'Outstanding! Clean, efficient solutions delivered at pace.',
-  GOLD: 'Solid work! Good correctness with room to further optimise.',
-  SILVER: 'Good effort — keep sharpening your problem-solving instincts.',
-  BRONZE: 'Every expert started somewhere — keep coding every day!',
-};
 
 // Starter code snippets to detect empty submissions
 const STARTER_TOKENS = [
@@ -82,6 +115,7 @@ export class OnboardingService {
     private readonly settingsService: SettingsService,
     private readonly configService: ConfigService,
     private readonly cacheService: CacheService,
+    private readonly i18n: I18nService,
     private readonly aiAnalysisService: AIAnalysisService,
   ) {
     if (!this.groqApiKey) {
@@ -89,7 +123,20 @@ export class OnboardingService {
     }
   }
 
-  async generateSpeedChallengeHint(title: string, description: string, hintLevel = 1): Promise<string> {
+  private tr(key: string, args?: Record<string, unknown>): string {
+    const lang = I18nContext.current()?.lang ?? 'en';
+    return this.i18n.translate(key, { lang, args });
+  }
+
+  private rankMessage(rank: string): string {
+    return this.tr(`onboarding.rankMessages.${rank}`);
+  }
+
+  async generateSpeedChallengeHint(
+    title: string,
+    description: string,
+    hintLevel = 1,
+  ): Promise<string> {
     return this.aiAnalysisService.generateHint(title, description, hintLevel);
   }
 
@@ -100,11 +147,13 @@ export class OnboardingService {
     totalSeconds: number,
   ): Promise<ClassificationResult> {
     // Check if AI classification is enabled in platform settings
-    const settings = await this.settingsService.getSettings() as any;
+    const settings = (await this.settingsService.getSettings()) as any;
     const aiEnabled = settings?.ollamaEnabled !== false; // default true (backward compat: ollamaEnabled controls AI)
 
     if (!aiEnabled || !this.groqApiKey) {
-      this.logger.log('AI classification disabled or Groq API not configured — using rule-based placement');
+      this.logger.log(
+        'AI classification disabled or Groq API not configured — using rule-based placement',
+      );
       return this.ruleBased(solutions, totalSeconds);
     }
 
@@ -123,10 +172,18 @@ export class OnboardingService {
     let avgStyle = 0;
 
     if (solvedBreakdown.length > 0) {
-      avgExactitude = solvedBreakdown.reduce((s, b) => s + b.exactitude, 0) / solvedBreakdown.length;
-      avgComplexity = solvedBreakdown.reduce((s, b) => s + b.complexity, 0) / solvedBreakdown.length;
-      avgSpace = solvedBreakdown.reduce((s, b) => s + (b.space ?? 50), 0) / solvedBreakdown.length;
-      avgStyle = solvedBreakdown.reduce((s, b) => s + b.style, 0) / solvedBreakdown.length;
+      avgExactitude =
+        solvedBreakdown.reduce((s, b) => s + b.exactitude, 0) /
+        solvedBreakdown.length;
+      avgComplexity =
+        solvedBreakdown.reduce((s, b) => s + b.complexity, 0) /
+        solvedBreakdown.length;
+      avgSpace =
+        solvedBreakdown.reduce((s, b) => s + (b.space ?? 50), 0) /
+        solvedBreakdown.length;
+      avgStyle =
+        solvedBreakdown.reduce((s, b) => s + b.style, 0) /
+        solvedBreakdown.length;
     }
 
     // Time bonus: 0-10 extra points — faster is better (max 15 min)
@@ -134,13 +191,12 @@ export class OnboardingService {
     const timeBonus = Math.max(0, Math.round(10 * (1 - minutesUsed / 15)));
 
     const totalScore = Math.round(
-      avgExactitude * 0.40 +
-      avgComplexity * 0.30 +
-      avgStyle * 0.20 +
-      timeBonus,  // up to 10% bonus
+      avgExactitude * 0.4 + avgComplexity * 0.3 + avgStyle * 0.2 + timeBonus, // up to 10% bonus
     );
 
-    const tier = RANK_TIERS.find((t) => totalScore >= t.min) ?? RANK_TIERS[RANK_TIERS.length - 1];
+    const tier =
+      RANK_TIERS.find((t) => totalScore >= t.min) ??
+      RANK_TIERS[RANK_TIERS.length - 1];
 
     return {
       rank: tier.rank,
@@ -156,13 +212,16 @@ export class OnboardingService {
         space: Math.round(avgSpace),
         style: Math.round(avgStyle),
       },
-      message: RANK_MESSAGES[tier.rank],
+      message: this.rankMessage(tier.rank),
     };
   }
 
   // ── Rule-based fallback (no AI) ───────────────────────────────────────────
 
-  private ruleBased(solutions: SolutionInput[], totalSeconds: number): ClassificationResult {
+  private ruleBased(
+    solutions: SolutionInput[],
+    totalSeconds: number,
+  ): ClassificationResult {
     const solvedIds = solutions.filter((s) => s.solved).map((s) => s.problemId);
     const solved = solvedIds.length;
     const minutesUsed = totalSeconds / 60;
@@ -171,10 +230,17 @@ export class OnboardingService {
     if (solved === 0) tierName = 'BRONZE';
     else if (solved === 1) tierName = minutesUsed <= 5 ? 'SILVER' : 'BRONZE';
     else if (solved === 2) tierName = minutesUsed <= 8 ? 'GOLD' : 'SILVER';
-    else tierName = minutesUsed <= 7 ? 'DIAMOND' : minutesUsed <= 11 ? 'PLATINUM' : 'GOLD';
+    else
+      tierName =
+        minutesUsed <= 7 ? 'DIAMOND' : minutesUsed <= 11 ? 'PLATINUM' : 'GOLD';
 
-    const tier = RANK_TIERS.find((t) => t.rank === tierName) ?? RANK_TIERS[RANK_TIERS.length - 1];
-    const baseScore = { DIAMOND: 90, PLATINUM: 75, GOLD: 60, SILVER: 40, BRONZE: 20 }[tierName] ?? 20;
+    const tier =
+      RANK_TIERS.find((t) => t.rank === tierName) ??
+      RANK_TIERS[RANK_TIERS.length - 1];
+    const baseScore =
+      { DIAMOND: 90, PLATINUM: 75, GOLD: 60, SILVER: 40, BRONZE: 20 }[
+        tierName
+      ] ?? 20;
 
     const breakdown: ProblemScore[] = solutions.map((s) => ({
       problemId: s.problemId,
@@ -187,7 +253,9 @@ export class OnboardingService {
       complexite: 'O(?)',
       style: s.solved ? 50 : 0,
       composite: s.solved ? baseScore : 0,
-      notes: s.solved ? 'Rule-based estimate (AI classification disabled).' : 'Not solved.',
+      notes: s.solved
+        ? this.tr('onboarding.ruleBasedNotesSolved')
+        : this.tr('onboarding.ruleBasedNotesNotSolved'),
     }));
 
     return {
@@ -199,7 +267,8 @@ export class OnboardingService {
       totalScore: baseScore,
       breakdown,
       aiScores: { exactitude: baseScore, complexity: 50, space: 50, style: 50 },
-      message: RANK_MESSAGES[tier.rank] + ' (AI classification disabled)',
+      message:
+        this.rankMessage(tier.rank) + this.tr('onboarding.aiDisabledSuffix'),
     };
   }
 
@@ -212,7 +281,7 @@ export class OnboardingService {
       STARTER_TOKENS.some((t) => sol.code.toLowerCase().includes(t));
 
     if (!sol.solved || isEmpty) {
-      return this.zeroScore(sol, 'Problem not solved or no meaningful code submitted.');
+      return this.zeroScore(sol, this.tr('onboarding.notSolvedOrEmpty'));
     }
 
     try {
@@ -223,12 +292,30 @@ export class OnboardingService {
       const exactitude = this.clamp(Number(parsed.exactitude) || 50);
       const complexity = this.clamp(Number(parsed.complexity) || 50);
       // space may be provided as 'space' or 'memory' or similar keys
-      const rawSpace = Number(parsed.space ?? parsed.memory ?? (parsed as any).space_complexity ?? (parsed as any).spaceComplexity ?? NaN);
+      const rawSpace = Number(
+        parsed.space ??
+          parsed.memory ??
+          (parsed as any).space_complexity ??
+          (parsed as any).spaceComplexity ??
+          NaN,
+      );
       const space = Number.isFinite(rawSpace) ? this.clamp(rawSpace) : 50;
       const style = this.clamp(Number(parsed.style) || 50);
       // parse optional time complexity notation (strings like O(n), O(n log n), etc.)
-      const timeComplexity = String((parsed.complexityNotation ?? parsed.complexity_notation ?? parsed.timeComplexity ?? parsed.time_complexity ?? parsed.complexity_text ?? parsed.complexityStr ?? parsed.complexity) || '').trim() || 'O(?)';
-      const composite = Math.round(exactitude * 0.40 + complexity * 0.30 + style * 0.25 + space * 0.05);
+      const timeComplexity =
+        String(
+          (parsed.complexityNotation ??
+            parsed.complexity_notation ??
+            parsed.timeComplexity ??
+            parsed.time_complexity ??
+            parsed.complexity_text ??
+            parsed.complexityStr ??
+            parsed.complexity) ||
+            '',
+        ).trim() || 'O(?)';
+      const composite = Math.round(
+        exactitude * 0.4 + complexity * 0.3 + style * 0.25 + space * 0.05,
+      );
 
       return {
         problemId: sol.problemId,
@@ -244,9 +331,12 @@ export class OnboardingService {
         notes: String(parsed.notes ?? ''),
       };
     } catch (err) {
-      this.logger.warn(`AI scoring failed for "${sol.title}": ${(err as Error)?.message}`);
+      this.logger.warn(
+        `AI scoring failed for "${sol.title}": ${(err as Error)?.message}`,
+      );
       // Graceful fallback: difficulty-adjusted base score
-      const base = sol.difficulty === 'HARD' ? 70 : sol.difficulty === 'MEDIUM' ? 60 : 50;
+      const base =
+        sol.difficulty === 'HARD' ? 70 : sol.difficulty === 'MEDIUM' ? 60 : 50;
       return {
         problemId: sol.problemId,
         title: sol.title,
@@ -257,7 +347,7 @@ export class OnboardingService {
         timeComplexity: 'O(?)',
         complexite: 'O(?)',
         style: 50,
-        composite: Math.round(base * 0.40 + 50 * 0.30 + 50 * 0.25 + 50 * 0.05),
+        composite: Math.round(base * 0.4 + 50 * 0.3 + 50 * 0.25 + 50 * 0.05),
         notes: 'AI analysis unavailable — baseline estimate applied.',
       };
     }
@@ -297,7 +387,10 @@ END_JSON_RESPONSE`;
 
     // Cache key derived from prompt
     try {
-      const promptHash = crypto.createHash('sha256').update(prompt).digest('hex');
+      const promptHash = crypto
+        .createHash('sha256')
+        .update(prompt)
+        .digest('hex');
       const cacheKey = `groq:${promptHash}`;
       const cached = await this.cacheService.get(cacheKey);
       if (cached) {
@@ -313,7 +406,7 @@ END_JSON_RESPONSE`;
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.groqApiKey}`,
+        Authorization: `Bearer ${this.groqApiKey}`,
       },
       body: JSON.stringify({
         model: this.groqModel,
@@ -333,12 +426,17 @@ END_JSON_RESPONSE`;
       throw new Error(`Groq API ${res.status}: ${error}`);
     }
 
-    const data = await res.json() as { choices: Array<{ message: { content: string } }> };
+    const data = (await res.json()) as {
+      choices: Array<{ message: { content: string } }>;
+    };
     const content = data.choices[0]?.message?.content ?? '';
 
     // Save to cache (3 days)
     try {
-      const promptHash = crypto.createHash('sha256').update(prompt).digest('hex');
+      const promptHash = crypto
+        .createHash('sha256')
+        .update(prompt)
+        .digest('hex');
       const cacheKey = `groq:${promptHash}`;
       await this.cacheService.set(cacheKey, content, 60 * 60 * 24 * 3);
     } catch (e) {
@@ -351,18 +449,19 @@ END_JSON_RESPONSE`;
     // First, try to extract content between delimiters
     const delimiterStart = 'START_JSON_RESPONSE';
     const delimiterEnd = 'END_JSON_RESPONSE';
-    
+
     let jsonStr: string | null = null;
     const startIdx = raw.indexOf(delimiterStart);
     const endIdx = raw.indexOf(delimiterEnd);
-    
+
     if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
       // Extract between delimiters
       jsonStr = raw.substring(startIdx + delimiterStart.length, endIdx).trim();
     } else {
       // Fallback: find JSON object with brace matching, but validate structure
       const braceStart = raw.indexOf('{');
-      if (braceStart === -1) throw new Error('No JSON object found in AI response');
+      if (braceStart === -1)
+        throw new Error('No JSON object found in AI response');
 
       let braceCount = 0;
       let braceEnd = -1;
@@ -375,23 +474,31 @@ END_JSON_RESPONSE`;
         }
       }
 
-      if (braceEnd === -1) throw new Error('Malformed JSON in AI response: unmatched braces');
+      if (braceEnd === -1)
+        throw new Error('Malformed JSON in AI response: unmatched braces');
       jsonStr = raw.substring(braceStart, braceEnd + 1);
     }
 
-    if (!jsonStr.trim()) throw new Error('No JSON content found in AI response');
+    if (!jsonStr.trim())
+      throw new Error('No JSON content found in AI response');
 
     try {
       const parsed = JSON.parse(jsonStr);
-      
+
       // Validate that the JSON has expected fields
       if (typeof parsed !== 'object' || parsed === null) {
         throw new Error('Expected JSON object');
       }
-      if (!('exactitude' in parsed) || !('complexity' in parsed) || !('style' in parsed)) {
-        throw new Error('Missing required fields: exactitude, complexity, style');
+      if (
+        !('exactitude' in parsed) ||
+        !('complexity' in parsed) ||
+        !('style' in parsed)
+      ) {
+        throw new Error(
+          'Missing required fields: exactitude, complexity, style',
+        );
       }
-      
+
       return parsed;
     } catch (e) {
       this.logger.error(`Failed to parse JSON: ${jsonStr}`);
@@ -406,6 +513,18 @@ END_JSON_RESPONSE`;
   }
 
   private zeroScore(sol: SolutionInput, notes: string): ProblemScore {
-    return { problemId: sol.problemId, title: sol.title, difficulty: sol.difficulty, exactitude: 0, complexity: 0, space: 0, timeComplexity: 'O(?)', complexite: 'O(?)', style: 0, composite: 0, notes };
+    return {
+      problemId: sol.problemId,
+      title: sol.title,
+      difficulty: sol.difficulty,
+      exactitude: 0,
+      complexity: 0,
+      space: 0,
+      timeComplexity: 'O(?)',
+      complexite: 'O(?)',
+      style: 0,
+      composite: 0,
+      notes,
+    };
   }
 }

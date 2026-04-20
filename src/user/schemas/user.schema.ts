@@ -20,7 +20,19 @@ export const UserSchema = new Schema(
     // ── Speed Challenge Placement ──────────────────────────────────
     rank: {
       type: String,
-      enum: ['BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND', 'RUBY', 'EMERALD', 'SAPPHIRE', 'OBSIDIAN', 'ALGOARENA CHAMPION', null],
+      enum: [
+        'BRONZE',
+        'SILVER',
+        'GOLD',
+        'PLATINUM',
+        'DIAMOND',
+        'RUBY',
+        'EMERALD',
+        'SAPPHIRE',
+        'OBSIDIAN',
+        'ALGOARENA CHAMPION',
+        null,
+      ],
       default: null,
     },
     xp: { type: Number, default: 0 },
@@ -31,13 +43,18 @@ export const UserSchema = new Schema(
     lastLoginDate: { type: Date, default: null },
     streakUpdatedAt: { type: Date, default: null },
     loginActivityDates: { type: [String], default: [] },
+    speedChallengeCompleted: { type: Boolean, default: false },
     // Generated placement problems (stored at registration)
     placementProblems: { type: Array, default: [] },
     challengeProgress: {
       type: [
         {
           challengeId: { type: String, required: true },
-          status: { type: String, enum: ['UNSOLVED', 'ATTEMPTED', 'SOLVED'], default: 'UNSOLVED' },
+          status: {
+            type: String,
+            enum: ['UNSOLVED', 'ATTEMPTED', 'SOLVED'],
+            default: 'UNSOLVED',
+          },
           failedAttempts: { type: Number, default: 0 },
           solveTimeSeconds: { type: Number, default: null },
           xpAwarded: { type: Number, default: 0 },
@@ -62,7 +79,11 @@ export const UserSchema = new Schema(
           leftAt: { type: Date, default: null },
           gracePeriodExpiresAt: { type: Date, default: null },
           returnedAt: { type: Date, default: null },
-          abandonmentReason: { type: String, enum: ['left_page', 'timeout', 'tab_closed', null], default: null },
+          abandonmentReason: {
+            type: String,
+            enum: ['left_page', 'timeout', 'tab_closed', null],
+            default: null,
+          },
           incompleteAttemptCount: { type: Number, default: 0 },
           submissions: {
             type: [
@@ -79,7 +100,11 @@ export const UserSchema = new Schema(
                 loadTime: { type: String, default: null },
                 timeComplexity: { type: String, default: 'Unknown' },
                 spaceComplexity: { type: String, default: 'Unknown' },
-                aiDetection: { type: String, enum: ['MANUAL', 'AI_SUSPECTED'], default: 'MANUAL' },
+                aiDetection: {
+                  type: String,
+                  enum: ['MANUAL', 'AI_SUSPECTED'],
+                  default: 'MANUAL',
+                },
                 recommendations: { type: [String], default: [] },
                 aiAnalysis: { type: String, default: null },
                 results: { type: Array, default: [] },
@@ -96,8 +121,6 @@ export const UserSchema = new Schema(
       ],
       default: [],
     },
-
   },
   { timestamps: true },
 );
-

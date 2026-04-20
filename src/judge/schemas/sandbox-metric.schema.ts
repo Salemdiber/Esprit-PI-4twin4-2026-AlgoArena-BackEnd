@@ -5,7 +5,12 @@ export const SandboxMetricSchema = new Schema(
     containerName: { type: String, required: true, index: true },
     containerId: { type: String, default: null },
     image: { type: String, default: null },
-    status: { type: String, enum: ['success', 'failed'], required: true, index: true },
+    status: {
+      type: String,
+      enum: ['success', 'failed'],
+      required: true,
+      index: true,
+    },
     startedAt: { type: Date, default: null, index: true },
     stoppedAt: { type: Date, default: null },
     durationMs: { type: Number, default: 0 },

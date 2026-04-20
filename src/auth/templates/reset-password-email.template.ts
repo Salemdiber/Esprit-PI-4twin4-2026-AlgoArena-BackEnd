@@ -1,4 +1,8 @@
-export function resetPasswordEmailTemplate(resetLink: string, year?: number, confirmationCode?: string) {
+export function resetPasswordEmailTemplate(
+  resetLink: string,
+  year?: number,
+  confirmationCode?: string,
+) {
   const currentYear = year ?? new Date().getFullYear();
   return `
     <div style="margin: 0; padding: 0; background-color: #0d1117; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding-top: 40px; padding-bottom: 40px;">

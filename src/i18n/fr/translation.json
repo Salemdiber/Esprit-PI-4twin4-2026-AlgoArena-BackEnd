@@ -1,0 +1,127 @@
+{
+  "maintenance": {
+    "serviceUnavailable": "Le service est en maintenance. Veuillez réessayer plus tard."
+  },
+  "emailValidation": {
+    "ok": "Adresse e-mail valide",
+    "invalid_format": "Format d’e-mail invalide",
+    "fake_pattern": "Format d’e-mail invalide",
+    "disposable": "Les adresses jetables ne sont pas autorisées",
+    "no_mx": "Le domaine de l’e-mail ne peut pas recevoir de messages"
+  },
+  "auth": {
+    "registrationDisabled": "Les inscriptions sont désactivées",
+    "recaptchaRequired": "Le jeton reCAPTCHA est requis",
+    "passwordContainsIdentity": "Pour des raisons de sécurité, le mot de passe ne peut pas contenir votre nom d’utilisateur ni votre e-mail",
+    "invalidConfirmationCode": "Code de confirmation invalide ou expiré",
+    "passwordsDoNotMatch": "Les mots de passe ne correspondent pas",
+    "invalidOrExpiredToken": "Jeton invalide ou expiré",
+    "confirmationNotVerified": "Code de confirmation non vérifié",
+    "resetIfExists": "Si cette adresse existe, un lien de réinitialisation a été envoyé",
+    "resetEmailSent": "E-mail de réinitialisation envoyé",
+    "codeVerified": "Code vérifié. Vous pouvez maintenant réinitialiser votre mot de passe.",
+    "passwordUpdated": "Mot de passe mis à jour avec succès",
+    "invalidRefreshToken": "Jeton d’actualisation invalide",
+    "usernameTaken": "Ce nom d’utilisateur est déjà pris",
+    "emailTaken": "Cette adresse e-mail est déjà utilisée",
+    "mustProvideUsernameOrEmail": "Indiquez un nom d’utilisateur ou une adresse e-mail",
+    "usernamePasswordRequired": "nom d’utilisateur et mot de passe requis",
+    "invalidCredentials": "Identifiants invalides",
+    "noRefreshToken": "Aucun jeton d’actualisation",
+    "emailRequired": "l’adresse e-mail est requise",
+    "missingEmailOrCode": "E-mail ou code manquant",
+    "missingRequiredFields": "Champs obligatoires manquants"
+  },
+  "user": {
+    "invalidId": "Identifiant utilisateur invalide",
+    "notFound": "Utilisateur introuvable",
+    "updateRequiresField": "Au moins un champ est requis : nom d’utilisateur, e-mail ou biographie",
+    "usernameTaken": "Ce nom d’utilisateur est déjà pris",
+    "emailInUse": "Cette adresse e-mail est déjà utilisée",
+    "passwordMismatch": "newPassword et confirmPassword ne correspondent pas",
+    "currentPasswordIncorrect": "Le mot de passe actuel est incorrect",
+    "invalidPassword": "Mot de passe invalide",
+    "avatarUpdated": "Avatar mis à jour avec succès",
+    "passwordUpdated": "Mot de passe mis à jour avec succès",
+    "accountDeleted": "Compte supprimé avec succès",
+    "speedChallengeCompleted": "Défi vitesse terminé",
+    "sessionSaved": "Session enregistrée",
+    "noOngoingSession": "Aucune session en cours",
+    "sessionCleared": "Session effacée"
+  },
+  "userController": {
+    "xpDeltaInvalid": "xpDelta doit être un nombre fini",
+    "avatarRequired": "Le fichier d’avatar est requis",
+    "failedCreateAdmin": "Échec de la création de l’administrateur",
+    "failedCreateUser": "Échec de la création de l’utilisateur"
+  },
+  "challenges": {
+    "duplicateDescriptionWarning": "Description potentiellement en double avec « {{title}} ».",
+    "titleExists": "Un défi intitulé « {{title}} » existe déjà. Choisissez un titre unique.",
+    "notFoundById": "Défi introuvable (id : {{id}})",
+    "publishedNotFound": "Défi publié introuvable (id : {{id}})",
+    "notFound": "Défi introuvable"
+  },
+  "battles": {
+    "notFoundById": "Bataille introuvable (id : {{id}})"
+  },
+  "battleAi": {
+    "battleIdRequired": "battleId est requis",
+    "missingChallengeId": "La bataille n’a pas de challengeId",
+    "challengeNotFound": "Défi introuvable",
+    "noTestCases": "Le défi n’a pas de cas de test"
+  },
+  "judge": {
+    "unsupportedLanguage": "Langage non pris en charge. Seuls « javascript » et « python » sont autorisés.",
+    "challengeNotFound": "Défi introuvable.",
+    "fieldsRequired": "Les champs challengeId, userCode et language sont obligatoires.",
+    "challengeIdRequired": "challengeId est requis.",
+    "alreadySolved": "Défi déjà résolu. Nouvelle soumission désactivée.",
+    "syntaxError": "Erreur de syntaxe détectée."
+  },
+  "codeExecutor": {
+    "codeRequired": "le code est requis",
+    "languageRequired": "le langage est requis"
+  },
+  "speedChallengeGuard": {
+    "authRequired": "Authentification requise",
+    "invalidTokenPayload": "Charge utile du jeton invalide",
+    "mustComplete": "Le défi vitesse doit être terminé"
+  },
+  "recaptcha": {
+    "tokenMissing": "Jeton reCAPTCHA manquant",
+    "secretNotConfigured": "Clé secrète reCAPTCHA non configurée",
+    "validationFailed": "Échec de la validation reCAPTCHA",
+    "scoreTooLow": "Score reCAPTCHA trop bas"
+  },
+  "auditLog": {
+    "notFound": "Journal d’audit introuvable"
+  },
+  "docker": {
+    "noResultForCase": "Aucun résultat d’exécution pour ce cas de test.",
+    "unavailable": "L’exécution dans le bac à sable Docker est indisponible. Démarrez Docker Desktop et réessayez.",
+    "noFunction": "Aucune fonction définie. Définissez une fonction appelable et réessayez.",
+    "timeout": "L’exécution a dépassé {{ms}} ms et a été interrompue.",
+    "unreadableResult": "L’exécution s’est terminée mais le résultat est illisible.",
+    "unexpectedFailure": "Échec d’exécution inattendu.",
+    "parseTestInput": "Impossible d’analyser l’entrée des cas de test du défi."
+  },
+  "onboarding": {
+    "rankMessages": {
+      "DIAMOND": "Exceptionnel ! Correction, efficacité et style au plus haut niveau.",
+      "PLATINUM": "Remarquable ! Des solutions propres et efficaces, livrées dans les temps.",
+      "GOLD": "Très bien ! Bonne correction, avec marge pour optimiser davantage.",
+      "SILVER": "Bon effort — continuez à affûter votre intuition algorithmique.",
+      "BRONZE": "Tout expert a commencé un jour — codez un peu chaque jour !"
+    },
+    "aiDisabledSuffix": " (classification IA désactivée)",
+    "ruleBasedNotesSolved": "Estimation par règles (classification IA désactivée).",
+    "ruleBasedNotesNotSolved": "Non résolu.",
+    "notSolvedOrEmpty": "Problème non résolu ou code insuffisant soumis."
+  },
+  "swagger": {
+    "unauthorizedDocs": "Non autorisé à consulter la documentation API",
+    "forbiddenDocs": "Interdit : accès réservé aux administrateurs / développeurs",
+    "invalidTokenDocs": "Jeton invalide pour l’accès à la documentation API"
+  }
+}

@@ -1,0 +1,127 @@
+{
+  "maintenance": {
+    "serviceUnavailable": "Service is under maintenance. Please try again later."
+  },
+  "emailValidation": {
+    "ok": "Email is valid",
+    "invalid_format": "Invalid email format",
+    "fake_pattern": "Invalid email format",
+    "disposable": "Disposable emails are not allowed",
+    "no_mx": "Email domain cannot receive emails"
+  },
+  "auth": {
+    "registrationDisabled": "Registration is disabled",
+    "recaptchaRequired": "reCAPTCHA token is required",
+    "passwordContainsIdentity": "Password cannot contain your username or email for security reasons",
+    "invalidConfirmationCode": "Invalid or expired confirmation code",
+    "passwordsDoNotMatch": "Passwords do not match",
+    "invalidOrExpiredToken": "Invalid or expired token",
+    "confirmationNotVerified": "Confirmation code not verified",
+    "resetIfExists": "If email exists, a reset link was sent",
+    "resetEmailSent": "Reset email sent",
+    "codeVerified": "Code verified. You may now reset your password.",
+    "passwordUpdated": "Password updated successfully",
+    "invalidRefreshToken": "Invalid refresh token",
+    "usernameTaken": "Username is already taken",
+    "emailTaken": "Email is already taken",
+    "mustProvideUsernameOrEmail": "Must provide username or email",
+    "usernamePasswordRequired": "username and password are required",
+    "invalidCredentials": "Invalid credentials",
+    "noRefreshToken": "No refresh token",
+    "emailRequired": "email is required",
+    "missingEmailOrCode": "Missing email or code",
+    "missingRequiredFields": "Missing required fields"
+  },
+  "user": {
+    "invalidId": "Invalid user id",
+    "notFound": "User not found",
+    "updateRequiresField": "At least one field is required: username, email, or bio",
+    "usernameTaken": "Username already taken",
+    "emailInUse": "Email already in use",
+    "passwordMismatch": "newPassword and confirmPassword do not match",
+    "currentPasswordIncorrect": "Current password is incorrect",
+    "invalidPassword": "Invalid password",
+    "avatarUpdated": "Avatar updated successfully",
+    "passwordUpdated": "Password updated successfully",
+    "accountDeleted": "Account deleted successfully",
+    "speedChallengeCompleted": "Speed challenge completed",
+    "sessionSaved": "Session saved",
+    "noOngoingSession": "No ongoing session",
+    "sessionCleared": "Session cleared"
+  },
+  "userController": {
+    "xpDeltaInvalid": "xpDelta must be a finite number",
+    "avatarRequired": "Avatar file is required",
+    "failedCreateAdmin": "Failed to create admin",
+    "failedCreateUser": "Failed to create user"
+  },
+  "challenges": {
+    "duplicateDescriptionWarning": "Potential duplicate description detected with \"{{title}}\".",
+    "titleExists": "A challenge with the title '{{title}}' already exists. Please use a unique title.",
+    "notFoundById": "Challenge with id {{id}} not found",
+    "publishedNotFound": "Published challenge with id {{id}} not found",
+    "notFound": "Challenge not found"
+  },
+  "battles": {
+    "notFoundById": "Battle with id {{id}} not found"
+  },
+  "battleAi": {
+    "battleIdRequired": "battleId is required",
+    "missingChallengeId": "Battle is missing a challengeId",
+    "challengeNotFound": "Challenge not found",
+    "noTestCases": "Challenge has no test cases"
+  },
+  "judge": {
+    "unsupportedLanguage": "Unsupported language. Only 'javascript' and 'python' are allowed.",
+    "challengeNotFound": "Challenge not found.",
+    "fieldsRequired": "challengeId, userCode, and language are required fields.",
+    "challengeIdRequired": "challengeId is required.",
+    "alreadySolved": "Challenge already solved. Resubmission is disabled.",
+    "syntaxError": "Syntax Error detected."
+  },
+  "codeExecutor": {
+    "codeRequired": "code is required",
+    "languageRequired": "language is required"
+  },
+  "speedChallengeGuard": {
+    "authRequired": "Authentication required",
+    "invalidTokenPayload": "Invalid token payload",
+    "mustComplete": "Speed challenge must be completed"
+  },
+  "recaptcha": {
+    "tokenMissing": "reCAPTCHA token is missing",
+    "secretNotConfigured": "reCAPTCHA secret key not configured",
+    "validationFailed": "reCAPTCHA validation failed",
+    "scoreTooLow": "reCAPTCHA score too low"
+  },
+  "auditLog": {
+    "notFound": "Audit log not found"
+  },
+  "docker": {
+    "noResultForCase": "No execution result returned for this test case.",
+    "unavailable": "Docker sandbox execution is unavailable. Start Docker Desktop and try again.",
+    "noFunction": "No function definition found. Define a callable function and try again.",
+    "timeout": "Execution exceeded {{ms}}ms and was terminated.",
+    "unreadableResult": "Execution completed but produced an unreadable result payload.",
+    "unexpectedFailure": "Unexpected execution failure.",
+    "parseTestInput": "Unable to parse challenge test-case input."
+  },
+  "onboarding": {
+    "rankMessages": {
+      "DIAMOND": "Exceptional! Your code correctness, efficiency and style are top-tier.",
+      "PLATINUM": "Outstanding! Clean, efficient solutions delivered at pace.",
+      "GOLD": "Solid work! Good correctness with room to further optimise.",
+      "SILVER": "Good effort — keep sharpening your problem-solving instincts.",
+      "BRONZE": "Every expert started somewhere — keep coding every day!"
+    },
+    "aiDisabledSuffix": " (AI classification disabled)",
+    "ruleBasedNotesSolved": "Rule-based estimate (AI classification disabled).",
+    "ruleBasedNotesNotSolved": "Not solved.",
+    "notSolvedOrEmpty": "Problem not solved or no meaningful code submitted."
+  },
+  "swagger": {
+    "unauthorizedDocs": "Unauthorized to view API Docs",
+    "forbiddenDocs": "Forbidden: Admin/Dev access only",
+    "invalidTokenDocs": "Invalid token for API Docs access"
+  }
+}

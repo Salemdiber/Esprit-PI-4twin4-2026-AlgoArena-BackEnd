@@ -6,12 +6,14 @@ import { ChallengeService } from './challenge.service';
 import { AuditLogModule } from '../audit-logs/audit-log.module';
 
 @Module({
-    imports: [
-        MongooseModule.forFeature([{ name: Challenge.name, schema: ChallengeSchema }]),
-        AuditLogModule,
-    ],
-    controllers: [ChallengeController],
-    providers: [ChallengeService],
-    exports: [ChallengeService],
+  imports: [
+    MongooseModule.forFeature([
+      { name: Challenge.name, schema: ChallengeSchema },
+    ]),
+    AuditLogModule,
+  ],
+  controllers: [ChallengeController],
+  providers: [ChallengeService],
+  exports: [ChallengeService],
 })
-export class ChallengeModule { }
+export class ChallengeModule {}

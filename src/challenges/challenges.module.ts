@@ -10,12 +10,17 @@ import { SpeedChallengeGuard } from '../auth/speed-challenge.guard';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: Challenge.name, schema: ChallengeSchema }]),
+    MongooseModule.forFeature([
+      { name: Challenge.name, schema: ChallengeSchema },
+    ]),
     UserModule,
   ],
   controllers: [ChallengesController, ChallengeAiDetectionController],
-  providers: [ChallengesService, SpeedChallengeGuard, ChallengeAiDetectionService],
+  providers: [
+    ChallengesService,
+    SpeedChallengeGuard,
+    ChallengeAiDetectionService,
+  ],
   exports: [ChallengesService],
 })
 export class ChallengesModule {}
-

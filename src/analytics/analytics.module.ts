@@ -6,11 +6,13 @@ import { UserSchema } from '../user/schemas/user.schema';
 import { ChallengeSchema } from '../challenges/schemas/challenge.schema';
 
 @Module({
-  imports: [MongooseModule.forFeature([
-    { name: 'User', schema: UserSchema },
-    { name: 'Challenge', schema: ChallengeSchema },
-  ])],
+  imports: [
+    MongooseModule.forFeature([
+      { name: 'User', schema: UserSchema },
+      { name: 'Challenge', schema: ChallengeSchema },
+    ]),
+  ],
   controllers: [AnalyticsController],
   providers: [AnalyticsService],
 })
-export class AnalyticsModule { }
+export class AnalyticsModule {}

@@ -4,240 +4,238 @@ import { PlagiarismDetectionService } from './plagiarism-detection.service';
 
 /**
  * Integration Example: Speed Challenge Submission with Plagiarism Check
- * 
+ *
  * This shows how to integrate plagiarism detection into the speed challenge workflow
  */
 
 export interface SpeedChallengeSubmission {
-    userId: string;
-    challengeId: string;
-    code: string;
-    language: 'javascript' | 'python';
-    timestamp: Date;
+  userId: string;
+  challengeId: string;
+  code: string;
+  language: 'javascript' | 'python';
+  timestamp: Date;
 }
 
 export interface SubmissionResult {
-    valid: boolean;
-    testsPassed: number;
-    totalTests: number;
-    plagiarismCheck: {
-        completed: boolean;
-        suspicious: boolean;
-        similarity: number;
-        recommendation: 'clear' | 'review' | 'suspicious';
-        details: string[];
-    };
-    message: string;
+  valid: boolean;
+  testsPassed: number;
+  totalTests: number;
+  plagiarismCheck: {
+    completed: boolean;
+    suspicious: boolean;
+    similarity: number;
+    recommendation: 'clear' | 'review' | 'suspicious';
+    details: string[];
+  };
+  message: string;
 }
 
 @Injectable()
 export class SpeedChallengeIntegrationExample {
-    constructor(
-        private codeExecutor: CodeExecutorService,
-        private plagiarismDetection: PlagiarismDetectionService,
-    ) {}
+  constructor(
+    private codeExecutor: CodeExecutorService,
+    private plagiarismDetection: PlagiarismDetectionService,
+  ) {}
 
-    /**
-     * Complete submission flow with code validation + plagiarism check
-     */
-    async submitSolution(
-        submission: SpeedChallengeSubmission,
-        testCases: Array<{ input: string; output: string }>,
-        previousSubmissions: SpeedChallengeSubmission[],
-    ): Promise<SubmissionResult> {
-        try {
-            // Step 1: Validate code executes correctly
-            console.log(`✅ Step 1: Validating code for user ${submission.userId}...`);
-            const validation = await this.codeExecutor.validateCode(
-                submission.code,
-                submission.language,
-                testCases,
-            );
+  /**
+   * Complete submission flow with code validation + plagiarism check
+   */
+  async submitSolution(
+    submission: SpeedChallengeSubmission,
+    testCases: Array<{ input: string; output: string }>,
+    previousSubmissions: SpeedChallengeSubmission[],
+  ): Promise<SubmissionResult> {
+    try {
+      // Step 1: Validate code executes correctly
+      console.log(
+        `✅ Step 1: Validating code for user ${submission.userId}...`,
+      );
+      const validation = await this.codeExecutor.validateCode(
+        submission.code,
+        submission.language,
+        testCases,
+      );
 
-            if (!validation.passed) {
-                return {
-                    valid: false,
-                    testsPassed: validation.passedTests,
-                    totalTests: validation.totalTests,
-                    plagiarismCheck: {
-                        completed: false,
-                        suspicious: false,
-                        similarity: 0,
-                        recommendation: 'clear',
-                        details: ['Code failed validation - not checking plagiarism'],
-                    },
-                    message: `❌ Code validation failed: ${validation.passedTests}/${validation.totalTests} tests passed`,
-                };
-            }
-
-            // Step 2: Check plagiarism against previous submissions
-            console.log(
-                `🔍 Step 2: Checking plagiarism against ${previousSubmissions.length} previous submissions...`,
-            );
-
-            const plagiarismChecks = await Promise.all(
-                previousSubmissions.map((prev) =>
-                    this.plagiarismDetection
-                        .detectPlagiarism(
-                            submission.code,
-                            prev.code,
-                            submission.userId,
-                        )
-                        .then((result) => ({
-                            vsUserId: prev.userId,
-                            ...result,
-                        })),
-                ),
-            );
-
-            // Step 3: Analyze plagiarism results
-            const suspiciousMatches = plagiarismChecks.filter(
-                (check) => check.isSuspicious,
-            );
-            const highSimilarityMatches = plagiarismChecks.filter(
-                (check) => check.overallSimilarity > 60,
-            );
-
-            const maxSimilarity =
-                plagiarismChecks.length > 0
-                    ? Math.max(...plagiarismChecks.map((c) => c.overallSimilarity))
-                    : 0;
-
-            const detailedReport = this.generateDetailedReport(
-                suspiciousMatches,
-                maxSimilarity,
-            );
-
-            return {
-                valid: true,
-                testsPassed: validation.passedTests,
-                totalTests: validation.totalTests,
-                plagiarismCheck: {
-                    completed: true,
-                    suspicious: suspiciousMatches.length > 0,
-                    similarity: maxSimilarity,
-                    recommendation:
-                        suspiciousMatches.length > 0
-                            ? 'suspicious'
-                            : highSimilarityMatches.length > 0
-                              ? 'review'
-                              : 'clear',
-                    details: detailedReport,
-                },
-                message:
-                    suspiciousMatches.length > 0
-                        ? `⚠️ ALERT: Possible plagiarism detected! (${suspiciousMatches.length} suspicious matches)`
-                        : highSimilarityMatches.length > 0
-                          ? `📋 Review: Code has similarities with ${highSimilarityMatches.length} submissions`
-                          : `✅ Code is valid and original!`,
-            };
-        } catch (error) {
-            throw new BadRequestException(
-                `Submission processing error: ${error.message}`,
-            );
-        }
-    }
-
-    /**
-     * Bulk check all submissions in a challenge for plagiarism
-     * (Run after challenge ends)
-     */
-    async bulkCheckChallenge(
-        challengeId: string,
-        submissions: SpeedChallengeSubmission[],
-    ): Promise<{
-        totalSubmissions: number;
-        suspiciousPairs: Array<{
-            user1: string;
-            user2: string;
-            similarity: number;
-            recommendation: string;
-        }>;
-        summary: string;
-    }> {
-        console.log(
-            `🔍 Running bulk plagiarism check on ${submissions.length} submissions...`,
-        );
-
-        const suspiciousPairs: Array<{
-            user1: string;
-            user2: string;
-            similarity: number;
-            recommendation: 'clear' | 'review' | 'suspicious';
-        }> = [];
-
-        // Compare all pairs
-        for (let i = 0; i < submissions.length; i++) {
-            for (let j = i + 1; j < submissions.length; j++) {
-                const result = await this.plagiarismDetection.detectPlagiarism(
-                    submissions[i].code,
-                    submissions[j].code,
-                    submissions[i].userId,
-                );
-
-                if (result.isSuspicious || result.overallSimilarity > 60) {
-                    suspiciousPairs.push({
-                        user1: submissions[i].userId,
-                        user2: submissions[j].userId,
-                        similarity: result.overallSimilarity,
-                        recommendation: result.recommendation,
-                    });
-                }
-            }
-        }
-
-        // Sort by similarity
-        suspiciousPairs.sort((a, b) => b.similarity - a.similarity);
-
-        const suspiciousCount = suspiciousPairs.filter(
-            (p) => p.recommendation === 'suspicious',
-        ).length;
-        const reviewCount = suspiciousPairs.filter(
-            (p) => p.recommendation === 'review',
-        ).length;
-
+      if (!validation.passed) {
         return {
-            totalSubmissions: submissions.length,
-            suspiciousPairs,
-            summary: `Challenge ${challengeId}: ${suspiciousCount} suspicious pairs, ${reviewCount} pairs needing review`,
+          valid: false,
+          testsPassed: validation.passedTests,
+          totalTests: validation.totalTests,
+          plagiarismCheck: {
+            completed: false,
+            suspicious: false,
+            similarity: 0,
+            recommendation: 'clear',
+            details: ['Code failed validation - not checking plagiarism'],
+          },
+          message: `❌ Code validation failed: ${validation.passedTests}/${validation.totalTests} tests passed`,
         };
+      }
+
+      // Step 2: Check plagiarism against previous submissions
+      console.log(
+        `🔍 Step 2: Checking plagiarism against ${previousSubmissions.length} previous submissions...`,
+      );
+
+      const plagiarismChecks = await Promise.all(
+        previousSubmissions.map((prev) =>
+          this.plagiarismDetection
+            .detectPlagiarism(submission.code, prev.code, submission.userId)
+            .then((result) => ({
+              vsUserId: prev.userId,
+              ...result,
+            })),
+        ),
+      );
+
+      // Step 3: Analyze plagiarism results
+      const suspiciousMatches = plagiarismChecks.filter(
+        (check) => check.isSuspicious,
+      );
+      const highSimilarityMatches = plagiarismChecks.filter(
+        (check) => check.overallSimilarity > 60,
+      );
+
+      const maxSimilarity =
+        plagiarismChecks.length > 0
+          ? Math.max(...plagiarismChecks.map((c) => c.overallSimilarity))
+          : 0;
+
+      const detailedReport = this.generateDetailedReport(
+        suspiciousMatches,
+        maxSimilarity,
+      );
+
+      return {
+        valid: true,
+        testsPassed: validation.passedTests,
+        totalTests: validation.totalTests,
+        plagiarismCheck: {
+          completed: true,
+          suspicious: suspiciousMatches.length > 0,
+          similarity: maxSimilarity,
+          recommendation:
+            suspiciousMatches.length > 0
+              ? 'suspicious'
+              : highSimilarityMatches.length > 0
+                ? 'review'
+                : 'clear',
+          details: detailedReport,
+        },
+        message:
+          suspiciousMatches.length > 0
+            ? `⚠️ ALERT: Possible plagiarism detected! (${suspiciousMatches.length} suspicious matches)`
+            : highSimilarityMatches.length > 0
+              ? `📋 Review: Code has similarities with ${highSimilarityMatches.length} submissions`
+              : `✅ Code is valid and original!`,
+      };
+    } catch (error) {
+      throw new BadRequestException(
+        `Submission processing error: ${error.message}`,
+      );
     }
+  }
 
-    /**
-     * Generate detailed report for a user
-     */
-    private generateDetailedReport(
-        suspiciousMatches: any[],
-        maxSimilarity: number,
-    ): string[] {
-        const report: string[] = [];
+  /**
+   * Bulk check all submissions in a challenge for plagiarism
+   * (Run after challenge ends)
+   */
+  async bulkCheckChallenge(
+    challengeId: string,
+    submissions: SpeedChallengeSubmission[],
+  ): Promise<{
+    totalSubmissions: number;
+    suspiciousPairs: Array<{
+      user1: string;
+      user2: string;
+      similarity: number;
+      recommendation: string;
+    }>;
+    summary: string;
+  }> {
+    console.log(
+      `🔍 Running bulk plagiarism check on ${submissions.length} submissions...`,
+    );
 
-        if (suspiciousMatches.length === 0) {
-            report.push(
-                '✅ No suspicious plagiarism detected compared to previous submissions',
-            );
-            return report;
-        }
+    const suspiciousPairs: Array<{
+      user1: string;
+      user2: string;
+      similarity: number;
+      recommendation: 'clear' | 'review' | 'suspicious';
+    }> = [];
 
-        report.push(
-            `⚠️ Found ${suspiciousMatches.length} suspicious match(es) with overall similarity ${maxSimilarity}%`,
+    // Compare all pairs
+    for (let i = 0; i < submissions.length; i++) {
+      for (let j = i + 1; j < submissions.length; j++) {
+        const result = await this.plagiarismDetection.detectPlagiarism(
+          submissions[i].code,
+          submissions[j].code,
+          submissions[i].userId,
         );
 
-        suspiciousMatches.forEach((match, idx) => {
-            report.push(
-                `  ${idx + 1}. Comparison ${idx + 1}: ${match.overallSimilarity}% similar`,
-            );
-            report.push(`     Recommendation: ${match.recommendation}`);
-            report.push(`     Details: ${match.details.join('; ')}`);
-        });
-
-        return report;
+        if (result.isSuspicious || result.overallSimilarity > 60) {
+          suspiciousPairs.push({
+            user1: submissions[i].userId,
+            user2: submissions[j].userId,
+            similarity: result.overallSimilarity,
+            recommendation: result.recommendation,
+          });
+        }
+      }
     }
+
+    // Sort by similarity
+    suspiciousPairs.sort((a, b) => b.similarity - a.similarity);
+
+    const suspiciousCount = suspiciousPairs.filter(
+      (p) => p.recommendation === 'suspicious',
+    ).length;
+    const reviewCount = suspiciousPairs.filter(
+      (p) => p.recommendation === 'review',
+    ).length;
+
+    return {
+      totalSubmissions: submissions.length,
+      suspiciousPairs,
+      summary: `Challenge ${challengeId}: ${suspiciousCount} suspicious pairs, ${reviewCount} pairs needing review`,
+    };
+  }
+
+  /**
+   * Generate detailed report for a user
+   */
+  private generateDetailedReport(
+    suspiciousMatches: any[],
+    maxSimilarity: number,
+  ): string[] {
+    const report: string[] = [];
+
+    if (suspiciousMatches.length === 0) {
+      report.push(
+        '✅ No suspicious plagiarism detected compared to previous submissions',
+      );
+      return report;
+    }
+
+    report.push(
+      `⚠️ Found ${suspiciousMatches.length} suspicious match(es) with overall similarity ${maxSimilarity}%`,
+    );
+
+    suspiciousMatches.forEach((match, idx) => {
+      report.push(
+        `  ${idx + 1}. Comparison ${idx + 1}: ${match.overallSimilarity}% similar`,
+      );
+      report.push(`     Recommendation: ${match.recommendation}`);
+      report.push(`     Details: ${match.details.join('; ')}`);
+    });
+
+    return report;
+  }
 }
 
 /**
  * Example Usage:
- * 
+ *
  * Usage 1: Submit solution with plagiarism check
  * ============================================
  * const submission: SpeedChallengeSubmission = {
