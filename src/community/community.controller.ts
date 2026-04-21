@@ -16,6 +16,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { AuditLogService } from '../audit-logs/audit-log.service';
+import { CommunityAiService } from './community-ai.service';
 import { CommunityService } from './community.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { CreateCommentDto } from './dto/create-comment.dto';
@@ -38,8 +39,28 @@ const ensureUploadDir = () => {
 export class CommunityController {
   constructor(
     private readonly communityService: CommunityService,
+    private readonly communityAiService: CommunityAiService,
     private readonly auditLogService: AuditLogService,
   ) {}
+
+  @Post('ai/generate')
+  async generateAi(
+    @Body()
+    dto: {
+      prompt?: string;
+      systemPrompt?: string;
+      maxTokens?: number;
+      temperature?: number;
+    },
+  ) {
+    const text = await this.communityAiService.complete(dto?.prompt || '', {
+      systemPrompt: dto?.systemPrompt,
+      maxTokens: Number.isFinite(Number(dto?.maxTokens)) ? Number(dto.maxTokens) : 150,
+      temperature: Number.isFinite(Number(dto?.temperature)) ? Number(dto.temperature) : 0.2,
+    });
+
+    return { text };
+  }
 
   private async writeAudit(entry: {
     actionType: string;
