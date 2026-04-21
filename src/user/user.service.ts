@@ -1453,6 +1453,30 @@ export class UserService {
     return this.userModel.findOne({ email }).sort({ createdAt: -1 }).exec();
   }
 
+  async findByGoogleId(googleId: string) {
+    return this.userModel.findOne({ googleId }).exec();
+  }
+
+  async findByGithubId(githubId: string) {
+    return this.userModel.findOne({ githubId }).exec();
+  }
+
+  async linkOAuthProvider(
+    userId: string,
+    provider: 'google' | 'github',
+    providerId: string,
+    profile?: { avatar?: string | null; username?: string | null },
+  ) {
+    this.ensureValidObjectId(userId);
+    const update: any = {};
+    if (provider === 'google') update.googleId = providerId;
+    if (provider === 'github') update.githubId = providerId;
+    if (profile?.avatar) update.avatar = profile.avatar;
+    if (profile?.username) update.username = profile.username;
+
+    return this.userModel.findByIdAndUpdate(userId, update, { new: true }).exec();
+  }
+
   async findByUsername(username: string) {
     return this.userModel.findOne({ username }).sort({ createdAt: -1 }).exec();
   }

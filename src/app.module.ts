@@ -25,7 +25,11 @@ import { JudgeModule } from './judge/judge.module';
 import { ChatModule } from './chat/chat.module';
 import { SupportModule } from './support/support.module';
 import { CommunityModule } from './community/community.module';
+
+import { AiAgentsModule } from './ai-agents/ai-agents.module';
+=======
 import { BillingModule } from './billing/billing.module';
+
 
 @Module({
   imports: [
@@ -61,6 +65,7 @@ import { BillingModule } from './billing/billing.module';
     ChatModule,
     SupportModule,
     CommunityModule,
+    AiAgentsModule,
     BillingModule,
   ],
   controllers: [AppController],

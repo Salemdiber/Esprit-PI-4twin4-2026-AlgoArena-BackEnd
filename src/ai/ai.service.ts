@@ -17,7 +17,7 @@ export interface GeneratedChallenge {
 
 @Injectable()
 export class AiService {
-  private readonly groq: Groq;
+  private readonly groq: Groq | null;
   private readonly logger = new Logger(AiService.name);
 
   // Challenge generation model — other AI features use their own models untouched
@@ -30,8 +30,11 @@ export class AiService {
   ) {
     const apiKey = this.config.get<string>('GROQ_API_KEY');
     if (!apiKey) {
-      this.logger.error('GROQ_API_KEY is not set in environment variables');
-      throw new Error('GROQ_API_KEY is missing');
+      this.logger.warn(
+        'GROQ_API_KEY is not set; AI challenge generation is disabled',
+      );
+      this.groq = null;
+      return;
     }
     this.groq = new Groq({ apiKey });
   }
@@ -43,6 +46,13 @@ export class AiService {
   async generateChallenge(
     dto: GenerateChallengeDto,
   ): Promise<GeneratedChallenge> {
+    if (!this.groq) {
+      throw new HttpException(
+        'AI challenge generation is unavailable. Configure GROQ_API_KEY and restart the backend.',
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    }
+
     const systemPrompt = this.buildChallengeSystemPrompt();
     const baseUserPrompt = `Generate a "${dto.difficulty}" level "${dto.topic}" coding challenge. ${dto.description}`;
     let currentUserPrompt = baseUserPrompt;
