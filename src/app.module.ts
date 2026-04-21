@@ -32,7 +32,9 @@ import { BillingModule } from './billing/billing.module';
 const i18nPath = (() => {
   const distPath = path.join(__dirname, 'i18n');
   const srcPath = path.join(process.cwd(), 'src', 'i18n');
-  return existsSync(distPath) ? distPath : srcPath;
+  const hasDistLocales =
+    existsSync(path.join(distPath, 'en')) || existsSync(path.join(distPath, 'fr'));
+  return hasDistLocales ? distPath : srcPath;
 })();
 
 @Module({

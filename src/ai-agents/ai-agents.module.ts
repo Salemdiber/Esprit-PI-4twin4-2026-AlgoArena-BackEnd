@@ -20,4 +20,3 @@ import { CommunityPostSchema } from '../community/schemas/community-post.schema'
   providers: [AiAgentsService],
 })
 export class AiAgentsModule {}
-

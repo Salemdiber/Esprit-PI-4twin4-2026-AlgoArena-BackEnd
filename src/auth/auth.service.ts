@@ -257,7 +257,7 @@ export class AuthService {
       user = await this.users.findByEmail(profile.email);
       if (user) {
         const providerField = provider === 'google' ? 'googleId' : 'githubId';
-        const alreadyLinkedProviderId = (user as any)[providerField];
+        const alreadyLinkedProviderId = user[providerField];
         if (
           alreadyLinkedProviderId &&
           String(alreadyLinkedProviderId) !== String(profile.id)
@@ -266,12 +266,12 @@ export class AuthService {
         }
 
         user = await this.users.linkOAuthProvider(
-          (user as any)._id.toString(),
+          user._id.toString(),
           provider,
           profile.id,
           {
             avatar: profile.avatar || null,
-            username: (user as any).username || profile.username || null,
+            username: user.username || profile.username || null,
           },
         );
       }
@@ -290,7 +290,7 @@ export class AuthService {
 
       const created = await this.users.create(dto);
       user = await this.users.linkOAuthProvider(
-        (created as any)._id.toString(),
+        created._id.toString(),
         provider,
         profile.id,
         {
@@ -305,8 +305,8 @@ export class AuthService {
       );
     }
 
-    const normalized = (user as any).toObject ? (user as any).toObject() : user;
-    const { passwordHash: _ph, ...rest } = normalized as any;
+    const normalized = user.toObject ? user.toObject() : user;
+    const { passwordHash: _ph, ...rest } = normalized;
     return rest;
   }
 

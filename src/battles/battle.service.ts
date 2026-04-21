@@ -55,7 +55,9 @@ export class BattlesService {
 
   private async attachUsernames<T extends Record<string, any>>(
     battles: T[],
-  ): Promise<Array<T & { creatorUsername?: string; opponentUsername?: string }>> {
+  ): Promise<
+    Array<T & { creatorUsername?: string; opponentUsername?: string }>
+  > {
     if (!Array.isArray(battles) || battles.length === 0) return [];
 
     const idSet = new Set<string>();
@@ -107,7 +109,9 @@ export class BattlesService {
       .find({
         $or: [{ userId }, { opponentId: userId }],
       })
-      .select('_id idBattle battleStatus battleType roundNumber challengeId opponentId botDifficulty selectChallengeType userId createdAt endedAt winnerUserId')
+      .select(
+        '_id idBattle battleStatus battleType roundNumber challengeId opponentId botDifficulty selectChallengeType userId createdAt endedAt winnerUserId',
+      )
       .sort({ createdAt: -1 })
       .limit(20)
       .lean()
@@ -123,7 +127,9 @@ export class BattlesService {
         userId: { $ne: userId },
         $or: [{ opponentId: null }, { opponentId: '' }],
       })
-      .select('_id idBattle battleStatus battleType roundNumber challengeId opponentId botDifficulty selectChallengeType userId createdAt endedAt winnerUserId')
+      .select(
+        '_id idBattle battleStatus battleType roundNumber challengeId opponentId botDifficulty selectChallengeType userId createdAt endedAt winnerUserId',
+      )
       .sort({ createdAt: -1 })
       .limit(50)
       .lean()
@@ -213,7 +219,8 @@ export class BattlesService {
       throw new BadRequestException('Round submit is only available for 1vs1');
     }
 
-    const isParticipant = battle.userId === userId || battle.opponentId === userId;
+    const isParticipant =
+      battle.userId === userId || battle.opponentId === userId;
     if (!isParticipant) {
       throw new BadRequestException('User is not a participant of this battle');
     }
@@ -224,7 +231,9 @@ export class BattlesService {
 
     const roundIndex = Number(input?.roundIndex ?? -1);
     if (!Number.isInteger(roundIndex) || roundIndex < 0) {
-      throw new BadRequestException('roundIndex must be a non-negative integer');
+      throw new BadRequestException(
+        'roundIndex must be a non-negative integer',
+      );
     }
 
     if (roundIndex >= Number(battle.roundNumber || 0)) {

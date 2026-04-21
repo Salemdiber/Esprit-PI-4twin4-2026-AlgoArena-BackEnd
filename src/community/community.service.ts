@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { CreatePostDto } from './dto/create-post.dto';
@@ -13,7 +17,7 @@ export class CommunityService {
     private readonly postModel: Model<any>,
     @InjectModel('CommunityComment')
     private readonly commentModel: Model<any>,
-  ) { }
+  ) {}
 
   private ensureValidObjectId(id: string) {
     if (!id || !/^[a-fA-F0-9]{24}$/.test(id) || !Types.ObjectId.isValid(id)) {
@@ -31,7 +35,9 @@ export class CommunityService {
           ...(comment || {}),
           _id: String(comment?._id || ''),
           postId: String(comment?.postId || ''),
-          parentCommentId: comment?.parentCommentId ? String(comment.parentCommentId) : null,
+          parentCommentId: comment?.parentCommentId
+            ? String(comment.parentCommentId)
+            : null,
           replies: [],
         }))
       : [];
@@ -43,7 +49,9 @@ export class CommunityService {
 
     const roots: any[] = [];
     normalized.forEach((comment) => {
-      const parentId = comment?.parentCommentId ? String(comment.parentCommentId) : '';
+      const parentId = comment?.parentCommentId
+        ? String(comment.parentCommentId)
+        : '';
       if (parentId && byId.has(parentId)) {
         const parent = byId.get(parentId);
         parent.replies = Array.isArray(parent.replies) ? parent.replies : [];
@@ -93,7 +101,9 @@ export class CommunityService {
         if (!Array.isArray(comments)) return;
 
         comments.forEach((comment) => {
-          const currentId = String(comment?._id || new Types.ObjectId().toString());
+          const currentId = String(
+            comment?._id || new Types.ObjectId().toString(),
+          );
 
           toInsert.push({
             _id: currentId,
@@ -118,7 +128,9 @@ export class CommunityService {
       walk(embedded);
 
       if (toInsert.length > 0) {
-        await this.commentModel.insertMany(toInsert, { ordered: false }).catch(() => undefined);
+        await this.commentModel
+          .insertMany(toInsert, { ordered: false })
+          .catch(() => undefined);
       }
     }
   }
@@ -127,7 +139,10 @@ export class CommunityService {
     const post = (await this.postModel.findById(postId).lean().exec()) as any;
     if (!post) throw new NotFoundException('Post not found');
 
-    const flatComments = await this.commentModel.find({ postId: String(postId) }).lean().exec();
+    const flatComments = await this.commentModel
+      .find({ postId: String(postId) })
+      .lean()
+      .exec();
     return {
       ...post,
       comments: this.buildCommentTree(flatComments),
@@ -139,7 +154,8 @@ export class CommunityService {
     return [
       {
         title: 'React state is not updating in my challenge form',
-        content: 'My input values lag behind after submit. Any clean approach for stable state updates?',
+        content:
+          'My input values lag behind after submit. Any clean approach for stable state updates?',
         type: 'problem',
         problemType: 'bug',
         tags: ['react', 'state', 'form'],
@@ -169,7 +185,8 @@ export class CommunityService {
       },
       {
         title: 'API authorization keeps failing after reload',
-        content: 'Calls work after login but fail after refreshing the page. How should I persist auth?',
+        content:
+          'Calls work after login but fail after refreshing the page. How should I persist auth?',
         type: 'normal',
         tags: ['api', 'auth', 'token'],
         imageUrl: null,
@@ -225,7 +242,9 @@ export class CommunityService {
 
     if (posts.length === 0) return [];
 
-    const postIds = posts.map((post) => String(post?._id || '')).filter(Boolean);
+    const postIds = posts
+      .map((post) => String(post?._id || ''))
+      .filter(Boolean);
     const flatComments = await this.commentModel
       .find({ postId: { $in: postIds } })
       .lean()
@@ -261,14 +280,13 @@ export class CommunityService {
         .exec();
     }
 
-    return this.commentModel
-      .find()
-      .sort({ createdAt: -1 })
-      .lean()
-      .exec();
+    return this.commentModel.find().sort({ createdAt: -1 }).lean().exec();
   }
 
-  async createPost(dto: CreatePostDto, user: { userId: string; username: string; avatar?: string }) {
+  async createPost(
+    dto: CreatePostDto,
+    user: { userId: string; username: string; avatar?: string },
+  ) {
     const title = dto.title.trim();
     const content = dto.content.trim();
 
@@ -278,7 +296,12 @@ export class CommunityService {
       imageUrl: dto.imageUrl || null,
       videoUrl: dto.videoUrl || null,
       type: dto.type || 'normal',
-      tags: Array.isArray(dto.tags) ? dto.tags.filter(Boolean).map((t) => String(t).trim().toLowerCase()).slice(0, 8) : [],
+      tags: Array.isArray(dto.tags)
+        ? dto.tags
+            .filter(Boolean)
+            .map((t) => String(t).trim().toLowerCase())
+            .slice(0, 8)
+        : [],
       problemType: dto.problemType || null,
       solved: false,
       solvedAt: null,
@@ -293,7 +316,11 @@ export class CommunityService {
     return created.toObject();
   }
 
-  async addComment(postId: string, dto: CreateCommentDto, user: { userId: string; username: string; avatar?: string }) {
+  async addComment(
+    postId: string,
+    dto: CreateCommentDto,
+    user: { userId: string; username: string; avatar?: string },
+  ) {
     this.ensureValidObjectId(postId);
 
     const text = dto.text.trim();
@@ -365,13 +392,19 @@ export class CommunityService {
     });
 
     return {
-      ...(createdComment?.toObject ? createdComment.toObject() : createdComment),
+      ...(createdComment?.toObject
+        ? createdComment.toObject()
+        : createdComment),
       postId,
       parentCommentId: normalizedParentCommentId,
     };
   }
 
-  async updatePost(postId: string, dto: UpdatePostDto, user: { userId: string; username: string }) {
+  async updatePost(
+    postId: string,
+    dto: UpdatePostDto,
+    user: { userId: string; username: string },
+  ) {
     this.ensureValidObjectId(postId);
 
     const post = await this.postModel.findById(postId).exec();
@@ -393,7 +426,10 @@ export class CommunityService {
 
     if (dto.tags !== undefined) {
       post.tags = Array.isArray(dto.tags)
-        ? dto.tags.filter(Boolean).map((t) => String(t).trim().toLowerCase()).slice(0, 8)
+        ? dto.tags
+            .filter(Boolean)
+            .map((t) => String(t).trim().toLowerCase())
+            .slice(0, 8)
         : [];
     }
 
@@ -430,7 +466,9 @@ export class CommunityService {
     const postExists = await this.postModel.exists({ _id: postId }).exec();
     if (!postExists) throw new NotFoundException('Post not found');
 
-    const comment = await this.commentModel.findOne({ _id: commentId, postId: String(postId) }).exec();
+    const comment = await this.commentModel
+      .findOne({ _id: commentId, postId: String(postId) })
+      .exec();
     if (!comment) {
       throw new NotFoundException('Comment not found');
     }
@@ -460,7 +498,10 @@ export class CommunityService {
     const post = await this.postModel.findById(postId).exec();
     if (!post) throw new NotFoundException('Post not found');
 
-    if (String(post.authorId) !== String(user.userId) && !this.isAdmin(user.role)) {
+    if (
+      String(post.authorId) !== String(user.userId) &&
+      !this.isAdmin(user.role)
+    ) {
       throw new BadRequestException('You can only delete your own post');
     }
 
@@ -469,7 +510,11 @@ export class CommunityService {
     return { ok: true };
   }
 
-  async deleteComment(postId: string, commentId: string, user: { userId: string; role?: string }) {
+  async deleteComment(
+    postId: string,
+    commentId: string,
+    user: { userId: string; role?: string },
+  ) {
     this.ensureValidObjectId(postId);
     this.ensureValidObjectId(commentId);
 
@@ -483,7 +528,10 @@ export class CommunityService {
 
     if (!targetComment) throw new NotFoundException('Comment not found');
 
-    if (String(targetComment.authorId) !== String(user.userId) && !this.isAdmin(user.role)) {
+    if (
+      String(targetComment.authorId) !== String(user.userId) &&
+      !this.isAdmin(user.role)
+    ) {
       throw new BadRequestException('You can only delete your own comment');
     }
 
@@ -514,10 +562,12 @@ export class CommunityService {
       });
     }
 
-    await this.commentModel.deleteMany({
-      _id: { $in: [...toDelete] },
-      postId: String(postId),
-    }).exec();
+    await this.commentModel
+      .deleteMany({
+        _id: { $in: [...toDelete] },
+        postId: String(postId),
+      })
+      .exec();
 
     return this.getPostWithComments(postId);
   }

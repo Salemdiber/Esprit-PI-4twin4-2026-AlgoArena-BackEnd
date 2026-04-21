@@ -61,7 +61,10 @@ export class AiAgentsController {
   ) {
     const parsedLimit = Number(i18nLimit || 120);
     const forceRefresh = String(force || '').toLowerCase() === 'true';
-    return this.aiAgentsService.getExecutiveBrief(parsedLimit, provider, forceRefresh);
+    return this.aiAgentsService.getExecutiveBrief(
+      parsedLimit,
+      provider,
+      forceRefresh,
+    );
   }
 }
-

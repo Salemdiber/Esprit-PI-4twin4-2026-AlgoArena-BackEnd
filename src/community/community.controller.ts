@@ -55,8 +55,12 @@ export class CommunityController {
   ) {
     const text = await this.communityAiService.complete(dto?.prompt || '', {
       systemPrompt: dto?.systemPrompt,
-      maxTokens: Number.isFinite(Number(dto?.maxTokens)) ? Number(dto.maxTokens) : 150,
-      temperature: Number.isFinite(Number(dto?.temperature)) ? Number(dto.temperature) : 0.2,
+      maxTokens: Number.isFinite(Number(dto?.maxTokens))
+        ? Number(dto.maxTokens)
+        : 150,
+      temperature: Number.isFinite(Number(dto?.temperature))
+        ? Number(dto.temperature)
+        : 0.2,
     });
 
     return { text };
@@ -106,13 +110,21 @@ export class CommunityController {
         const isImage = file.mimetype?.startsWith('image/');
         const isVideo = file.mimetype?.startsWith('video/');
         if (!isImage && !isVideo) {
-          return cb(new BadRequestException('Only image or video files are allowed') as any, false);
+          return cb(
+            new BadRequestException(
+              'Only image or video files are allowed',
+            ) as any,
+            false,
+          );
         }
         cb(null, true);
       },
     }),
   )
-  async uploadMedia(@UploadedFile() file: Express.Multer.File, @Req() req: Request) {
+  async uploadMedia(
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req: Request,
+  ) {
     if (!file) {
       throw new BadRequestException('File is required');
     }
@@ -151,7 +163,8 @@ export class CommunityController {
   @Post('posts')
   async createPost(
     @Body() dto: CreatePostDto,
-    @CurrentUser() user: { userId: string; username: string; avatar?: string; role?: string },
+    @CurrentUser()
+    user: { userId: string; username: string; avatar?: string; role?: string },
   ) {
     console.log('Saving post:', dto);
     const created = await this.communityService.createPost(dto, user);
@@ -175,7 +188,8 @@ export class CommunityController {
   async addComment(
     @Param('postId') postId: string,
     @Body() dto: CreateCommentDto,
-    @CurrentUser() user: { userId: string; username: string; avatar?: string; role?: string },
+    @CurrentUser()
+    user: { userId: string; username: string; avatar?: string; role?: string },
   ) {
     const updated = await this.communityService.addComment(postId, dto, user);
     await this.writeAudit({
@@ -272,7 +286,11 @@ export class CommunityController {
     @Param('commentId') commentId: string,
     @CurrentUser() user: { userId: string; role?: string },
   ) {
-    const result = await this.communityService.deleteComment(postId, commentId, user);
+    const result = await this.communityService.deleteComment(
+      postId,
+      commentId,
+      user,
+    );
     await this.writeAudit({
       actionType: 'COMMUNITY_COMMENT_DELETED',
       actor: user.userId,

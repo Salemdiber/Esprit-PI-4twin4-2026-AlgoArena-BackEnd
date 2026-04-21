@@ -1,13 +1,27 @@
-import { BadGatewayException, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import {
+  BadGatewayException,
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 
 @Injectable()
 export class CommunityAiService {
   private readonly logger = new Logger(CommunityAiService.name);
   private readonly apiKey = String(process.env.GROQ_API_KEY || '').trim();
-  private readonly model = String(process.env.GROQ_MODEL || 'llama-3.1-8b-instant').trim();
+  private readonly model = String(
+    process.env.GROQ_MODEL || 'llama-3.1-8b-instant',
+  ).trim();
   private readonly endpoint = 'https://api.groq.com/openai/v1/chat/completions';
 
-  async complete(prompt: string, options: { systemPrompt?: string; maxTokens?: number; temperature?: number } = {}): Promise<string> {
+  async complete(
+    prompt: string,
+    options: {
+      systemPrompt?: string;
+      maxTokens?: number;
+      temperature?: number;
+    } = {},
+  ): Promise<string> {
     const cleanPrompt = String(prompt || '').trim();
     if (!cleanPrompt) {
       throw new BadGatewayException('GROQ prompt is empty');

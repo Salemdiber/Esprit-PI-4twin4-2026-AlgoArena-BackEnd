@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import Stripe from 'stripe';
 import { ConfigService } from '@nestjs/config';
 import { UserService } from '../user/user.service';
@@ -11,7 +15,8 @@ type CheckoutSessionLike = {
   payment_status?: string;
 };
 
-const normalizeFrontendUrl = (value?: string | null) => (value || 'http://localhost:5173').replace(/\/+$/, '');
+const normalizeFrontendUrl = (value?: string | null) =>
+  (value || 'http://localhost:5173').replace(/\/+$/, '');
 
 @Injectable()
 export class BillingService {
@@ -28,14 +33,16 @@ export class BillingService {
   createHintCheckoutSession = async (userId: string, amount = 1) => {
     if (!this.stripe) throw new BadRequestException('Stripe is not configured');
 
-    const user = await this.users.findOne(userId).catch(() => null) as any;
+    const user = (await this.users.findOne(userId).catch(() => null)) as any;
     if (!user) throw new NotFoundException('User not found');
 
     const credits = Math.max(1, Number(amount) || 1);
     const unitAmount = 199;
     const totalAmount = unitAmount * credits;
 
-    const frontendUrl = normalizeFrontendUrl(this.configService.get<string>('FRONTEND_URL'));
+    const frontendUrl = normalizeFrontendUrl(
+      this.configService.get<string>('FRONTEND_URL'),
+    );
     const session = await this.stripe.checkout.sessions.create({
       mode: 'payment',
       success_url: `${frontendUrl}/profile/billing?hint_purchase=success&session_id={CHECKOUT_SESSION_ID}`,
@@ -71,7 +78,10 @@ export class BillingService {
 
     const session = await this.stripe.checkout.sessions.retrieve(safeSessionId);
     if (session.payment_status !== 'paid') {
-      return { fulfilled: false, paymentStatus: session.payment_status ?? 'unpaid' };
+      return {
+        fulfilled: false,
+        paymentStatus: session.payment_status ?? 'unpaid',
+      };
     }
 
     const userId = String(session.metadata?.userId || '');
@@ -87,7 +97,11 @@ export class BillingService {
       status: session.payment_status === 'paid' ? 'paid' : 'pending',
     });
 
-    return { fulfilled: true, paymentStatus: session.payment_status, hintCredits: result.hintCredits };
+    return {
+      fulfilled: true,
+      paymentStatus: session.payment_status,
+      hintCredits: result.hintCredits,
+    };
   };
 
   fulfillStripeSession = async (session: CheckoutSessionLike) => {
