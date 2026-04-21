@@ -3,6 +3,7 @@ import {
   UnauthorizedException,
   NotFoundException,
   BadRequestException,
+  ConflictException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -239,43 +240,73 @@ export class AuthService {
   }
 
   async validateOAuthLogin(profile: any, provider: 'google' | 'github') {
-    const users = await this.users.findAll();
-    let user = users.find(
-      (u: any) =>
-        (provider === 'google' && u.googleId === profile.id) ||
-        (provider === 'github' && u.githubId === profile.id) ||
-        u.email === profile.email,
-    );
+    if (!profile?.id) {
+      throw new UnauthorizedException(this.tr('auth.oauthProviderIdMissing'));
+    }
+
+    if (!profile?.email) {
+      throw new BadRequestException(this.tr('auth.oauthEmailMissing'));
+    }
+
+    let user =
+      provider === 'google'
+        ? await this.users.findByGoogleId(profile.id)
+        : await this.users.findByGithubId(profile.id);
 
     if (!user) {
-      const randomPassword = require('crypto').randomBytes(16).toString('hex');
+      user = await this.users.findByEmail(profile.email);
+      if (user) {
+        const providerField = provider === 'google' ? 'googleId' : 'githubId';
+        const alreadyLinkedProviderId = (user as any)[providerField];
+        if (
+          alreadyLinkedProviderId &&
+          String(alreadyLinkedProviderId) !== String(profile.id)
+        ) {
+          throw new ConflictException(this.tr('auth.oauthAlreadyLinked'));
+        }
+
+        user = await this.users.linkOAuthProvider(
+          (user as any)._id.toString(),
+          provider,
+          profile.id,
+          {
+            avatar: profile.avatar || null,
+            username: (user as any).username || profile.username || null,
+          },
+        );
+      }
+    }
+
+    if (!user) {
+      const randomPassword = crypto.randomBytes(16).toString('hex');
+      const fallbackUsername = `${provider}_${profile.id}`.slice(0, 30);
       const dto: any = {
-        username: profile.username || `${provider}_${profile.id}`,
-        email: profile.email || `${profile.id}@${provider}.local`,
+        username: profile.username || fallbackUsername,
+        email: profile.email,
         password: randomPassword,
         role: 'Player',
         avatar: profile.avatar || null,
       };
 
       const created = await this.users.create(dto);
-      if (profile.email) {
-        await this.emailService.sendWelcomeEmail(profile.email, dto.username);
-      }
+      user = await this.users.linkOAuthProvider(
+        (created as any)._id.toString(),
+        provider,
+        profile.id,
+        {
+          avatar: profile.avatar || null,
+          username: profile.username || fallbackUsername,
+        },
+      );
 
-      // Update the created user with the provider ID
-      const updateQ: any = {};
-      if (provider === 'google') updateQ.googleId = profile.id;
-      if (provider === 'github') updateQ.githubId = profile.id;
-
-      // We have to directly update the model for googleId/githubId since users.update doesn't map it.
-      // Luckily we can just return the created user and let the next login handle it, or we could update it.
-      // Since UserService update doesn't take googleId, we'll just ignore for now or we can update directly via model.
-      // For simplicity we just return the created user.
-
-      user = created;
+      await this.emailService.sendWelcomeEmail(
+        profile.email,
+        profile.username || fallbackUsername,
+      );
     }
 
-    const { passwordHash: _ph, ...rest } = user as any;
+    const normalized = (user as any).toObject ? (user as any).toObject() : user;
+    const { passwordHash: _ph, ...rest } = normalized as any;
     return rest;
   }
 
