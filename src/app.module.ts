@@ -25,6 +25,7 @@ import { JudgeModule } from './judge/judge.module';
 import { ChatModule } from './chat/chat.module';
 import { SupportModule } from './support/support.module';
 import { CommunityModule } from './community/community.module';
+import { AiAgentsModule } from './ai-agents/ai-agents.module';
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { CommunityModule } from './community/community.module';
     ChatModule,
     SupportModule,
     CommunityModule,
+    AiAgentsModule,
   ],
   controllers: [AppController],
   providers: [
