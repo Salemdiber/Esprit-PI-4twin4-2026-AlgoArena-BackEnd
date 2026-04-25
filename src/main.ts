@@ -8,6 +8,7 @@ import { join } from 'path';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { WsAdapter } from '@nestjs/platform-ws';
 import { setDefaultResultOrder } from 'node:dns';
+import compression from 'compression';
 
 function swaggerDocsMessage(
   req: { headers?: Record<string, string | string[] | undefined> },
@@ -58,7 +59,24 @@ async function bootstrap() {
     }),
   );
   app.use(cookieParser());
-  app.useStaticAssets(join(process.cwd(), 'uploads'), { prefix: '/uploads' });
+  // Prefer a Brotli-capable compressor if available, fall back to gzip/deflate
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const shrinkRay = require('shrink-ray-current');
+    app.use(shrinkRay());
+  } catch (e) {
+    app.use(compression());
+  }
+
+  // Serve uploads with long cache lifetime and immutable header for repeat visits
+  const oneMonthMs = 30 * 24 * 60 * 60 * 1000;
+  app.useStaticAssets(join(process.cwd(), 'uploads'), {
+    prefix: '/uploads',
+    maxAge: oneMonthMs,
+    setHeaders: (res: any, _path: string, _stat: any) => {
+      res.setHeader('Cache-Control', `public, max-age=${oneMonthMs / 1000}, immutable`);
+    },
+  });
 
   // Swagger Configuration
   const config = new DocumentBuilder()

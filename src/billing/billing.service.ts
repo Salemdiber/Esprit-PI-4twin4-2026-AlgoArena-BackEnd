@@ -45,8 +45,8 @@ export class BillingService {
     );
     const session = await this.stripe.checkout.sessions.create({
       mode: 'payment',
-      success_url: `${frontendUrl}/profile/billing?hint_purchase=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${frontendUrl}/profile/billing?hint_purchase=cancel`,
+      success_url: `${frontendUrl}/profile/billing/return?hint_purchase=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${frontendUrl}/profile/billing/return?hint_purchase=cancel`,
       line_items: [
         {
           quantity: credits,
