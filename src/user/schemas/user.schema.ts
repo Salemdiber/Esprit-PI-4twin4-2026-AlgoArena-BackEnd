@@ -143,3 +143,7 @@ export const UserSchema = new Schema(
   },
   { timestamps: true },
 );
+
+UserSchema.index({ email: 1 }, { unique: true });
+UserSchema.index({ googleId: 1 }, { unique: true, sparse: true });
+UserSchema.index({ githubId: 1 }, { unique: true, sparse: true });

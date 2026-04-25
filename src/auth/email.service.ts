@@ -7,7 +7,8 @@ import * as nodemailer from 'nodemailer';
 import { resetPasswordEmailTemplate } from './templates/reset-password-email.template';
 import { welcomeEmailTemplate } from './templates/welcome-email.template';
 
-const normalizeFrontendUrl = (value?: string | null) => (value || 'http://localhost:5173').replace(/\/+$/, '');
+const normalizeFrontendUrl = (value?: string | null) =>
+  (value || 'http://localhost:5173').replace(/\/+$/, '');
 
 @Injectable()
 export class EmailService {

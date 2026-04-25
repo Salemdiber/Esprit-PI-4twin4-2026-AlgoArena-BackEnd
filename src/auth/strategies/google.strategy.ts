@@ -1,20 +1,29 @@
+import 'dotenv/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy, VerifyCallback } from 'passport-google-oauth20';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { AuthService } from '../auth.service';
 
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
   constructor(private readonly authService: AuthService) {
+    const logger = new Logger(GoogleStrategy.name);
     const proxy =
       process.env.HTTPS_PROXY || process.env.HTTP_PROXY || undefined;
+    const backendBaseUrl = process.env.BACKEND_URL || 'http://localhost:3000';
+    const clientID = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    if (!clientID || !clientSecret) {
+      logger.error(
+        'Google OAuth credentials are missing (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET).',
+      );
+    }
     super({
-      clientID: process.env.GOOGLE_CLIENT_ID || 'dummy_client_id_google',
-      clientSecret:
-        process.env.GOOGLE_CLIENT_SECRET || 'dummy_client_secret_google',
+      clientID: clientID || '',
+      clientSecret: clientSecret || '',
       callbackURL:
         process.env.GOOGLE_CALLBACK_URL ||
-        'http://localhost:3000/auth/google/callback',
+        `${backendBaseUrl}/auth/google/callback`,
       scope: ['email', 'profile'],
       proxy,
     });

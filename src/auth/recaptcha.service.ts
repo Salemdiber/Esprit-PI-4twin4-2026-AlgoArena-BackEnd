@@ -1,9 +1,15 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { I18nContext, I18nService } from 'nestjs-i18n';
 
 @Injectable()
 export class RecaptchaService {
-  constructor(private readonly i18n: I18nService) {}
+  private readonly logger = new Logger(RecaptchaService.name);
+
+  constructor(
+    private readonly i18n: I18nService,
+    private readonly configService: ConfigService,
+  ) {}
 
   private tr(key: string): string {
     const lang = I18nContext.current()?.lang ?? 'en';
@@ -15,7 +21,7 @@ export class RecaptchaService {
       throw new UnauthorizedException(this.tr('recaptcha.tokenMissing'));
     }
 
-    const secret = process.env.RECAPTCHA_SECRET;
+    const secret = this.configService.get<string>('RECAPTCHA_SECRET');
     if (!secret)
       throw new UnauthorizedException(this.tr('recaptcha.secretNotConfigured'));
     const response = await fetch(
@@ -32,6 +38,12 @@ export class RecaptchaService {
     const data = await response.json();
     // Pour reCAPTCHA v3 : vérifier le score et l'action
     if (!data.success) {
+      const providerCodes = Array.isArray(data['error-codes'])
+        ? data['error-codes'].join(', ')
+        : 'unknown';
+      this.logger.warn(
+        `reCAPTCHA validation failed with provider codes: ${providerCodes}`,
+      );
       throw new UnauthorizedException(this.tr('recaptcha.validationFailed'));
     }
     if (data.score !== undefined && data.score < 0.5) {

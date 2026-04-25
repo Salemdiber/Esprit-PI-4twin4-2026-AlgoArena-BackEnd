@@ -48,6 +48,20 @@ export class AuthController {
     private readonly i18n: I18nService,
   ) {}
 
+  private getFrontendCallbackUrl(): string {
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    return `${frontendUrl}/auth/callback`;
+  }
+
+  private getCookieOptions(httpOnly = true) {
+    return {
+      path: '/',
+      sameSite: 'lax' as const,
+      secure: process.env.NODE_ENV === 'production',
+      httpOnly,
+    };
+  }
+
   private tr(key: string, args?: Record<string, unknown>): string {
     const lang = I18nContext.current()?.lang ?? 'en';
     return this.i18n.translate(key, { lang, args });
@@ -346,19 +360,21 @@ Content-Type: application/json
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
   async googleAuthRedirect(@Req() req, @Res() res: Response) {
+    if (!req.user) {
+      return res.redirect(
+        `${this.getFrontendCallbackUrl()}?error=oauth_failed&provider=google`,
+      );
+    }
     const tokens = await this.authService.login(req.user);
     res.cookie('refresh_token', tokens.refresh_token, {
-      path: '/',
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      httpOnly: true,
-      sameSite: 'lax',
+      ...this.getCookieOptions(true),
     });
     res.cookie('access_token', tokens.access_token, {
-      path: '/',
       maxAge: 15 * 60 * 1000,
-      sameSite: 'lax',
+      ...this.getCookieOptions(false),
     });
-    return res.redirect('http://localhost:5173/auth/callback');
+    return res.redirect(this.getFrontendCallbackUrl());
   }
 
   @ApiOperation({
@@ -448,19 +464,21 @@ Content-Type: application/json
   @Get('github/callback')
   @UseGuards(AuthGuard('github'))
   async githubAuthRedirect(@Req() req, @Res() res: Response) {
+    if (!req.user) {
+      return res.redirect(
+        `${this.getFrontendCallbackUrl()}?error=oauth_failed&provider=github`,
+      );
+    }
     const tokens = await this.authService.login(req.user);
     res.cookie('refresh_token', tokens.refresh_token, {
-      path: '/',
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      httpOnly: true,
-      sameSite: 'lax',
+      ...this.getCookieOptions(true),
     });
     res.cookie('access_token', tokens.access_token, {
-      path: '/',
       maxAge: 15 * 60 * 1000,
-      sameSite: 'lax',
+      ...this.getCookieOptions(false),
     });
-    return res.redirect('http://localhost:5173/auth/callback');
+    return res.redirect(this.getFrontendCallbackUrl());
   }
 
   @ApiOperation({

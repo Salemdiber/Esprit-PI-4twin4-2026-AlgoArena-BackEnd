@@ -107,9 +107,7 @@ export class BattleAiService {
         throw new BadRequestException(this.tr('battleAi.noTestCases'));
       }
 
-      const botDifficulty = (battle as any)?.botDifficulty as
-        | BotDifficulty
-        | undefined;
+      const botDifficulty = battle?.botDifficulty as BotDifficulty | undefined;
       const effectiveDifficulty =
         botDifficulty ||
         this.mapChallengeDifficultyToBotDifficulty(
