@@ -7,6 +7,7 @@ import { join } from 'path';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { WsAdapter } from '@nestjs/platform-ws';
 import { setDefaultResultOrder } from 'node:dns';
+import compression from 'compression';
 
 function swaggerDocsMessage(
   req: { headers?: Record<string, string | string[] | undefined> },
@@ -57,6 +58,7 @@ async function bootstrap() {
     }),
   );
   app.use(cookieParser());
+  app.use(compression());
   app.useStaticAssets(join(process.cwd(), 'uploads'), { prefix: '/uploads' });
 
   // Swagger Configuration

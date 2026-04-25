@@ -52,6 +52,38 @@ export class BattlesController {
     return this.service.findOne(id);
   }
 
+  // POST /battles/:id/join - Join a pending 1vs1 battle
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/join')
+  joinBattle(
+    @Param('id') id: string,
+    @CurrentUser() user: { userId: string },
+  ) {
+    return this.service.join(id, user.userId);
+  }
+
+  // GET /battles/:id/round-results - Fetch stored round results for PVP battles
+  @UseGuards(JwtAuthGuard)
+  @Get(':id/round-results')
+  getRoundResults(@Param('id') id: string) {
+    return this.service.getRoundResults(id);
+  }
+
+  // POST /battles/:id/round-result - Store one user's round result
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/round-result')
+  submitRoundResult(
+    @Param('id') id: string,
+    @CurrentUser() user: { userId: string },
+    @Body()
+    body: {
+      roundIndex: number;
+      result: Record<string, unknown>;
+    },
+  ) {
+    return this.service.submitRoundResult(id, user.userId, body);
+  }
+
   // PATCH /battles/:id - Update a battle by id
   @Patch(':id')
   update(@Param('id') id: string, @Body() dto: UpdateBattleDto) {

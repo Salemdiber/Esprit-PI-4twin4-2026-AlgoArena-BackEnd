@@ -33,6 +33,26 @@ export class Battle {
   @Prop({ default: null })
   winnerUserId: string;
 
+  @Prop({
+    type: [
+      {
+        roundIndex: { type: Number, required: true },
+        userId: { type: String, required: true },
+        result: { type: Object, default: null },
+        createdAt: { type: Date, default: Date.now },
+        updatedAt: { type: Date, default: Date.now },
+      },
+    ],
+    default: [],
+  })
+  pvpRoundResults: Array<{
+    roundIndex: number;
+    userId: string;
+    result: Record<string, unknown> | null;
+    createdAt?: Date;
+    updatedAt?: Date;
+  }>;
+
   @Prop({ type: Date, default: Date.now })
   startedAt: Date;
 
