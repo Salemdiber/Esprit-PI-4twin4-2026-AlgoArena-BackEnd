@@ -17,6 +17,7 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { DeleteAccountDto } from './dto/delete-account.dto';
 import { UpdatePlacementDto } from './dto/update-placement.dto';
+import { UpdateAccessibilitySettingsDto } from './dto/update-accessibility-settings.dto';
 
 // â”€â”€ Rank system constants (single source of truth) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export const RANK_CONFIG = [
@@ -166,6 +167,15 @@ const getRankDefinition = (rankName: string | null | undefined) => {
   );
 };
 
+const DEFAULT_ACCESSIBILITY_SETTINGS = {
+  highContrast: false,
+  reducedMotion: false,
+  dyslexiaFont: false,
+  fontScale: 'medium' as const,
+  voiceMode: false,
+  voiceCommandsEnabled: false,
+};
+
 @Injectable()
 export class UserService {
   constructor(
@@ -299,6 +309,61 @@ export class UserService {
       .exec();
     if (!updated) throw new NotFoundException(this.tr('user.notFound'));
     return updated;
+  }
+
+  private normalizeAccessibilitySettings(settings: any = {}) {
+    return {
+      highContrast:
+        typeof settings?.highContrast === 'boolean'
+          ? settings.highContrast
+          : DEFAULT_ACCESSIBILITY_SETTINGS.highContrast,
+      reducedMotion:
+        typeof settings?.reducedMotion === 'boolean'
+          ? settings.reducedMotion
+          : DEFAULT_ACCESSIBILITY_SETTINGS.reducedMotion,
+      dyslexiaFont:
+        typeof settings?.dyslexiaFont === 'boolean'
+          ? settings.dyslexiaFont
+          : DEFAULT_ACCESSIBILITY_SETTINGS.dyslexiaFont,
+      fontScale: ['small', 'medium', 'large'].includes(settings?.fontScale)
+        ? settings.fontScale
+        : DEFAULT_ACCESSIBILITY_SETTINGS.fontScale,
+      voiceMode:
+        typeof settings?.voiceMode === 'boolean'
+          ? settings.voiceMode
+          : DEFAULT_ACCESSIBILITY_SETTINGS.voiceMode,
+      voiceCommandsEnabled:
+        typeof settings?.voiceCommandsEnabled === 'boolean'
+          ? settings.voiceCommandsEnabled
+          : DEFAULT_ACCESSIBILITY_SETTINGS.voiceCommandsEnabled,
+    };
+  }
+
+  async getAccessibilitySettings(userId: string) {
+    this.ensureValidObjectId(userId);
+    const user = await this.userModel.findById(userId).lean().exec();
+    if (!user) throw new NotFoundException(this.tr('user.notFound'));
+    return this.normalizeAccessibilitySettings((user as any).accessibilitySettings);
+  }
+
+  async updateAccessibilitySettings(
+    userId: string,
+    dto: UpdateAccessibilitySettingsDto,
+  ) {
+    this.ensureValidObjectId(userId);
+    const user = await this.userModel.findById(userId).lean().exec();
+    if (!user) throw new NotFoundException(this.tr('user.notFound'));
+
+    const current = this.normalizeAccessibilitySettings(
+      (user as any).accessibilitySettings,
+    );
+    const next = this.normalizeAccessibilitySettings({ ...current, ...dto });
+
+    await this.userModel
+      .findByIdAndUpdate(userId, { accessibilitySettings: next }, { new: true })
+      .exec();
+
+    return next;
   }
 
   // â”€â”€ Account Settings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -1019,6 +1084,11 @@ export class UserService {
     opts?: { xpReward?: number; solveTimeSeconds?: number | null },
   ): Promise<{ progressEntry: any; xpGranted: number }> {
     this.ensureValidObjectId(userId);
+    const submissionCode =
+      typeof submission?.code === 'string' ? submission.code.trim() : '';
+    if (!submissionCode) {
+      throw new BadRequestException(this.tr('user.invalidSubmissionCode'));
+    }
     const user = (await this.userModel.findById(userId).lean().exec()) as any;
     if (!user) throw new NotFoundException(this.tr('user.notFound'));
 
