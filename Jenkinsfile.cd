@@ -17,9 +17,25 @@ pipeline {
   stages {
     stage('Pull image') {
       steps {
+        script {
+          def imageTag = params.IMAGE_TAG?.trim()
+          def imageLatest = params.IMAGE_LATEST?.trim()
+
+          if (!imageTag) {
+            imageTag = imageLatest
+          }
+
+          if (!imageTag) {
+            error('IMAGE_TAG or IMAGE_LATEST must be provided to deploy the backend image')
+          }
+
+          env.RESOLVED_IMAGE_TAG = imageTag
+          env.RESOLVED_IMAGE_LATEST = imageLatest ?: imageTag
+        }
+
         sh '''
-        docker pull "$IMAGE_TAG"
-        docker pull "$IMAGE_LATEST"
+        docker pull "$RESOLVED_IMAGE_TAG"
+        docker pull "$RESOLVED_IMAGE_LATEST"
         '''
       }
     }
@@ -33,7 +49,7 @@ pipeline {
         docker run -d \
           --name "$CONTAINER_NAME" \
           -p 3000:3000 \
-          "$IMAGE_TAG"
+          "$RESOLVED_IMAGE_TAG"
         '''
       }
     }
