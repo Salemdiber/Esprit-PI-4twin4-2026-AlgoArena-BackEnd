@@ -1,0 +1,41 @@
+pipeline {
+  agent any
+
+  options {
+    timestamps()
+  }
+
+  parameters {
+    string(name: 'IMAGE_TAG', defaultValue: '', description: 'Tagged backend image to deploy')
+    string(name: 'IMAGE_LATEST', defaultValue: '', description: 'Latest backend image to deploy')
+  }
+
+  environment {
+    CONTAINER_NAME = 'algoarena-backend'
+  }
+
+  stages {
+    stage('Pull image') {
+      steps {
+        sh '''
+        docker pull "$IMAGE_TAG"
+        docker pull "$IMAGE_LATEST"
+        '''
+      }
+    }
+
+    stage('Restart container') {
+      steps {
+        sh '''
+        docker stop "$CONTAINER_NAME" || true
+        docker rm "$CONTAINER_NAME" || true
+
+        docker run -d \
+          --name "$CONTAINER_NAME" \
+          -p 3000:3000 \
+          "$IMAGE_TAG"
+        '''
+      }
+    }
+  }
+}
