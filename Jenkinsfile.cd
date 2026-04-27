@@ -41,17 +41,17 @@ pipeline {
     }
 
     stage('Restart container') {
-      steps {
-        sh '''
-        docker stop "$CONTAINER_NAME" || true
-        docker rm "$CONTAINER_NAME" || true
+  steps {
+    sh '''
+    docker stop "$CONTAINER_NAME" || true
+    docker rm "$CONTAINER_NAME" || true
 
-        docker run -d \
-          --name "$CONTAINER_NAME" \
-          -p 3000:3000 \
-          "$RESOLVED_IMAGE_TAG"
-        '''
-      }
-    }
+    docker run -d \
+      --name "$CONTAINER_NAME" \
+      -p 3001:3000 \
+      "$RESOLVED_IMAGE_TAG"
+    '''
+  }
+}
   }
 }
