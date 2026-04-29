@@ -5,6 +5,7 @@ import { JudgeController } from './judge.controller';
 import { ChallengeModule } from '../challenges/challenge.module';
 import { DockerExecutionService } from './services/docker-execution.service';
 import { AIAnalysisService } from './services/ai-analysis.service';
+import { MlComplexityService } from './services/ml-complexity.service';
 import { UserModule } from '../user/user.module';
 import { AuditLogModule } from '../audit-logs/audit-log.module';
 import { SandboxAdminController } from './sandbox-admin.controller';
@@ -20,12 +21,22 @@ import { ChallengeAttemptController } from './challenge-attempt.controller';
       { name: 'SandboxMetric', schema: SandboxMetricSchema },
     ]),
   ],
-  providers: [JudgeService, DockerExecutionService, AIAnalysisService],
+  providers: [
+    JudgeService,
+    DockerExecutionService,
+    AIAnalysisService,
+    MlComplexityService,
+  ],
   controllers: [
     JudgeController,
     SandboxAdminController,
     ChallengeAttemptController,
   ],
-  exports: [JudgeService, DockerExecutionService, AIAnalysisService],
+  exports: [
+    JudgeService,
+    DockerExecutionService,
+    AIAnalysisService,
+    MlComplexityService,
+  ],
 })
 export class JudgeModule {}

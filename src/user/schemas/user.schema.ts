@@ -119,6 +119,26 @@ export const UserSchema = new Schema(
                 loadTime: { type: String, default: null },
                 timeComplexity: { type: String, default: 'Unknown' },
                 spaceComplexity: { type: String, default: 'Unknown' },
+                // Attribution of the complexity prediction. Kept on the
+                // submission record so the UI can render the correct badge
+                // ('ML model' vs 'AI estimate') when the user revisits a
+                // historical submission. Without these fields Mongoose
+                // would silently strip them on save.
+                complexitySource: {
+                  type: String,
+                  enum: ['ml-model', 'ai', 'unknown'],
+                  default: 'unknown',
+                },
+                complexityConfidence: { type: Number, default: null },
+                complexityModelVersion: { type: String, default: null },
+                // Human-readable justification populated by the
+                // pattern-rule layer of the model service. Empty when
+                // the trained classifier was the decider.
+                complexityReasoning: { type: String, default: '' },
+                // Internal label of the deciding layer
+                // ("rule:<name>" or "model"). Stored for telemetry,
+                // not displayed directly to the user.
+                complexityMethod: { type: String, default: null },
                 aiDetection: {
                   type: String,
                   enum: ['MANUAL', 'AI_SUSPECTED'],

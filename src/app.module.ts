@@ -37,10 +37,6 @@ const i18nPath = (() => {
   return hasDistLocales ? distPath : srcPath;
 })();
 
-const distI18nPath = path.join(__dirname, 'i18n');
-const srcI18nPath = path.join(process.cwd(), 'src', 'i18n');
-const i18nPath = existsSync(distI18nPath) ? distI18nPath : srcI18nPath;
-
 @Module({
   imports: [
     ConfigModule.forRoot({

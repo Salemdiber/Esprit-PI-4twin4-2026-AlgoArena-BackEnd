@@ -4,6 +4,7 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -24,6 +25,7 @@ import { join } from 'path';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   private readonly groqApiKey = process.env.GROQ_API_KEY;
   private readonly groqModel = 'llama-3.1-8b-instant';
 
@@ -59,7 +61,16 @@ export class AuthService {
     }
 
     const created = await this.users.create(dto);
-    await this.emailService.sendWelcomeEmail(dto.email, dto.username);
+    // Fire-and-log: a welcome-email delivery failure must NOT abort registration.
+    // Previously, a throwing sendEmail left an orphaned user in the DB, so every
+    // retry with the same address was blocked by the "email already taken" check.
+    this.emailService
+      .sendWelcomeEmail(dto.email, dto.username)
+      .catch((err) => {
+        this.logger?.warn?.(
+          `Welcome email dispatch failed for ${dto.email}: ${(err as Error)?.message || 'unknown error'}`,
+        );
+      });
 
     // Generate placement problems synchronously at registration (blocking, with timeout)
     try {

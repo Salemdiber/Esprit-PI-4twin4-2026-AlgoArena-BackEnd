@@ -2,6 +2,7 @@ import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { I18nContext, I18nService } from 'nestjs-i18n';
 import { DockerExecutionService } from './services/docker-execution.service';
 import { AIAnalysisService } from './services/ai-analysis.service';
+import { MlComplexityService } from './services/ml-complexity.service';
 import { ChallengeService } from '../challenges/challenge.service';
 import { UserService } from '../user/user.service';
 import { AuditLogService } from '../audit-logs/audit-log.service';
@@ -13,6 +14,7 @@ export class JudgeService {
   constructor(
     private readonly dockerService: DockerExecutionService,
     private readonly aiService: AIAnalysisService,
+    private readonly mlComplexity: MlComplexityService,
     private readonly challengeService: ChallengeService,
     private readonly userService: UserService,
     private readonly auditLogService: AuditLogService,
@@ -495,6 +497,37 @@ export class JudgeService {
       challenge.description || '',
       results,
     );
+
+    // ML model prediction (XGBoost CodeComplex). Runs in parallel with the
+    // AI estimate so we can pick whichever is more confident without adding
+    // latency. The model service is optional; if unreachable we transparently
+    // fall back to the AI-derived complexity already in `details`.
+    const mlPrediction = await this.mlComplexity.predict(
+      userCode,
+      language,
+      Array.isArray((challenge as any).tags) ? (challenge as any).tags : [],
+    );
+    // Gate on the *raw* model probability, not the calibrated one.
+    // Calibration sharpens almost every prediction above 0.97, which would
+    // make the safety threshold pointless and let genuinely uncertain
+    // model outputs (like the palindrome-distinct-substrings case) display
+    // as 99%-confident "ML model" answers when the LLM would be more
+    // honest. See ml-complexity.service.ts for the threshold reasoning.
+    const useModel =
+      !!mlPrediction &&
+      mlPrediction.rawConfidence >= this.mlComplexity.minConfidence;
+    const finalTimeComplexity = useModel
+      ? mlPrediction!.timeComplexity
+      : details.timeComplexity || 'Unknown';
+    const finalSpaceComplexity = useModel
+      ? mlPrediction!.spaceComplexity
+      : details.spaceComplexity || 'Unknown';
+    const complexitySource: 'ml-model' | 'ai' | 'unknown' = useModel
+      ? 'ml-model'
+      : details.timeComplexity
+        ? 'ai'
+        : 'unknown';
+
     const solveSecondsValue = Number.isFinite(solveTimeSeconds as number)
       ? Math.max(0, Number(solveTimeSeconds))
       : null;
@@ -509,8 +542,20 @@ export class JudgeService {
       executionTimeMs: dockerResult.executionTimeMs,
       memoryAllocated: 'Not available',
       loadTime: `${Date.now() - startedAt}ms`,
-      timeComplexity: details.timeComplexity || 'Unknown',
-      spaceComplexity: details.spaceComplexity || 'Unknown',
+      timeComplexity: finalTimeComplexity,
+      spaceComplexity: finalSpaceComplexity,
+      complexitySource,
+      complexityConfidence: mlPrediction?.confidence ?? null,
+      complexityModelVersion: mlPrediction?.modelVersion ?? null,
+      // Stored verbatim from the model service. Empty when the
+      // verdict came from the trained classifier with no rule match;
+      // populated with a short justification when a deterministic
+      // pattern rule fired (e.g. "Expand-around-centers palindrome
+      // pattern: n centers x O(n) expansion -> O(n^2) time ...").
+      complexityReasoning: useModel ? (mlPrediction?.reasoning ?? '') : '',
+      // "rule:<name>" or "model" - useful for telemetry on which
+      // layer of the analyser drove the answer.
+      complexityMethod: useModel ? (mlPrediction?.method ?? null) : null,
       codeQualityScore: (details as any).codeQualityScore ?? null,
       codeQualityNotes: (details as any).codeQualityNotes ?? [],
       aiDetection: details.aiDetection || 'MANUAL',
