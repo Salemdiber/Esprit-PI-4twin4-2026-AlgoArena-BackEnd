@@ -5,6 +5,7 @@ describe('JudgeService', () => {
   let svc: JudgeService;
   let docker: any;
   let ai: any;
+  let mlComplexity: any;
   let challengeSvc: any;
   let userSvc: any;
   let audit: any;
@@ -13,6 +14,7 @@ describe('JudgeService', () => {
   beforeEach(() => {
     docker = { executeCode: jest.fn() };
     ai = { quickCodeCheck: jest.fn(), analyzeResults: jest.fn(), analyzeSubmissionDetails: jest.fn(), generateHint: jest.fn() };
+    mlComplexity = { predict: jest.fn(), minConfidence: 0 };
     challengeSvc = { findById: jest.fn(), incrementSolvedCount: jest.fn() };
     userSvc = {
       findOne: jest.fn().mockResolvedValue(null),
@@ -34,7 +36,7 @@ describe('JudgeService', () => {
     audit = { create: jest.fn() };
     i18n = { translate: jest.fn((k) => k) };
 
-    svc = new JudgeService(docker, ai, challengeSvc, userSvc, audit, i18n);
+    svc = new JudgeService(docker, ai, mlComplexity, challengeSvc, userSvc, audit, i18n);
   });
 
   test('judgeSubmission: unsupported language throws', async () => {
