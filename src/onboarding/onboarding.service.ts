@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { SettingsService } from '../settings/settings.service';
 import { CacheService } from '../cache/cache.service';
 import { AIAnalysisService } from '../judge/services/ai-analysis.service';
+import { MlComplexityService } from '../judge/services/ml-complexity.service';
 import * as crypto from 'crypto';
 
 // ─── DTOs ─────────────────────────────────────────────────────────────────────
@@ -26,6 +27,7 @@ export interface ProblemScore {
   space: number; // 0-100 (space/memory efficiency)
   timeComplexity?: string; // e.g. "O(n)", optional
   complexite?: string; // french label alias for timeComplexity
+  complexitySource?: 'ml-model' | 'ai' | 'groq' | 'unknown';
   style: number; // 0-100
   composite: number; // 0-100 weighted
   notes: string;
@@ -117,6 +119,7 @@ export class OnboardingService {
     private readonly cacheService: CacheService,
     private readonly i18n: I18nService,
     private readonly aiAnalysisService: AIAnalysisService,
+    private readonly mlComplexityService: MlComplexityService,
   ) {
     if (!this.groqApiKey) {
       this.logger.warn('GROQ_API_KEY not set — AI scoring will be disabled');
@@ -286,11 +289,18 @@ export class OnboardingService {
 
     try {
       const prompt = this.buildPrompt(sol);
-      const raw = await this.callGroq(prompt);
+      const [raw, mlPrediction] = await Promise.all([
+        this.callGroq(prompt),
+        this.mlComplexityService.predict(sol.code, sol.language),
+      ]);
       const parsed = this.extractJson(raw);
 
       const exactitude = this.clamp(Number(parsed.exactitude) || 50);
-      const complexity = this.clamp(Number(parsed.complexity) || 50);
+      const complexity = this.clamp(
+        Number(parsed.complexity) ||
+          this.bigOToComplexityScore(mlPrediction?.label) ||
+          50,
+      );
       // space may be provided as 'space' or 'memory' or similar keys
       const rawSpace = Number(
         parsed.space ??
@@ -302,7 +312,8 @@ export class OnboardingService {
       const space = Number.isFinite(rawSpace) ? this.clamp(rawSpace) : 50;
       const style = this.clamp(Number(parsed.style) || 50);
       // parse optional time complexity notation (strings like O(n), O(n log n), etc.)
-      const timeComplexity =
+      const mlTimeComplexity = mlPrediction?.timeComplexity?.trim() || '';
+      const aiTimeComplexity =
         String(
           (parsed.complexityNotation ??
             parsed.complexity_notation ??
@@ -313,6 +324,21 @@ export class OnboardingService {
             parsed.complexity) ||
             '',
         ).trim() || 'O(?)';
+      const inferredTimeComplexity =
+        mlTimeComplexity && mlTimeComplexity !== 'O(?)'
+          ? mlTimeComplexity
+          : aiTimeComplexity;
+      let complexitySource: 'ml-model' | 'ai' | 'groq' | 'unknown' =
+        mlTimeComplexity && mlTimeComplexity !== 'O(?)'
+          ? 'ml-model'
+          : 'ai';
+      const timeComplexity =
+        inferredTimeComplexity === 'O(?)'
+          ? await this.resolveTimeComplexityWithGroq(sol, parsed)
+          : inferredTimeComplexity;
+      if (inferredTimeComplexity === 'O(?)') {
+        complexitySource = 'groq';
+      }
       const composite = Math.round(
         exactitude * 0.4 + complexity * 0.3 + style * 0.25 + space * 0.05,
       );
@@ -326,9 +352,10 @@ export class OnboardingService {
         space,
         timeComplexity,
         complexite: timeComplexity,
+        complexitySource,
         style,
         composite,
-        notes: String(parsed.notes ?? ''),
+        notes: this.appendMlNote(String(parsed.notes ?? ''), mlPrediction),
       };
     } catch (err) {
       this.logger.warn(
@@ -346,6 +373,7 @@ export class OnboardingService {
         space: 50,
         timeComplexity: 'O(?)',
         complexite: 'O(?)',
+        complexitySource: 'unknown',
         style: 50,
         composite: Math.round(base * 0.4 + 50 * 0.3 + 50 * 0.25 + 50 * 0.05),
         notes: 'AI analysis unavailable — baseline estimate applied.',
@@ -512,6 +540,114 @@ END_JSON_RESPONSE`;
     return Math.min(max, Math.max(min, n));
   }
 
+  private bigOToComplexityScore(label?: string | null): number {
+    const normalized = String(label || '').trim().toLowerCase();
+    const scores: Record<string, number> = {
+      constant: 100,
+      logn: 92,
+      linear: 84,
+      nlogn: 76,
+      quadratic: 64,
+      cubic: 52,
+      np: 36,
+    };
+
+    return scores[normalized] ?? 0;
+  }
+
+  private appendMlNote(note: string, mlPrediction: { timeComplexity?: string; label?: string } | null): string {
+    const base = String(note || '').trim();
+    if (!mlPrediction?.timeComplexity || mlPrediction.timeComplexity === 'O(?)') {
+      return base;
+    }
+
+    const suffix = `ML complexity: ${mlPrediction.timeComplexity}`;
+    if (!base) return suffix;
+    return `${base} ${suffix}`;
+  }
+
+  private async resolveTimeComplexityWithGroq(
+    sol: SolutionInput,
+    parsed: Record<string, unknown>,
+  ): Promise<string> {
+    try {
+      const prompt = `You are a senior algorithm judge.
+
+Given the submission below, determine ONLY the most likely time complexity in Big-O notation.
+Return strict JSON with a single key: {"timeComplexity":"O(...)"}.
+If uncertain, make your best estimate instead of returning O(?).
+
+Problem: ${sol.title}
+Difficulty: ${sol.difficulty}
+Language: ${sol.language}
+
+Previous analysis hints:
+${JSON.stringify({
+        timeComplexity: parsed?.timeComplexity ?? null,
+        complexity: parsed?.complexity ?? null,
+        notes: parsed?.notes ?? null,
+      })}
+
+Code:
+${sol.code}`;
+
+      const raw = await this.callGroq(prompt);
+      const parsedGroq = this.extractJsonObject(raw);
+      const resolved = String((parsedGroq as any)?.timeComplexity || '').trim();
+      return resolved && resolved !== 'O(?)' ? resolved : 'O(?)';
+    } catch (err) {
+      this.logger.warn(
+        `Groq time-complexity fallback failed for "${sol.title}": ${(err as Error)?.message}`,
+      );
+      return 'O(?)';
+    }
+  }
+
+  private extractJsonObject(raw: string): Record<string, unknown> {
+    const delimiterStart = 'START_JSON_RESPONSE';
+    const delimiterEnd = 'END_JSON_RESPONSE';
+
+    let jsonStr: string | null = null;
+    const startIdx = raw.indexOf(delimiterStart);
+    const endIdx = raw.indexOf(delimiterEnd);
+
+    if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+      jsonStr = raw.substring(startIdx + delimiterStart.length, endIdx).trim();
+    } else {
+      const braceStart = raw.indexOf('{');
+      if (braceStart === -1) {
+        throw new Error('No JSON object found in Groq response');
+      }
+
+      let braceCount = 0;
+      let braceEnd = -1;
+      for (let i = braceStart; i < raw.length; i++) {
+        if (raw[i] === '{') braceCount++;
+        if (raw[i] === '}') braceCount--;
+        if (braceCount === 0) {
+          braceEnd = i;
+          break;
+        }
+      }
+
+      if (braceEnd === -1) {
+        throw new Error('Malformed JSON in Groq response: unmatched braces');
+      }
+
+      jsonStr = raw.substring(braceStart, braceEnd + 1);
+    }
+
+    if (!jsonStr.trim()) {
+      throw new Error('No JSON content found in Groq response');
+    }
+
+    const parsed = JSON.parse(jsonStr);
+    if (typeof parsed !== 'object' || parsed === null) {
+      throw new Error('Expected JSON object');
+    }
+    return parsed;
+  }
+
   private zeroScore(sol: SolutionInput, notes: string): ProblemScore {
     return {
       problemId: sol.problemId,
@@ -522,6 +658,7 @@ END_JSON_RESPONSE`;
       space: 0,
       timeComplexity: 'O(?)',
       complexite: 'O(?)',
+      complexitySource: 'unknown',
       style: 0,
       composite: 0,
       notes,
