@@ -112,7 +112,7 @@ async function bootstrap() {
       if (!payload) {
         return res.status(401).send(swaggerDocsMessage(req, 'invalidToken'));
       }
-      const role = String(payload.role || '').toUpperCase();
+      const role = typeof payload.role === 'string' ? payload.role.toUpperCase() : '';
       if (!SWAGGER_ALLOWED_ROLES.has(role)) {
         return res.status(403).send(swaggerDocsMessage(req, 'forbidden'));
       }
