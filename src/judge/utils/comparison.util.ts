@@ -8,7 +8,7 @@ function normalizeForComparison(value: unknown): unknown {
   }
   if (value && typeof value === 'object') {
     const record = value as Record<string, unknown>;
-    const keys = Object.keys(record).sort();
+    const keys = Object.keys(record).sort((left, right) => left.localeCompare(right));
     const normalized: Record<string, unknown> = {};
     for (const key of keys) {
       normalized[key] = normalizeForComparison(record[key]);

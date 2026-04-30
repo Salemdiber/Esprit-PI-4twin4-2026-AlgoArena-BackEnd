@@ -554,7 +554,7 @@ export class AiAgentsService {
 
   private toI18nKey(filePath: string, index: number): string {
     const normalized = filePath
-      .replaceAll(/\\/g, '/')
+      .replaceAll('\\', '/')
       .replaceAll(/^.*\/src\//g, '')
       .replaceAll(/\.(jsx|tsx|js|ts)$/gi, '')
       .split('/')

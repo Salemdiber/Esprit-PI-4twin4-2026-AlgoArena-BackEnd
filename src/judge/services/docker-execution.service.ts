@@ -256,7 +256,7 @@ export class DockerExecutionService implements OnModuleInit {
       clearTimeout(timeoutHandle);
 
       if (stopStatsSampler) stopStatsSampler();
-      if (statsSamplerPromise) {
+      if (statsSamplerPromise !== undefined) {
         const sampled = await statsSamplerPromise.catch(() => null);
         if (sampled) {
           metricRecord.peakCpuPercent = sampled.peakCpuPercent;

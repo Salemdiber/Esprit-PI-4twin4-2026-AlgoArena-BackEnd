@@ -263,7 +263,7 @@ Audit logs are created for every call:
     @Body() body: { xpDelta: number },
   ) {
     const xpDelta = Number(body?.xpDelta);
-    if (!isFinite(xpDelta)) {
+    if (!Number.isFinite(xpDelta)) {
       throw new BadRequestException(this.tr('userController.xpDeltaInvalid'));
     }
 
