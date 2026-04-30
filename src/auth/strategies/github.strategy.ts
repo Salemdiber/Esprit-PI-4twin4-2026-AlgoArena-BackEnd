@@ -8,7 +8,9 @@ import { AuthService } from '../auth.service';
 export class GithubStrategy extends PassportStrategy(Strategy, 'github') {
   constructor(private readonly authService: AuthService) {
     const logger = new Logger(GithubStrategy.name);
-    const backendBaseUrl = process.env.BACKEND_URL || 'http://localhost:3000';
+    const backendBaseUrl =
+      process.env.BACKEND_URL ||
+      `http://localhost:${process.env.PORT || 3000}`;
     const clientID = process.env.GITHUB_CLIENT_ID;
     const clientSecret = process.env.GITHUB_CLIENT_SECRET;
     if (!clientID || !clientSecret) {

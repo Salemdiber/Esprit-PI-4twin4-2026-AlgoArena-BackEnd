@@ -8,6 +8,7 @@ import {
 } from '@nestjs/websockets';
 import { JwtService } from '@nestjs/jwt';
 import { Server, WebSocket } from 'ws';
+import { resolveAllowedOrigins } from '../common/server-config';
 
 type SocketUser = { userId: string; username: string; role?: string };
 type AuthSocket = WebSocket & { user?: SocketUser; rooms?: Set<string> };
@@ -15,9 +16,7 @@ type AuthSocket = WebSocket & { user?: SocketUser; rooms?: Set<string> };
 @WebSocketGateway({
   path: '/battles/ws',
   cors: {
-    origin: (process.env.CORS_ORIGIN ?? 'http://localhost:5173')
-      .split(',')
-      .map((v) => v.trim()),
+    origin: resolveAllowedOrigins(process.env.CORS_ORIGIN),
     credentials: true,
   },
 })

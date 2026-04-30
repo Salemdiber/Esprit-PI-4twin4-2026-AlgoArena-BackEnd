@@ -9,6 +9,23 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { WsAdapter } from '@nestjs/platform-ws';
 import { setDefaultResultOrder } from 'node:dns';
 import compression from 'compression';
+import { resolveAllowedOrigins } from './common/server-config';
+
+const SWAGGER_DOCS_PATHS = ['/api/docs', '/api/docs-json', '/api/docs-yaml'];
+const SWAGGER_ALLOWED_ROLES = new Set(['ADMIN', 'SUPER_ADMIN', 'DEV']);
+
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  const segments = token.split('.');
+  if (segments.length !== 3) return null;
+
+  try {
+    return JSON.parse(
+      Buffer.from(segments[1], 'base64url').toString('utf8'),
+    ) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
 
 function swaggerDocsMessage(
   req: { headers?: Record<string, string | string[] | undefined> },
@@ -40,10 +57,7 @@ async function bootstrap() {
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.useWebSocketAdapter(new WsAdapter(app));
-  const allowedOrigins = (process.env.CORS_ORIGIN ?? 'http://localhost:5173')
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean);
+  const allowedOrigins = resolveAllowedOrigins(process.env.CORS_ORIGIN);
 
   app.enableCors({
     origin: allowedOrigins,
@@ -89,22 +103,18 @@ async function bootstrap() {
     .build();
 
   // Protect Swagger UI in production
-  app.use('/api/docs', (req: any, res: any, next: any) => {
+  app.use(SWAGGER_DOCS_PATHS, (req: any, res: any, next: any) => {
     if (process.env.NODE_ENV === 'production') {
       const token = req.cookies?.access_token || req.cookies?.refresh_token;
       if (!token)
         return res.status(401).send(swaggerDocsMessage(req, 'unauthorized'));
-      try {
-        const payload = JSON.parse(
-          Buffer.from(token.split('.')[1], 'base64').toString(),
-        );
-        // Assuming roles are uppercase 'ADMIN', 'ORGANIZER' or similar
-        const role = (payload.role || '').toUpperCase();
-        if (role !== 'ADMIN' && role !== 'SUPER_ADMIN' && role !== 'DEV') {
-          return res.status(403).send(swaggerDocsMessage(req, 'forbidden'));
-        }
-      } catch (e) {
+      const payload = decodeJwtPayload(token);
+      if (!payload) {
         return res.status(401).send(swaggerDocsMessage(req, 'invalidToken'));
+      }
+      const role = String(payload.role || '').toUpperCase();
+      if (!SWAGGER_ALLOWED_ROLES.has(role)) {
+        return res.status(403).send(swaggerDocsMessage(req, 'forbidden'));
       }
     }
     next();
@@ -116,7 +126,6 @@ async function bootstrap() {
       persistAuthorization: true,
     },
   });
-
 
   await app.listen(process.env.PORT ?? 3000);
 }

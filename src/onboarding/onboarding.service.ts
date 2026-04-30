@@ -355,7 +355,7 @@ export class OnboardingService {
         complexitySource,
         style,
         composite,
-        notes: this.appendMlNote(String(parsed.notes ?? ''), mlPrediction),
+        notes: this.appendMlNote(this.extractNotes(parsed.notes), mlPrediction),
       };
     } catch (err) {
       this.logger.warn(
@@ -566,6 +566,10 @@ END_JSON_RESPONSE`;
     return `${base} ${suffix}`;
   }
 
+  private extractNotes(notes: unknown): string {
+    return typeof notes === 'string' ? notes : '';
+  }
+
   private async resolveTimeComplexityWithGroq(
     sol: SolutionInput,
     parsed: Record<string, unknown>,
@@ -604,38 +608,7 @@ ${sol.code}`;
   }
 
   private extractJsonObject(raw: string): Record<string, unknown> {
-    const delimiterStart = 'START_JSON_RESPONSE';
-    const delimiterEnd = 'END_JSON_RESPONSE';
-
-    let jsonStr: string | null = null;
-    const startIdx = raw.indexOf(delimiterStart);
-    const endIdx = raw.indexOf(delimiterEnd);
-
-    if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
-      jsonStr = raw.substring(startIdx + delimiterStart.length, endIdx).trim();
-    } else {
-      const braceStart = raw.indexOf('{');
-      if (braceStart === -1) {
-        throw new Error('No JSON object found in Groq response');
-      }
-
-      let braceCount = 0;
-      let braceEnd = -1;
-      for (let i = braceStart; i < raw.length; i++) {
-        if (raw[i] === '{') braceCount++;
-        if (raw[i] === '}') braceCount--;
-        if (braceCount === 0) {
-          braceEnd = i;
-          break;
-        }
-      }
-
-      if (braceEnd === -1) {
-        throw new Error('Malformed JSON in Groq response: unmatched braces');
-      }
-
-      jsonStr = raw.substring(braceStart, braceEnd + 1);
-    }
+    const jsonStr = this.extractJsonContent(raw, 'Groq');
 
     if (!jsonStr.trim()) {
       throw new Error('No JSON content found in Groq response');
@@ -646,6 +619,43 @@ ${sol.code}`;
       throw new Error('Expected JSON object');
     }
     return parsed;
+  }
+
+  private extractJsonContent(raw: string, sourceLabel: string): string {
+    const delimiterStart = 'START_JSON_RESPONSE';
+    const delimiterEnd = 'END_JSON_RESPONSE';
+
+    const startIdx = raw.indexOf(delimiterStart);
+    const endIdx = raw.indexOf(delimiterEnd);
+
+    if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+      return raw.substring(startIdx + delimiterStart.length, endIdx).trim();
+    }
+
+    const braceStart = raw.indexOf('{');
+    if (braceStart === -1) {
+      throw new Error(`No JSON object found in ${sourceLabel} response`);
+    }
+
+    const braceEnd = this.findMatchingBraceEnd(raw, braceStart);
+    if (braceEnd === -1) {
+      throw new Error(`Malformed JSON in ${sourceLabel} response: unmatched braces`);
+    }
+
+    return raw.substring(braceStart, braceEnd + 1);
+  }
+
+  private findMatchingBraceEnd(raw: string, braceStart: number): number {
+    let braceCount = 0;
+    for (let i = braceStart; i < raw.length; i++) {
+      if (raw[i] === '{') braceCount++;
+      if (raw[i] === '}') braceCount--;
+      if (braceCount === 0) {
+        return i;
+      }
+    }
+
+    return -1;
   }
 
   private zeroScore(sol: SolutionInput, notes: string): ProblemScore {

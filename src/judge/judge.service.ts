@@ -517,16 +517,14 @@ export class JudgeService {
       !!mlPrediction &&
       mlPrediction.rawConfidence >= this.mlComplexity.minConfidence;
     const finalTimeComplexity = useModel
-      ? mlPrediction!.timeComplexity
+      ? mlPrediction.timeComplexity
       : details.timeComplexity || 'Unknown';
     const finalSpaceComplexity = useModel
-      ? mlPrediction!.spaceComplexity
+      ? mlPrediction.spaceComplexity
       : details.spaceComplexity || 'Unknown';
     const complexitySource: 'ml-model' | 'ai' | 'unknown' = useModel
       ? 'ml-model'
-      : details.timeComplexity
-        ? 'ai'
-        : 'unknown';
+      : this.resolveComplexitySource(details);
 
     const solveSecondsValue = Number.isFinite(solveTimeSeconds as number)
       ? Math.max(0, Number(solveTimeSeconds))
@@ -800,5 +798,11 @@ export class JudgeService {
       incompleteAttemptCount: Number(entry.incompleteAttemptCount || 0),
       submissions: Array.isArray(entry.submissions) ? entry.submissions : [],
     };
+  }
+
+  private resolveComplexitySource(
+    details: { timeComplexity?: string },
+  ): 'ai' | 'unknown' {
+    return details.timeComplexity ? 'ai' : 'unknown';
   }
 }
