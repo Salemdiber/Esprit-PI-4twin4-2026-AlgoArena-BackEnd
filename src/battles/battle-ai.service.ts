@@ -346,7 +346,9 @@ export class BattleAiService {
 
       if (!response.ok) {
         const errorText = await response.text().catch(() => '');
-        this.logger.error(`AI API error: ${response.status} ${errorText}`);
+        this.logger.warn(
+          `AI API unavailable for ${this.provider} (${this.baseUrl}); using fallback solution: ${response.status} ${errorText}`,
+        );
         return this.fallbackSolution(challenge, language);
       }
 
@@ -360,7 +362,9 @@ export class BattleAiService {
 
       return cleaned;
     } catch (error: any) {
-      this.logger.error(`AI generation failed: ${error?.message || error}`);
+      this.logger.warn(
+        `AI generation unavailable for ${this.provider} (${this.baseUrl}); using fallback solution: ${error?.message || error}`,
+      );
       return this.fallbackSolution(challenge, language);
     }
   }
