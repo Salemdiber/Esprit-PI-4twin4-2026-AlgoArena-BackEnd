@@ -125,8 +125,8 @@ export class EmailDeliverabilityService {
 
   private matchesFakePattern(localPart: string, domain: string): boolean {
     const domainName = domain.split('.')[0] ?? '';
-    const localNoDigits = localPart.replace(/\d+/g, '');
-    const domainNoDigits = domainName.replace(/\d+/g, '');
+    const localNoDigits = localPart.replaceAll(/\d+/g, '');
+    const domainNoDigits = domainName.replaceAll(/\d+/g, '');
 
     const exactFakePairs = new Set([
       'test@test.com',

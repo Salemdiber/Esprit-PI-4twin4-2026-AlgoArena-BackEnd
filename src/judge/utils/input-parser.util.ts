@@ -205,10 +205,10 @@ function findTopLevelEquals(source: string): number {
 }
 
 function convertSingleQuotedStrings(input: string): string {
-  return input.replace(
+  return input.replaceAll(
     /'([^'\\]*(?:\\.[^'\\]*)*)'/g,
     (_match, content: string) => {
-      const escaped = content.replace(/"/g, '\\"');
+      const escaped = content.replaceAll(/"/g, '\\"');
       return `"${escaped}"`;
     },
   );
@@ -217,10 +217,10 @@ function convertSingleQuotedStrings(input: string): string {
 function normalizeJsonLike(input: string): string {
   const withDoubleQuotes = convertSingleQuotedStrings(input);
   return withDoubleQuotes
-    .replace(/\bTrue\b/g, 'true')
-    .replace(/\bFalse\b/g, 'false')
-    .replace(/\bNone\b/g, 'null')
-    .replace(/([{,]\s*)([A-Za-z_][A-Za-z0-9_]*)(\s*:)/g, '$1"$2"$3');
+    .replaceAll(/\bTrue\b/g, 'true')
+    .replaceAll(/\bFalse\b/g, 'false')
+    .replaceAll(/\bNone\b/g, 'null')
+    .replaceAll(/([{,]\s*)([A-Za-z_][A-Za-z0-9_]*)(\s*:)/g, '$1"$2"$3');
 }
 
 function parsePrimitive(input: string): unknown {

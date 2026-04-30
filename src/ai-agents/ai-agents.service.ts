@@ -554,11 +554,11 @@ export class AiAgentsService {
 
   private toI18nKey(filePath: string, index: number): string {
     const normalized = filePath
-      .replace(/\\/g, '/')
-      .replace(/^.*\/src\//, '')
-      .replace(/\.(jsx|tsx|js|ts)$/i, '')
+      .replaceAll(/\\/g, '/')
+      .replaceAll(/^.*\/src\//g, '')
+      .replaceAll(/\.(jsx|tsx|js|ts)$/gi, '')
       .split('/')
-      .map((p) => p.replace(/[^a-zA-Z0-9]/g, ''))
+      .map((p) => p.replaceAll(/[^a-zA-Z0-9]/g, ''))
       .filter(Boolean)
       .map((p) => p.charAt(0).toLowerCase() + p.slice(1))
       .join('.');
