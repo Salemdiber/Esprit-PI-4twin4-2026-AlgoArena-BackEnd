@@ -159,13 +159,13 @@ export class PlagiarismDetectionService {
     const submitted = {
       full: this.hashCode(submittedCode),
       normalized: this.hashCode(this.normalizeCode(submittedCode)),
-      trimmed: this.hashCode(submittedCode.replace(/\s/g, '')),
+      trimmed: this.hashCode(submittedCode.replaceAll(/\s/g, '')),
     };
 
     const reference = {
       full: this.hashCode(referenceCode),
       normalized: this.hashCode(this.normalizeCode(referenceCode)),
-      trimmed: this.hashCode(referenceCode.replace(/\s/g, '')),
+      trimmed: this.hashCode(referenceCode.replaceAll(/\s/g, '')),
     };
 
     // Check for exact matches
@@ -387,9 +387,9 @@ export class PlagiarismDetectionService {
 
   private normalizeCode(code: string): string {
     return code
-      .replace(/\s+/g, ' ')
-      .replace(/\/\*[\s\S]*?\*\//g, '')
-      .replace(/\/\/.*/g, '')
+      .replaceAll(/\s+/g, ' ')
+      .replaceAll(/\/\*[\s\S]*?\*\//g, '')
+      .replaceAll(/\/\/.*/g, '')
       .trim();
   }
 
@@ -484,8 +484,8 @@ export class PlagiarismDetectionService {
   private tokenize(code: string): string[] {
     // Remove comments
     const cleaned = code
-      .replace(/\/\*[\s\S]*?\*\//g, '')
-      .replace(/\/\/.*/g, '');
+      .replaceAll(/\/\*[\s\S]*?\*\//g, '')
+      .replaceAll(/\/\/.*/g, '');
 
     // Tokenize by common delimiters
     const tokens = cleaned
@@ -576,10 +576,10 @@ export class PlagiarismDetectionService {
 
   private extractLogicFlow(code: string): string {
     return code
-      .replace(/\b[a-zA-Z_][a-zA-Z0-9_]*\b/g, 'VAR') // Replace all identifiers
-      .replace(/\d+/g, 'NUM') // Replace all numbers
-      .replace(/(['"`])[\s\S]*?\1/g, 'STR') // Replace strings
-      .replace(/\s+/g, ' ')
+      .replaceAll(/\b[a-zA-Z_][a-zA-Z0-9_]*\b/g, 'VAR') // Replace all identifiers
+      .replaceAll(/\d+/g, 'NUM') // Replace all numbers
+      .replaceAll(/(['"`])[\s\S]*?\1/g, 'STR') // Replace strings
+      .replaceAll(/\s+/g, ' ')
       .trim();
   }
 
@@ -611,8 +611,8 @@ export class PlagiarismDetectionService {
   }
 
   private detectWhitespaceManipulation(code1: string, code2: string): number {
-    const clean1 = code1.replace(/\s/g, '');
-    const clean2 = code2.replace(/\s/g, '');
+    const clean1 = code1.replaceAll(/\s/g, '');
+    const clean2 = code2.replaceAll(/\s/g, '');
     return clean1 === clean2 ? 0.99 : 0;
   }
 

@@ -638,7 +638,7 @@ export class DockerExecutionService implements OnModuleInit {
     functionName: string,
   ): number | null {
     if (!functionName) return null;
-    const escaped = functionName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const escaped = functionName.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
     if (language === 'javascript') {
       const patterns = [

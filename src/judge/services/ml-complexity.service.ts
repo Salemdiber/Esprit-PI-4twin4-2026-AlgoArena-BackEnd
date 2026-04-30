@@ -58,10 +58,10 @@ export class MlComplexityService {
   readonly minConfidence: number;
 
   constructor(private readonly config: ConfigService) {
-    this.baseUrl = (
+    this.baseUrl = this.trimTrailingSlashes(
       this.config.get<string>('COMPLEXITY_MODEL_URL') ||
-      'http://127.0.0.1:8088'
-    ).replace(/\/+$/, '');
+        'http://127.0.0.1:8088',
+    );
     this.timeoutMs = Number(
       this.config.get<string>('COMPLEXITY_MODEL_TIMEOUT_MS') || 4000,
     );
@@ -169,5 +169,13 @@ export class MlComplexityService {
 
     const confidence = data.confidence;
     return Number.isFinite(confidence) ? Number(confidence) : 0;
+  }
+
+  private trimTrailingSlashes(value: string): string {
+    let end = value.length;
+    while (end > 0 && value.charCodeAt(end - 1) === 47) {
+      end--;
+    }
+    return end === value.length ? value : value.slice(0, end);
   }
 }

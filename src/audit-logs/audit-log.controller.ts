@@ -87,8 +87,8 @@ Content-Type: application/json
     @Query('search') search?: string,
   ) {
     return this.auditLogService.findAll({
-      page: page ? parseInt(page, 10) : 1,
-      limit: limit ? parseInt(limit, 10) : 20,
+      page: page ? Number.parseInt(page, 10) : 1,
+      limit: limit ? Number.parseInt(limit, 10) : 20,
       actionType,
       actor,
       entityType,

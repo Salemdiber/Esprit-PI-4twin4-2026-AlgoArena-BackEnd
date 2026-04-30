@@ -75,8 +75,8 @@ const normalizeTitle = (value: string) =>
   (value || '')
     .toLowerCase()
     .trim()
-    .replace(/[^\w\s]/g, '')
-    .replace(/\s+/g, ' ');
+    .replaceAll(/[^\w\s]/g, '')
+    .replaceAll(/\s+/g, ' ');
 
 ChallengeSchema.pre('validate', function setNormalizedTitle(next) {
   const current = this as any;

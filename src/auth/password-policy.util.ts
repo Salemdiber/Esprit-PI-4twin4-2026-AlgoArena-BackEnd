@@ -8,7 +8,7 @@ function normalize(value: string): string {
 }
 
 function toAlphaNumeric(value: string): string {
-  return value.replace(/[^a-z0-9]/gi, '').toLowerCase();
+  return value.replaceAll(/[^a-z0-9]/gi, '').toLowerCase();
 }
 
 function collectSensitiveTokens(username: string, email: string): string[] {

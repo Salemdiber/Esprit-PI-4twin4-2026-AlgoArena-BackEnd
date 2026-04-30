@@ -16,7 +16,7 @@ type CheckoutSessionLike = {
 };
 
 const normalizeFrontendUrl = (value?: string | null) =>
-  (value || 'http://localhost:5173').replace(/\/+$/, '');
+  (value || 'http://localhost:5173').replaceAll(/\/+$/g, '');
 
 @Injectable()
 export class BillingService {

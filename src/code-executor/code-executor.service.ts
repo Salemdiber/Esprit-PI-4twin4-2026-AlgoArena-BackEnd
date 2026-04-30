@@ -196,9 +196,9 @@ ${code}
 
 # Input handling
 try:
-    user_input = json.loads('''${testCase.input.replace(/'/g, "\\'")}''')
+  user_input = json.loads('''${testCase.input.replaceAll(/'/g, "\\'")}''')
 except:
-    user_input = '''${testCase.input.replace(/'/g, "\\'")}'''
+  user_input = '''${testCase.input.replaceAll(/'/g, "\\'")}'''
 
 # Call the function (expecting a function named 'solution' or similar)
 # This is flexible - if code returns directly, use that
@@ -340,8 +340,8 @@ except Exception as e:
 
   private compareOutputs(actual: string, expected: string): boolean {
     // Trim whitespace and compare
-    const actualTrimmed = actual.trim().replace(/\s+/g, ' ');
-    const expectedTrimmed = expected.trim().replace(/\s+/g, ' ');
+    const actualTrimmed = actual.trim().replaceAll(/\s+/g, ' ');
+    const expectedTrimmed = expected.trim().replaceAll(/\s+/g, ' ');
 
     if (actualTrimmed === expectedTrimmed) {
       return true;
