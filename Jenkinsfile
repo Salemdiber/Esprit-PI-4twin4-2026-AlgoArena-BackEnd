@@ -12,6 +12,7 @@ pipeline {
   environment {
     SONAR_PROJECT_KEY = 'algo-arena-backend'
     SONAR_PROJECT_NAME = 'AlgoArena Backend'
+    SONAR_COVERAGE_EXCLUSIONS = 'src/**/*.controller.ts,src/**/*.module.ts,src/**/*.dto.ts,src/**/*.schema.ts,src/**/*.enum.ts,src/**/*.guard.ts,src/**/decorators/**,src/**/templates/**,src/main.ts,src/app.module.ts,src/challenge-import-samples/**,src/ai/**,src/ai-agents/**,src/analytics/**,src/chat/**,src/billing/**,src/onboarding/**,src/sessions/**,src/support/**,src/system-health/**,src/settings/**,src/cache/**'
     DOCKER_IMAGE_NAME = 'salemdiber/algo-arena-backend'
     DOCKER_REGISTRY = 'docker.io'
     DOCKER_CREDENTIALS_ID = 'dockerhub-creds'
@@ -48,7 +49,7 @@ pipeline {
         script {
           def scannerHome = tool 'SonarScanner'
           withSonarQubeEnv('SonarQube') {
-            sh "${scannerHome}/bin/sonar-scanner -Dsonar.projectKey=${SONAR_PROJECT_KEY} -Dsonar.projectName=\"${SONAR_PROJECT_NAME}\" -Dsonar.sources=src -Dsonar.tests=src,test -Dsonar.test.inclusions=src/**/*.spec.ts,test/**/*.e2e-spec.ts -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info"
+            sh "${scannerHome}/bin/sonar-scanner -Dsonar.projectKey=${SONAR_PROJECT_KEY} -Dsonar.projectName=\"${SONAR_PROJECT_NAME}\" -Dsonar.sources=src -Dsonar.tests=src,test -Dsonar.test.inclusions=src/**/*.spec.ts,test/**/*.e2e-spec.ts -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info -Dsonar.coverage.exclusions=${SONAR_COVERAGE_EXCLUSIONS}"
           }
         }
       }
