@@ -208,7 +208,7 @@ function convertSingleQuotedStrings(input: string): string {
   return input.replaceAll(
     /'([^'\\]*(?:\\.[^'\\]*)*)'/g,
     (_match, content: string) => {
-      const escaped = content.replaceAll(/"/g, '\\"');
+      const escaped = content.replaceAll('"', '\\"');
       return `"${escaped}"`;
     },
   );

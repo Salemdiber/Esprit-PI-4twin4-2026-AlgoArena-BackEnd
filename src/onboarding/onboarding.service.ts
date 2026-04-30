@@ -307,7 +307,7 @@ export class OnboardingService {
           parsed.memory ??
           (parsed as any).space_complexity ??
           (parsed as any).spaceComplexity ??
-          NaN,
+          Number.NaN,
       );
       const space = Number.isFinite(rawSpace) ? this.clamp(rawSpace) : 50;
       const style = this.clamp(Number(parsed.style) || 50);

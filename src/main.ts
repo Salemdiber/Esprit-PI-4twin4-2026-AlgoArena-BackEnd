@@ -56,6 +56,7 @@ async function bootstrap() {
   setDefaultResultOrder('ipv4first');
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  app.setGlobalPrefix('api');
   app.useWebSocketAdapter(new WsAdapter(app));
   const allowedOrigins = resolveAllowedOrigins(process.env.CORS_ORIGIN);
 
