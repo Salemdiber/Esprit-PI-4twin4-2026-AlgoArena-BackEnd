@@ -27,13 +27,7 @@ export class AiAgentsService {
 
   private getFrontendRoot(): string {
     if (process.env.FRONTEND_ROOT) return process.env.FRONTEND_ROOT;
-    return path.resolve(
-      this.getBackendRoot(),
-      '..',
-      '..',
-      'new front',
-      'Esprit-PI-4twin4-2026-AlgoArena-FrontEnd',
-    );
+    return path.resolve(this.getBackendRoot(), '..', 'AlgoArenaFrontEnd');
   }
 
   private daysAgo(days: number): Date {
@@ -52,7 +46,12 @@ export class AiAgentsService {
 
     const walk = async (dir: string) => {
       if (out.length >= maxFiles) return;
-      const entries = await fs.readdir(dir, { withFileTypes: true });
+      let entries: any[];
+      try {
+        entries = await fs.readdir(dir, { withFileTypes: true });
+      } catch {
+        return;
+      }
       for (const entry of entries) {
         if (out.length >= maxFiles) break;
         if (

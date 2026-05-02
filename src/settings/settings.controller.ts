@@ -35,6 +35,10 @@ const SETTING_LABELS: Record<string, string> = {
   disableCopyPaste: 'Disable Copy/Paste',
   disableTabSwitch: 'Disable Tab Switch',
   disableSpeedChallenges: 'Disable Speed Challenges',
+  notificationCenterEnabled: 'Notification Center',
+  dailyDigestEnabled: 'Daily Digest',
+  criticalAlertsEnabled: 'Critical Alerts',
+  notificationDigestTime: 'Daily Digest Time',
   apiRateLimit: 'API Requests per Hour',
   codeExecutionLimit: 'Code Executions per Day',
 };

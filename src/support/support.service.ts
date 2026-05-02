@@ -15,6 +15,8 @@ import { SupportCategory } from './enums/support-category.enum';
 import { ScheduleMeetingDto } from './dto/schedule-meeting.dto';
 import { ContactSupportDto } from './dto/contact-support.dto';
 import { ReportBugDto } from './dto/report-bug.dto';
+import { UpdateSupportStatusDto } from './dto/update-support-status.dto';
+import { SupportStatus } from './enums/support-status.enum';
 
 @Injectable()
 export class SupportService {
@@ -232,6 +234,65 @@ export class SupportService {
     if (!item) throw new NotFoundException('Support request not found');
     if (String(item.userId) !== String(userId))
       throw new ForbiddenException('Forbidden');
+    return item;
+  }
+
+  async getAdminRequests(page = 1, limit = 20, status?: string, category?: string) {
+    const safePage = Math.max(1, Number(page) || 1);
+    const safeLimit = Math.min(100, Math.max(1, Number(limit) || 20));
+    const query: any = {};
+    if (status) query.status = status;
+    if (category) query.category = category;
+
+    const [items, total, statusCounts, categoryCounts] = await Promise.all([
+      this.supportModel
+        .find(query)
+        .sort({ createdAt: -1 })
+        .skip((safePage - 1) * safeLimit)
+        .limit(safeLimit)
+        .lean()
+        .exec(),
+      this.supportModel.countDocuments(query),
+      this.supportModel.aggregate([
+        { $group: { _id: '$status', count: { $sum: 1 } } },
+      ]),
+      this.supportModel.aggregate([
+        { $group: { _id: '$category', count: { $sum: 1 } } },
+      ]),
+    ]);
+
+    return {
+      items,
+      total,
+      page: safePage,
+      limit: safeLimit,
+      totalPages: Math.ceil(total / safeLimit),
+      statusCounts,
+      categoryCounts,
+    };
+  }
+
+  async getAdminRequestById(id: string) {
+    const item = await this.supportModel.findById(id).lean().exec();
+    if (!item) throw new NotFoundException('Support request not found');
+    return item;
+  }
+
+  async updateAdminRequestStatus(id: string, dto: UpdateSupportStatusDto) {
+    const update: Partial<SupportRequest> = {
+      status: dto.status,
+      resolvedAt:
+        dto.status === SupportStatus.RESOLVED || dto.status === SupportStatus.CLOSED
+          ? new Date()
+          : null,
+    };
+
+    const item = await this.supportModel
+      .findByIdAndUpdate(id, update, { new: true })
+      .lean()
+      .exec();
+
+    if (!item) throw new NotFoundException('Support request not found');
     return item;
   }
 }

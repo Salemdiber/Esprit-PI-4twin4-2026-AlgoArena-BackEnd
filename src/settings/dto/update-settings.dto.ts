@@ -45,6 +45,22 @@ export class UpdateSettingsDto {
   disableSpeedChallenges?: boolean;
 
   @IsOptional()
+  @IsBoolean()
+  notificationCenterEnabled?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  dailyDigestEnabled?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  criticalAlertsEnabled?: boolean;
+
+  @IsOptional()
+  @IsString()
+  notificationDigestTime?: string;
+
+  @IsOptional()
   @IsNumber()
   @Min(1)
   apiRateLimit?: number;

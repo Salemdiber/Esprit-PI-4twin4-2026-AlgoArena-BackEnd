@@ -21,6 +21,7 @@ import {
   UploadedFile,
   BadRequestException,
   HttpCode,
+  Query,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -557,6 +558,13 @@ Audit logs are created for every call:
   @Get()
   async findAll() {
     return await this.userService.findAll();
+  }
+
+  @ApiOperation({ summary: 'List public leaderboard users' })
+  @ApiResponse({ status: 200, description: 'Limited public leaderboard list' })
+  @Get('leaderboard')
+  async findLeaderboard(@Query('limit') limit?: string) {
+    return await this.userService.findLeaderboard(Number(limit || 20));
   }
 
   @ApiOperation({ summary: 'Get a user by ID' })

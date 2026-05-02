@@ -301,6 +301,38 @@ export class UserService {
     return this.userModel.find().lean().exec();
   }
 
+  async findLeaderboard(limit = 20) {
+    const safeLimit = Math.min(100, Math.max(1, Number(limit) || 20));
+    const projection = {
+      username: 1,
+      role: 1,
+      avatar: 1,
+      rank: 1,
+      level: 1,
+      xp: 1,
+      currentStreak: 1,
+      streak: 1,
+      longestStreak: 1,
+      lastLoginDate: 1,
+      streakUpdatedAt: 1,
+      challengeProgress: 1,
+      createdAt: 1,
+      updatedAt: 1,
+    };
+
+    const [items, total] = await Promise.all([
+      this.userModel
+        .find({ role: { $ne: 'Admin' } }, projection)
+        .sort({ xp: -1, currentStreak: -1, streak: -1, username: 1 })
+        .limit(safeLimit)
+        .lean()
+        .exec(),
+      this.userModel.countDocuments({ role: { $ne: 'Admin' } }).exec(),
+    ]);
+
+    return { items, total, limit: safeLimit };
+  }
+
   async findLatestByUsernameOrEmail(identifier: string) {
     return this.userModel
       .findOne({
@@ -1250,7 +1282,7 @@ export class UserService {
     const user = await this.userModel.findById(userId).lean().exec();
     if (!user) throw new NotFoundException(this.tr('user.notFound'));
 
-    if ((user as any).avatar) {
+    if ((user as any).avatar && String((user as any).avatar).startsWith('/uploads/')) {
       const oldPath = join(process.cwd(), (user as any).avatar);
       try {
         await fs.promises.unlink(oldPath);
@@ -1260,13 +1292,29 @@ export class UserService {
     }
 
     const avatarPath = `/uploads/avatars/${filename}`;
+    const diskPath = join(process.cwd(), avatarPath);
+    const ext = filename.toLowerCase().split('.').pop();
+    const mime =
+      ext === 'png'
+        ? 'image/png'
+        : ext === 'webp'
+          ? 'image/webp'
+          : 'image/jpeg';
+    const fileBuffer = await fs.promises.readFile(diskPath);
+    const avatarDataUrl = `data:${mime};base64,${fileBuffer.toString('base64')}`;
     const updated = await this.userModel
-      .findByIdAndUpdate(userId, { avatar: avatarPath }, { new: true })
+      .findByIdAndUpdate(userId, { avatar: avatarDataUrl }, { new: true })
       .lean()
       .exec();
     if (!updated) throw new NotFoundException(this.tr('user.notFound'));
 
-    return { message: this.tr('user.avatarUpdated'), avatarUrl: avatarPath };
+    try {
+      await fs.promises.unlink(diskPath);
+    } catch {
+      /* temp upload already gone */
+    }
+
+    return { message: this.tr('user.avatarUpdated'), avatarUrl: avatarDataUrl };
   }
 
   async updateProfile(userId: string, dto: UpdateProfileDto): Promise<any> {
