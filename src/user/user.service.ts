@@ -178,15 +178,6 @@ const getRankDefinition = (rankName: string | null | undefined) => {
   );
 };
 
-const DEFAULT_ACCESSIBILITY_SETTINGS = {
-  highContrast: false,
-  reducedMotion: false,
-  dyslexiaFont: false,
-  fontScale: 'medium' as const,
-  voiceMode: false,
-  voiceCommandsEnabled: false,
-};
-
 @Injectable()
 export class UserService {
   constructor(
@@ -372,34 +363,6 @@ export class UserService {
     return updated;
   }
 
-  private normalizeAccessibilitySettings(settings: any = {}) {
-    return {
-      highContrast:
-        typeof settings?.highContrast === 'boolean'
-          ? settings.highContrast
-          : DEFAULT_ACCESSIBILITY_SETTINGS.highContrast,
-      reducedMotion:
-        typeof settings?.reducedMotion === 'boolean'
-          ? settings.reducedMotion
-          : DEFAULT_ACCESSIBILITY_SETTINGS.reducedMotion,
-      dyslexiaFont:
-        typeof settings?.dyslexiaFont === 'boolean'
-          ? settings.dyslexiaFont
-          : DEFAULT_ACCESSIBILITY_SETTINGS.dyslexiaFont,
-      fontScale: ['small', 'medium', 'large'].includes(settings?.fontScale)
-        ? settings.fontScale
-        : DEFAULT_ACCESSIBILITY_SETTINGS.fontScale,
-      voiceMode:
-        typeof settings?.voiceMode === 'boolean'
-          ? settings.voiceMode
-          : DEFAULT_ACCESSIBILITY_SETTINGS.voiceMode,
-      voiceCommandsEnabled:
-        typeof settings?.voiceCommandsEnabled === 'boolean'
-          ? settings.voiceCommandsEnabled
-          : DEFAULT_ACCESSIBILITY_SETTINGS.voiceCommandsEnabled,
-    };
-  }
-
   async getAccessibilitySettings(userId: string) {
     this.ensureValidObjectId(userId);
     const user = await this.userModel.findById(userId).lean().exec();
@@ -449,32 +412,6 @@ export class UserService {
       hintCredits: Number((user as any).hintCredits ?? 1),
       totalHintsUsed: Number((user as any).totalHintsUsed ?? 0),
     };
-  }
-
-  async getAccessibilitySettings(userId: string) {
-    this.ensureValidObjectId(userId);
-    const user = (await this.userModel
-      .findById(userId, { accessibilitySettings: 1 })
-      .lean()
-      .exec()) as any;
-    if (!user) throw new NotFoundException(this.tr('user.notFound'));
-    return this.normalizeAccessibilitySettings(user.accessibilitySettings);
-  }
-
-  async updateAccessibilitySettings(userId: string, settings: any) {
-    this.ensureValidObjectId(userId);
-    const accessibilitySettings =
-      this.normalizeAccessibilitySettings(settings);
-    const updated = await this.userModel
-      .findByIdAndUpdate(
-        userId,
-        { accessibilitySettings },
-        { new: true, projection: { accessibilitySettings: 1 } },
-      )
-      .lean()
-      .exec();
-    if (!updated) throw new NotFoundException(this.tr('user.notFound'));
-    return accessibilitySettings;
   }
 
   async syncDailyStreak(userId: string): Promise<{

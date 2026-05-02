@@ -78,14 +78,6 @@ export const UserSchema = new Schema(
     streakUpdatedAt: { type: Date, default: null },
     loginActivityDates: { type: [String], default: [] },
     speedChallengeCompleted: { type: Boolean, default: false },
-    accessibilitySettings: {
-      highContrast: { type: Boolean, default: false },
-      reducedMotion: { type: Boolean, default: false },
-      dyslexiaFont: { type: Boolean, default: false },
-      fontScale: { type: String, default: 'medium' },
-      voiceMode: { type: Boolean, default: false },
-      voiceCommandsEnabled: { type: Boolean, default: false },
-    },
     // Generated placement problems (stored at registration)
     placementProblems: { type: Array, default: [] },
     challengeProgress: {

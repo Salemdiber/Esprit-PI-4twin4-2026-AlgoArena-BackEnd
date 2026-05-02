@@ -213,36 +213,6 @@ Authenticated user (JWT required)
 
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get my accessibility settings' })
-  @ApiResponse({
-    status: 200,
-    description: 'Accessibility settings returned successfully',
-  })
-  @Get('me/settings/accessibility')
-  async getMyAccessibilitySettings(@CurrentUser() user: { userId: string }) {
-    return this.userService.getAccessibilitySettings(user.userId);
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Update my accessibility settings' })
-  @ApiResponse({
-    status: 200,
-    description: 'Accessibility settings updated successfully',
-  })
-  @Patch('me/settings/accessibility')
-  async updateMyAccessibilitySettings(
-    @CurrentUser() user: { userId: string },
-    @Body() settings: Record<string, unknown>,
-  ) {
-    return this.userService.updateAccessibilitySettings(
-      user.userId,
-      settings,
-    );
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
   @Get('streak')
   async getStreak(@CurrentUser() user: { userId: string }) {
     return this.userService.getStreak(user.userId);
