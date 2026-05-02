@@ -10,7 +10,9 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     const logger = new Logger(GoogleStrategy.name);
     const proxy =
       process.env.HTTPS_PROXY || process.env.HTTP_PROXY || undefined;
-    const backendBaseUrl = process.env.BACKEND_URL || 'http://localhost:3000';
+    const backendBaseUrl =
+      process.env.BACKEND_URL ||
+      `http://localhost:${process.env.PORT || 3000}`;
     const clientID = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
     if (!clientID || !clientSecret) {

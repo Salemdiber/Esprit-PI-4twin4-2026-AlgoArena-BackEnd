@@ -196,9 +196,9 @@ ${code}
 
 # Input handling
 try:
-    user_input = json.loads('''${testCase.input.replace(/'/g, "\\'")}''')
+  user_input = json.loads('''${testCase.input.replaceAll("'", "\\'")}''')
 except:
-    user_input = '''${testCase.input.replace(/'/g, "\\'")}'''
+  user_input = '''${testCase.input.replaceAll("'", "\\'")}'''
 
 # Call the function (expecting a function named 'solution' or similar)
 # This is flexible - if code returns directly, use that
@@ -340,17 +340,17 @@ except Exception as e:
 
   private compareOutputs(actual: string, expected: string): boolean {
     // Trim whitespace and compare
-    const actualTrimmed = actual.trim().replace(/\s+/g, ' ');
-    const expectedTrimmed = expected.trim().replace(/\s+/g, ' ');
+    const actualTrimmed = actual.trim().replaceAll(/\s+/g, ' ');
+    const expectedTrimmed = expected.trim().replaceAll(/\s+/g, ' ');
 
     if (actualTrimmed === expectedTrimmed) {
       return true;
     }
     // Try numeric comparison if both are numbers
-    const actualNum = parseFloat(actualTrimmed);
-    const expectedNum = parseFloat(expectedTrimmed);
+    const actualNum = Number.parseFloat(actualTrimmed);
+    const expectedNum = Number.parseFloat(expectedTrimmed);
 
-    if (!isNaN(actualNum) && !isNaN(expectedNum)) {
+    if (!Number.isNaN(actualNum) && !Number.isNaN(expectedNum)) {
       // Allow small floating point differences
       return Math.abs(actualNum - expectedNum) < 0.0001;
     }

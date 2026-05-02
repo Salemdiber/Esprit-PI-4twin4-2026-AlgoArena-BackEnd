@@ -8,7 +8,7 @@ import { resetPasswordEmailTemplate } from './templates/reset-password-email.tem
 import { welcomeEmailTemplate } from './templates/welcome-email.template';
 
 const normalizeFrontendUrl = (value?: string | null) =>
-  (value || 'http://localhost:5173').replace(/\/+$/, '');
+  (value || 'http://localhost:5173').replaceAll(/\/+$/g, '');
 
 @Injectable()
 export class EmailService {

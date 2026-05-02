@@ -12,6 +12,7 @@ import { ChatService } from './chat.service';
 import { Server, WebSocket } from 'ws';
 import { SendMessageDto } from './dto/send-message.dto';
 import { ReactMessageDto } from './dto/react-message.dto';
+import { resolveAllowedOrigins } from '../common/server-config';
 
 type SocketUser = { userId: string; username: string; role?: string };
 type AuthSocket = WebSocket & { user?: SocketUser; rooms?: Set<string> };
@@ -34,9 +35,7 @@ const ALLOWED_REACTIONS = [
 @WebSocketGateway({
   path: '/chat/ws',
   cors: {
-    origin: (process.env.CORS_ORIGIN ?? 'http://localhost:5173')
-      .split(',')
-      .map((v) => v.trim()),
+    origin: resolveAllowedOrigins(process.env.CORS_ORIGIN),
     credentials: true,
   },
 })

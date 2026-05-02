@@ -72,7 +72,7 @@ export class ChatService {
         senderId: target.senderId,
         senderUsername: target.senderUsername,
         contentPreview: String(target.content || '')
-          .replace(/\s+/g, ' ')
+          .replaceAll(/\s+/g, ' ')
           .trim()
           .slice(0, REPLY_PREVIEW_MAX),
       };

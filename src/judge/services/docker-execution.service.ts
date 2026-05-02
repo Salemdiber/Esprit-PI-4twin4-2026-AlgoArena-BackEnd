@@ -256,7 +256,7 @@ export class DockerExecutionService implements OnModuleInit {
       clearTimeout(timeoutHandle);
 
       if (stopStatsSampler) stopStatsSampler();
-      if (statsSamplerPromise) {
+      if (statsSamplerPromise !== undefined) {
         const sampled = await statsSamplerPromise.catch(() => null);
         if (sampled) {
           metricRecord.peakCpuPercent = sampled.peakCpuPercent;
@@ -638,7 +638,7 @@ export class DockerExecutionService implements OnModuleInit {
     functionName: string,
   ): number | null {
     if (!functionName) return null;
-    const escaped = functionName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const escaped = functionName.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
     if (language === 'javascript') {
       const patterns = [

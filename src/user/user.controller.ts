@@ -38,6 +38,7 @@ import { DeleteAccountDto } from './dto/delete-account.dto';
 import { UpdateStatusDto } from './dto/update-status.dto';
 import { UpdatePlacementDto } from './dto/update-placement.dto';
 import { SaveSpeedTestSessionDto } from './dto/save-speed-test-session.dto';
+import { UpdateAccessibilitySettingsDto } from './dto/update-accessibility-settings.dto';
 import { AuditLogService } from '../audit-logs/audit-log.service';
 import { I18nContext, I18nService } from 'nestjs-i18n';
 
@@ -292,7 +293,7 @@ Audit logs are created for every call:
     @Body() body: { xpDelta: number },
   ) {
     const xpDelta = Number(body?.xpDelta);
-    if (!isFinite(xpDelta)) {
+    if (!Number.isFinite(xpDelta)) {
       throw new BadRequestException(this.tr('userController.xpDeltaInvalid'));
     }
 
@@ -382,6 +383,28 @@ Audit logs are created for every call:
     @Body() dto: UpdatePlacementDto,
   ) {
     return this.userService.updatePlacement(user.userId, dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get my accessibility settings' })
+  @ApiResponse({ status: 200, description: 'Accessibility settings returned' })
+  @Get('me/settings/accessibility')
+  async getMyAccessibilitySettings(@CurrentUser() user: { userId: string }) {
+    return this.userService.getAccessibilitySettings(user.userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update my accessibility settings' })
+  @ApiResponse({ status: 200, description: 'Accessibility settings updated' })
+  @Patch('me/settings/accessibility')
+  @HttpCode(HttpStatus.OK)
+  async updateMyAccessibilitySettings(
+    @CurrentUser() user: { userId: string },
+    @Body() dto: UpdateAccessibilitySettingsDto,
+  ) {
+    return this.userService.updateAccessibilitySettings(user.userId, dto);
   }
 
   @UseGuards(JwtAuthGuard)

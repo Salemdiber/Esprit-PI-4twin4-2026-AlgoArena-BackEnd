@@ -65,15 +65,19 @@ export class JudgeController {
       challengeId: string;
       elapsedTimeSeconds: number;
       attemptCount: number;
+      hintsUnlocked?: number;
     },
+    @CurrentUser() user: { userId: string },
   ) {
     if (!body.challengeId) {
       throw new BadRequestException(this.tr('judge.challengeIdRequired'));
     }
     return this.judgeService.getHint(
+      user.userId,
       body.challengeId,
       body.attemptCount || 0,
       body.elapsedTimeSeconds || 0,
+      body.hintsUnlocked || 0,
     );
   }
 

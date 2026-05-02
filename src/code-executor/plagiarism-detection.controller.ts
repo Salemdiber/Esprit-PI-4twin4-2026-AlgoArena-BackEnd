@@ -200,9 +200,9 @@ export class PlagiarismDetectionController {
 
   private normalizeCode(code: string): string {
     return code
-      .replace(/\s+/g, ' ')
-      .replace(/\/\*[\s\S]*?\*\//g, '')
-      .replace(/\/\/.*/g, '')
+      .replaceAll(/\s+/g, ' ')
+      .replaceAll(/\/\*[\s\S]*?\*\//g, '')
+      .replaceAll(/\/\/.*/g, '')
       .trim();
   }
 }

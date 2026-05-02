@@ -31,7 +31,7 @@ export class OnboardingController {
         // Try UTF-8 first (strip BOM if present)
         const tryUtf8 = (b: Buffer) => {
           let s = b.toString('utf8');
-          if (s.charCodeAt(0) === 0xfeff) s = s.slice(1);
+          if (s.codePointAt(0) === 0xfeff) s = s.slice(1);
           return s;
         };
 

@@ -517,16 +517,14 @@ export class JudgeService {
       !!mlPrediction &&
       mlPrediction.rawConfidence >= this.mlComplexity.minConfidence;
     const finalTimeComplexity = useModel
-      ? mlPrediction!.timeComplexity
+      ? mlPrediction.timeComplexity
       : details.timeComplexity || 'Unknown';
     const finalSpaceComplexity = useModel
-      ? mlPrediction!.spaceComplexity
+      ? mlPrediction.spaceComplexity
       : details.spaceComplexity || 'Unknown';
     const complexitySource: 'ml-model' | 'ai' | 'unknown' = useModel
       ? 'ml-model'
-      : details.timeComplexity
-        ? 'ai'
-        : 'unknown';
+      : this.resolveComplexitySource(details);
 
     const solveSecondsValue = Number.isFinite(solveTimeSeconds as number)
       ? Math.max(0, Number(solveTimeSeconds))
@@ -649,9 +647,11 @@ export class JudgeService {
   }
 
   async getHint(
+    userId: string,
     challengeId: string,
     attemptCount: number,
     elapsedTimeSeconds: number,
+    hintsUnlocked = 0,
   ) {
     const challenge = await this.challengeService.findById(challengeId);
     if (!challenge) {
@@ -664,6 +664,12 @@ export class JudgeService {
       return { unlocked: false, hint: null };
     }
 
+    let hintCredits: number | undefined;
+    if (Number(hintsUnlocked || 0) > 0) {
+      const wallet = await this.userService.consumeHintCredit(userId);
+      hintCredits = wallet.hintCredits;
+    }
+
     let hintLevel = 1;
     if (attemptCount >= 5 || elapsedTimeSeconds >= 600) hintLevel = 2;
     if (attemptCount >= 7 || elapsedTimeSeconds >= 900) hintLevel = 3;
@@ -674,7 +680,7 @@ export class JudgeService {
       hintLevel,
     );
 
-    return { unlocked: true, hint };
+    return { unlocked: true, hint, hintCredits };
   }
 
   async getUserChallengeProgress(userId: string) {
@@ -792,5 +798,11 @@ export class JudgeService {
       incompleteAttemptCount: Number(entry.incompleteAttemptCount || 0),
       submissions: Array.isArray(entry.submissions) ? entry.submissions : [],
     };
+  }
+
+  private resolveComplexitySource(
+    details: { timeComplexity?: string },
+  ): 'ai' | 'unknown' {
+    return details.timeComplexity ? 'ai' : 'unknown';
   }
 }

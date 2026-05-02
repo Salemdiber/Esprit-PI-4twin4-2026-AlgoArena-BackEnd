@@ -58,7 +58,7 @@ export class MlComplexityService {
   readonly minConfidence: number;
 
   constructor(private readonly config: ConfigService) {
-    this.baseUrl = (
+    this.baseUrl = this.trimTrailingSlashes(
       this.config.get<string>('COMPLEXITY_MODEL_URL') ||
       'https://codecomplexity-model.onrender.com'
     ).replace(/\/+$/, '');
@@ -88,7 +88,7 @@ export class MlComplexityService {
     language: string,
     tags?: string[] | null,
   ): Promise<MlComplexityPrediction | null> {
-    if (!code || !code.trim()) return null;
+    if (!code?.trim()) return null;
 
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), this.timeoutMs);
@@ -131,11 +131,7 @@ export class MlComplexityService {
         // Older versions of the service didn't return rawConfidence; in
         // that case we fall back to the calibrated value so the gate
         // still has *some* signal to act on (slightly more lenient).
-        rawConfidence: Number.isFinite((data as any).rawConfidence)
-          ? Number((data as any).rawConfidence)
-          : Number.isFinite(data.confidence)
-            ? Number(data.confidence)
-            : 0,
+        rawConfidence: this.resolveRawConfidence(data),
         source: 'ml-model',
         modelVersion: data.modelVersion || 'AlgoArena · CodeAnalyser v1.0',
         method:
@@ -161,5 +157,25 @@ export class MlComplexityService {
     } finally {
       clearTimeout(timer);
     }
+  }
+
+  private resolveRawConfidence(
+    data: Partial<MlComplexityPrediction> & { confidence?: number },
+  ): number {
+    const rawConfidence = (data as any).rawConfidence;
+    if (Number.isFinite(rawConfidence)) {
+      return Number(rawConfidence);
+    }
+
+    const confidence = data.confidence;
+    return Number.isFinite(confidence) ? Number(confidence) : 0;
+  }
+
+  private trimTrailingSlashes(value: string): string {
+    let end = value.length;
+    while (end > 0 && value.codePointAt(end - 1) === 47) {
+      end--;
+    }
+    return end === value.length ? value : value.slice(0, end);
   }
 }

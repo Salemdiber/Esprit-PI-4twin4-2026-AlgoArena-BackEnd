@@ -28,8 +28,8 @@ export class ChallengeService {
     return (title || '')
       .toLowerCase()
       .trim()
-      .replace(/[^\w\s]/g, '')
-      .replace(/\s+/g, ' ');
+      .replaceAll(/[^\w\s]/g, '')
+      .replaceAll(/\s+/g, ' ');
   }
 
   private normalizeDescriptionPrefix(description: string): string {
@@ -37,8 +37,8 @@ export class ChallengeService {
       .slice(0, 200)
       .toLowerCase()
       .trim()
-      .replace(/[^\w\s]/g, '')
-      .replace(/\s+/g, ' ');
+      .replaceAll(/[^\w\s]/g, '')
+      .replaceAll(/\s+/g, ' ');
   }
 
   private async validateDuplicateChallenge(

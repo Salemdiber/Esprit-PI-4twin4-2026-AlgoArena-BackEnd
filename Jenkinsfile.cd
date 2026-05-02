@@ -1,0 +1,60 @@
+pipeline {
+  agent any
+
+  options {
+    timestamps()
+  }
+
+  parameters {
+    string(name: 'IMAGE_TAG', defaultValue: '', description: 'Tagged backend image to deploy')
+    string(name: 'IMAGE_LATEST', defaultValue: '', description: 'Latest backend image to deploy')
+  }
+
+  environment {
+    CONTAINER_NAME = 'algoarena-backend'
+  }
+
+  stages {
+    stage('Pull image') {
+      steps {
+        script {
+          def imageTag = params.IMAGE_TAG?.trim()
+          def imageLatest = params.IMAGE_LATEST?.trim()
+
+          if (!imageTag) {
+            imageTag = imageLatest
+          }
+
+          if (!imageTag) {
+            error('IMAGE_TAG or IMAGE_LATEST must be provided to deploy the backend image')
+          }
+
+          env.RESOLVED_IMAGE_TAG = imageTag
+          env.RESOLVED_IMAGE_LATEST = imageLatest ?: imageTag
+        }
+
+        sh '''
+        docker pull "$RESOLVED_IMAGE_TAG"
+        docker pull "$RESOLVED_IMAGE_LATEST"
+        '''
+      }
+    }
+
+    stage('Restart container') {
+  steps {
+    sh '''
+    docker stop "$CONTAINER_NAME" || true
+    docker rm "$CONTAINER_NAME" || true
+
+    docker run -d \
+      --name "$CONTAINER_NAME" \
+      -p 3001:3000 \
+      "$RESOLVED_IMAGE_TAG"
+    '''
+  }
+}
+  }
+}
+
+
+

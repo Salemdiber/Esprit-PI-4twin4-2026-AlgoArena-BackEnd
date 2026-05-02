@@ -198,8 +198,8 @@ Content-Type: application/json
       tag,
       search,
       sort,
-      page: page ? parseInt(page) : undefined,
-      limit: limit ? parseInt(limit) : undefined,
+      page: page ? Number.parseInt(page) : undefined,
+      limit: limit ? Number.parseInt(limit) : undefined,
     });
   }
 
