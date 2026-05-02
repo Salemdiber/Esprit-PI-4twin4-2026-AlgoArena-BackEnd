@@ -19,6 +19,17 @@ import { DeleteAccountDto } from './dto/delete-account.dto';
 import { UpdatePlacementDto } from './dto/update-placement.dto';
 import { UpdateAccessibilitySettingsDto } from './dto/update-accessibility-settings.dto';
 
+const DEFAULT_ACCESSIBILITY_SETTINGS = {
+  highContrast: false,
+  reducedMotion: false,
+  dyslexiaFont: false,
+  fontScale: 'medium',
+  voiceMode: false,
+  voiceCommandsEnabled: false,
+};
+
+const FONT_SCALES = new Set(['small', 'medium', 'large']);
+
 // â”€â”€ Rank system constants (single source of truth) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export const RANK_CONFIG = [
   {
@@ -186,6 +197,24 @@ export class UserService {
   private tr(key: string, args?: Record<string, unknown>): string {
     const lang = I18nContext.current()?.lang ?? 'en';
     return this.i18n.translate(key, { lang, args });
+  }
+
+  private normalizeAccessibilitySettings(input: any = {}) {
+    const merged = {
+      ...DEFAULT_ACCESSIBILITY_SETTINGS,
+      ...(input && typeof input === 'object' ? input : {}),
+    };
+
+    return {
+      highContrast: Boolean(merged.highContrast),
+      reducedMotion: Boolean(merged.reducedMotion),
+      dyslexiaFont: Boolean(merged.dyslexiaFont),
+      fontScale: FONT_SCALES.has(String(merged.fontScale))
+        ? String(merged.fontScale)
+        : DEFAULT_ACCESSIBILITY_SETTINGS.fontScale,
+      voiceMode: Boolean(merged.voiceMode),
+      voiceCommandsEnabled: Boolean(merged.voiceCommandsEnabled),
+    };
   }
 
   private utcDateOnly(value: Date = new Date()): Date {
@@ -388,6 +417,32 @@ export class UserService {
       hintCredits: Number((user as any).hintCredits ?? 1),
       totalHintsUsed: Number((user as any).totalHintsUsed ?? 0),
     };
+  }
+
+  async getAccessibilitySettings(userId: string) {
+    this.ensureValidObjectId(userId);
+    const user = (await this.userModel
+      .findById(userId, { accessibilitySettings: 1 })
+      .lean()
+      .exec()) as any;
+    if (!user) throw new NotFoundException(this.tr('user.notFound'));
+    return this.normalizeAccessibilitySettings(user.accessibilitySettings);
+  }
+
+  async updateAccessibilitySettings(userId: string, settings: any) {
+    this.ensureValidObjectId(userId);
+    const accessibilitySettings =
+      this.normalizeAccessibilitySettings(settings);
+    const updated = await this.userModel
+      .findByIdAndUpdate(
+        userId,
+        { accessibilitySettings },
+        { new: true, projection: { accessibilitySettings: 1 } },
+      )
+      .lean()
+      .exec();
+    if (!updated) throw new NotFoundException(this.tr('user.notFound'));
+    return accessibilitySettings;
   }
 
   async syncDailyStreak(userId: string): Promise<{

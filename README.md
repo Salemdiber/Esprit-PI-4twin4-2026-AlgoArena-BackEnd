@@ -181,6 +181,7 @@ http://localhost:3000
 | `CORS_ORIGIN` | No | `http://localhost:5173` | Allowed frontend origins (comma-separated) |
 | `NODE_ENV` | No | `development` | Runtime environment mode |
 | `MONGO_URI` | Yes | `mongodb://localhost:27017/algoarena` (fallback) | MongoDB connection string |
+| `MONGO_DB` | Optional | Database name from `MONGO_URI`, or `AlgoArenaDB` locally | MongoDB database name used by model submission export / continual learning |
 | `JWT_SECRET` | Yes | `defaultJwtSecret` (fallback) | JWT signing secret |
 | `GOOGLE_CLIENT_ID` | OAuth only | None | Google OAuth client ID |
 | `GOOGLE_CLIENT_SECRET` | OAuth only | None | Google OAuth client secret |
@@ -210,8 +211,8 @@ http://localhost:3000
 | `BREVO_SMTP_USER` | Optional | None | Additional SMTP user setting (present in env) |
 | `DOCKER_HUB_USERNAME` | Optional | None | Docker Hub username reference |
 | `DOCKER_HUB_TOKEN` | Optional | None | Docker Hub token reference |
-| `COMPLEXITY_MODEL_URL` | Optional | `http://127.0.0.1:8088` | Base URL of the Python complexity-model microservice (`Complexity-Model/service`). Set to empty/unreachable to disable ML predictions; the judge falls back to the LLM estimate. |
-| `COMPLEXITY_MODEL_TIMEOUT_MS` | Optional | `4000` | HTTP timeout for the model call. On timeout the judge silently falls back to the AI estimate so grading is never blocked by a model outage. |
+| `COMPLEXITY_MODEL_URL` | Optional | `https://codecomplexity-model.onrender.com` | Base URL of the Python complexity-model microservice (`Complexity-Model/service`). Set to empty/unreachable to disable ML predictions; the judge falls back to the LLM estimate. |
+| `COMPLEXITY_MODEL_TIMEOUT_MS` | Optional | `60000` | HTTP timeout for the model call. Render free instances can cold-start slowly; on timeout the judge silently falls back to the AI estimate so grading is never blocked by a model outage. |
 | `COMPLEXITY_MODEL_MIN_CONFIDENCE` | Optional | `0.3` | Minimum **raw** model probability (before temperature calibration) of the top Big-O class required to display the model output. Below this threshold the LLM estimate is used instead and the UI shows the "AI estimate" badge. The default is intentionally permissive so the AlgoArena · CodeAnalyser card is shown on most submissions; raise to ~0.60 for cautious display or ~0.85 for "only show when the model is very confident". |
 | `COMPLEXITY_MODEL_TEMPERATURE` | Optional | `0.5` (set inside the Python service) | Softmax sharpening factor applied by the model service. Lower values pull confident predictions closer to 100%; `1.0` disables calibration. See `../Complexity-Model/README.md`. |
 | `COMPLEXITY_MODEL_VERSION` | Optional | `AlgoArena · CodeAnalyser v1.0` (set inside the Python service) | Display name returned in `/predict` responses, surfaced verbatim in the frontend's prediction card footer. |

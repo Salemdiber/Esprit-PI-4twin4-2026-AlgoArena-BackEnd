@@ -16,6 +16,21 @@ export const UserSchema = new Schema(
     resetPasswordExpires: { type: Date, default: null },
     resetPasswordCode: { type: String, default: null },
     resetPasswordCodeVerified: { type: Boolean, default: false },
+    accessibilitySettings: {
+      type: {
+        highContrast: { type: Boolean, default: false },
+        reducedMotion: { type: Boolean, default: false },
+        dyslexiaFont: { type: Boolean, default: false },
+        fontScale: {
+          type: String,
+          enum: ['small', 'medium', 'large'],
+          default: 'medium',
+        },
+        voiceMode: { type: Boolean, default: false },
+        voiceCommandsEnabled: { type: Boolean, default: false },
+      },
+      default: {},
+    },
 
     // ── Hint Wallet / Billing ─────────────────────────────────────
     hintCredits: { type: Number, default: 1 },

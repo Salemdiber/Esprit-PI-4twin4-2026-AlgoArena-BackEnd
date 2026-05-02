@@ -40,8 +40,8 @@ export interface MlComplexityPrediction {
  * (see Complexity-Model/service/app.py).
  *
  * Configuration:
- *   COMPLEXITY_MODEL_URL  default http://127.0.0.1:8088
- *   COMPLEXITY_MODEL_TIMEOUT_MS  default 4000
+ *   COMPLEXITY_MODEL_URL  default https://codecomplexity-model.onrender.com
+ *   COMPLEXITY_MODEL_TIMEOUT_MS  default 60000
  *   COMPLEXITY_MODEL_MIN_CONFIDENCE  default 0.55  (below this, callers
  *     should treat the prediction as low-confidence and may fall back to
  *     the LLM-based estimate.)
@@ -60,10 +60,10 @@ export class MlComplexityService {
   constructor(private readonly config: ConfigService) {
     this.baseUrl = this.trimTrailingSlashes(
       this.config.get<string>('COMPLEXITY_MODEL_URL') ||
-        'http://127.0.0.1:8088',
-    );
+      'https://codecomplexity-model.onrender.com'
+    ).replace(/\/+$/, '');
     this.timeoutMs = Number(
-      this.config.get<string>('COMPLEXITY_MODEL_TIMEOUT_MS') || 4000,
+      this.config.get<string>('COMPLEXITY_MODEL_TIMEOUT_MS') || 60000,
     );
     // Threshold is checked against the **raw** model probability, not the
     // calibrated one. The default is intentionally permissive (0.30) so
