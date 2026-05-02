@@ -23,7 +23,7 @@ export class GithubStrategy extends PassportStrategy(Strategy, 'github') {
       clientSecret: clientSecret || '',
       callbackURL:
         process.env.GITHUB_CALLBACK_URL ||
-        `${backendBaseUrl}/auth/github/callback`,
+        `${backendBaseUrl.replace(/\/$/, '')}/auth/github/callback`,
       scope: ['user:email'],
     });
   }

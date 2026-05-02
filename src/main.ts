@@ -56,6 +56,14 @@ async function bootstrap() {
   setDefaultResultOrder('ipv4first');
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const expressApp = app.getHttpAdapter().getInstance();
+  expressApp.get(
+    ['/auth/google', '/auth/google/callback', '/auth/github', '/auth/github/callback'],
+    (req: any, res: any) => {
+      res.redirect(302, `/api${req.originalUrl}`);
+    },
+  );
+
   app.setGlobalPrefix('api');
   app.useWebSocketAdapter(new WsAdapter(app));
   const allowedOrigins = resolveAllowedOrigins(process.env.CORS_ORIGIN);
@@ -74,6 +82,7 @@ async function bootstrap() {
     }),
   );
   app.use(cookieParser());
+
   // Prefer a Brotli-capable compressor if available, fall back to gzip/deflate
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
