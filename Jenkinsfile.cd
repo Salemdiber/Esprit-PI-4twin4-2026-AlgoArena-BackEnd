@@ -11,11 +11,18 @@ pipeline {
   }
 
   environment {
-    CONTAINER_NAME = 'algoarena-backend'
+    NAMESPACE = 'algoarena'
+    KUBECONFIG_CREDENTIALS_ID = 'kubeconfig-algoarena'
   }
 
   stages {
-    stage('Pull image') {
+    stage('Checkout') {
+      steps {
+        checkout scm
+      }
+    }
+
+    stage('Resolve image') {
       steps {
         script {
           def imageTag = params.IMAGE_TAG?.trim()
@@ -32,27 +39,44 @@ pipeline {
           env.RESOLVED_IMAGE_TAG = imageTag
           env.RESOLVED_IMAGE_LATEST = imageLatest ?: imageTag
         }
-
-        sh '''
-        docker pull "$RESOLVED_IMAGE_TAG"
-        docker pull "$RESOLVED_IMAGE_LATEST"
-        '''
       }
     }
 
-    stage('Restart container') {
-  steps {
-    sh '''
-    docker stop "$CONTAINER_NAME" || true
-    docker rm "$CONTAINER_NAME" || true
+    stage('Deploy to Kubernetes') {
+      steps {
+        withCredentials([file(credentialsId: env.KUBECONFIG_CREDENTIALS_ID, variable: 'KUBECONFIG_FILE')]) {
+          sh '''
+          export KUBECONFIG="$KUBECONFIG_FILE"
 
-    docker run -d \
-      --name "$CONTAINER_NAME" \
-      -p 3001:3000 \
-      "$RESOLVED_IMAGE_TAG"
-    '''
-  }
-}
+          kubectl apply -f 01-namespace.yaml
+          kubectl apply -f 02-mongo.yaml
+          kubectl apply -f 03-backend.yaml
+
+          kubectl set image deployment/algoarena-backend \
+            backend="$RESOLVED_IMAGE_TAG" \
+            -n "$NAMESPACE"
+
+          kubectl rollout status deployment/mongo -n "$NAMESPACE" --timeout=180s
+          kubectl rollout status deployment/algoarena-backend -n "$NAMESPACE" --timeout=240s
+          '''
+        }
+      }
+    }
+
+    stage('Health checks') {
+      steps {
+        withCredentials([file(credentialsId: env.KUBECONFIG_CREDENTIALS_ID, variable: 'KUBECONFIG_FILE')]) {
+          sh '''
+          export KUBECONFIG="$KUBECONFIG_FILE"
+
+          kubectl get pods -n "$NAMESPACE"
+          kubectl get --raw "/api/v1/namespaces/$NAMESPACE/services/algoarena-backend:3000/proxy/api/system-health"
+          kubectl exec -n "$NAMESPACE" deploy/mongo -- \
+            mongosh --quiet --eval 'db.adminCommand({ ping: 1 })'
+          '''
+        }
+      }
+    }
   }
 }
 
