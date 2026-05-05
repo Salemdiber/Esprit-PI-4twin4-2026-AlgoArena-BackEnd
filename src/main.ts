@@ -147,7 +147,24 @@ async function bootstrap() {
     },
   });
 
-  await app.listen(process.env.PORT ?? 3000);
+  const port = process.env.PORT ?? 3000;
+  await app.listen(port);
+
+  // ── Startup diagnostics ────────────────────────────────────────────────────
+  const logger = app.get<any>('Logger') ?? console;
+  const check = (key: string) => (process.env[key] ? '✅' : '❌ MISSING');
+  const diag = [
+    `AlgoArena backend listening on port ${port}`,
+    `  NODE_ENV:            ${process.env.NODE_ENV ?? '(not set)'}`,
+    `  FRONTEND_URL:        ${process.env.FRONTEND_URL ?? '(not set)'}`,
+    `  GROQ_API_KEY:        ${check('GROQ_API_KEY')}   (AI analysis, hints, challenge gen, onboarding, community)`,
+    `  GROK_API_KEY:        ${check('GROK_API_KEY')}   (battle AI, fallback code execution)`,
+    `  XAI_API_KEY:         ${check('XAI_API_KEY')}   (executive brief / AI agents)`,
+    `  SMTP_HOST:           ${check('SMTP_HOST')}   (email: reset password, welcome)`,
+    `  COMPLEXITY_MODEL_URL:${process.env.COMPLEXITY_MODEL_URL ?? ' https://codecomplexity-model.onrender.com (default)'}`,
+    `  RECAPTCHA_SECRET:    ${check('RECAPTCHA_SECRET')}`,
+  ];
+  console.log('\n' + diag.join('\n') + '\n');
 }
 
 bootstrap();

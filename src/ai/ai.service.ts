@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import Groq from 'groq-sdk';
 import { GenerateChallengeDto } from './dto/generate-challenge.dto';
 import { DockerExecutionService } from '../judge/services/docker-execution.service';
+import { GrokExecutionService } from '../judge/services/grok-execution.service';
 
 // ── Response shape — UNCHANGED, matches existing API contract ───────────────
 export interface GeneratedChallenge {
@@ -27,6 +28,7 @@ export class AiService {
   constructor(
     private readonly config: ConfigService,
     private readonly dockerExecutionService: DockerExecutionService,
+    private readonly grokExecution: GrokExecutionService,
   ) {
     const apiKey = this.config.get<string>('GROQ_API_KEY');
     if (!apiKey) {
@@ -394,7 +396,7 @@ VERIFY BEFORE RESPONDING:
     }));
 
     try {
-      const executionResult = await this.dockerExecutionService.executeCode(
+      let executionResult = await this.dockerExecutionService.executeCode(
         referenceSolution,
         'javascript' as any,
         dockerTestCases,
@@ -404,6 +406,20 @@ VERIFY BEFORE RESPONDING:
             'Verifying AI-generated test cases against reference solution',
         },
       );
+      // Fallback to Grok if Docker is unavailable
+      if (
+        executionResult.error?.type === 'ServiceUnavailable' &&
+        this.grokExecution.isAvailable()
+      ) {
+        this.logger.warn(
+          '[ChallengeGen] Docker unavailable, falling back to AI execution for test verification',
+        );
+        executionResult = await this.grokExecution.executeCode(
+          referenceSolution,
+          'javascript',
+          dockerTestCases,
+        );
+      }
 
       // Global execution error (e.g. Docker connection failure, syntax error)
       if (executionResult.error) {

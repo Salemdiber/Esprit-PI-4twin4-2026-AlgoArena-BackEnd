@@ -55,7 +55,11 @@ export class AuthController {
   }
 
   private getCookieOptions(httpOnly = true) {
-    const isProduction = process.env.NODE_ENV === 'production';
+    // Detect production: explicit NODE_ENV, or HTTPS-based backend/frontend URLs
+    const isProduction =
+      process.env.NODE_ENV === 'production' ||
+      (process.env.FRONTEND_URL || '').startsWith('https') ||
+      (process.env.RENDER === 'true');
     return {
       path: '/',
       sameSite: isProduction ? ('none' as const) : ('lax' as const),

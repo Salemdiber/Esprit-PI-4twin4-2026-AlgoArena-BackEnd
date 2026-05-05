@@ -10,6 +10,8 @@ import { ConfigService } from '@nestjs/config';
 import { BattlesService } from './battle.service';
 import { ChallengeService } from '../challenges/challenge.service';
 import { DockerExecutionService } from '../judge/services/docker-execution.service';
+import type { DockerExecutionResponse } from '../judge/services/docker-execution.service';
+import { GrokExecutionService } from '../judge/services/grok-execution.service';
 import { AIAnalysisService } from '../judge/services/ai-analysis.service';
 import { BotDifficulty } from './battle.enums';
 
@@ -43,6 +45,7 @@ export class BattleAiService {
     private readonly battlesService: BattlesService,
     private readonly challengeService: ChallengeService,
     private readonly dockerService: DockerExecutionService,
+    private readonly grokExecution: GrokExecutionService,
     private readonly analysisService: AIAnalysisService,
     private readonly i18n: I18nService,
   ) {
@@ -75,6 +78,30 @@ export class BattleAiService {
   private tr(key: string, args?: Record<string, unknown>): string {
     const lang = I18nContext.current()?.lang ?? 'en';
     return this.i18n.translate(key, { lang, args });
+  }
+
+  private async executeWithFallback(
+    code: string,
+    language: string,
+    testCases: { input: unknown; expectedOutput: unknown }[],
+    context?: { challengeTitle?: string; challengeDescription?: string; challengeId?: string; userId?: string },
+  ): Promise<DockerExecutionResponse> {
+    const dockerResult = await this.dockerService.executeCode(
+      code,
+      language as any,
+      testCases,
+      context,
+    );
+    if (
+      !dockerResult.error ||
+      dockerResult.error.type !== 'ServiceUnavailable'
+    ) {
+      return dockerResult;
+    }
+    this.logger.warn(
+      'Docker sandbox unavailable for AI battle, falling back to Grok execution',
+    );
+    return this.grokExecution.executeCode(code, language, testCases);
   }
 
   async submitAiSolution(
@@ -119,7 +146,7 @@ export class BattleAiService {
         language,
         effectiveDifficulty,
       );
-      const execution = await this.dockerService.executeCode(
+      const execution = await this.executeWithFallback(
         code,
         language,
         testCases,

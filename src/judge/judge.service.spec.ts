@@ -36,7 +36,8 @@ describe('JudgeService', () => {
     audit = { create: jest.fn() };
     i18n = { translate: jest.fn((k) => k) };
 
-    svc = new JudgeService(docker, ai, mlComplexity, challengeSvc, userSvc, audit, i18n);
+    const grokExecution = { executeCode: jest.fn(), isAvailable: jest.fn().mockReturnValue(false) };
+    svc = new JudgeService(docker, grokExecution as any, ai, mlComplexity, challengeSvc, userSvc, audit, i18n);
   });
 
   test('judgeSubmission: unsupported language throws', async () => {

@@ -101,6 +101,10 @@ export class AuthService {
   }
 
   private async generateChallenges(timeoutMs = 15000): Promise<any[] | null> {
+    if (!this.groqApiKey) {
+      this.logger.warn('GROQ_API_KEY not set — skipping placement challenge generation');
+      return null;
+    }
     const model =
       process.env.OLLAMA_MODEL || 'deepseek-coder:6.7b-instruct-q4_K_M';
     const promptPath = join(process.cwd(), 'prompt.txt');

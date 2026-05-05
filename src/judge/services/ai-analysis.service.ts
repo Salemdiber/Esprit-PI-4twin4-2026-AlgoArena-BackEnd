@@ -5,14 +5,22 @@ import OpenAI from 'openai';
 @Injectable()
 export class AIAnalysisService {
   private readonly logger = new Logger(AIAnalysisService.name);
-  private openai: OpenAI;
+  private openai: OpenAI | null;
 
   constructor(private readonly config: ConfigService) {
     const apiKey = this.config.get<string>('GROQ_API_KEY');
-    this.openai = new OpenAI({
-      apiKey: apiKey || 'dummy-key',
-      baseURL: 'https://api.groq.com/openai/v1',
-    });
+    if (!apiKey) {
+      this.logger.warn(
+        '⚠️  GROQ_API_KEY not set — AI code analysis, hints, and syntax checking will use fallback responses.',
+      );
+      this.openai = null;
+    } else {
+      this.openai = new OpenAI({
+        apiKey,
+        baseURL: 'https://api.groq.com/openai/v1',
+      });
+      this.logger.log('AI Analysis Service initialized with Groq API');
+    }
   }
 
   async quickCodeCheck(
@@ -25,6 +33,9 @@ export class AIAnalysisService {
     errorLine: number | null;
     errorMessage: string | null;
   }> {
+    if (!this.openai) {
+      return { hasSyntaxError: false, errorLine: null, errorMessage: null };
+    }
     try {
       const completion = await this.openai.chat.completions.create({
         model: 'llama-3.3-70b-versatile',
@@ -63,6 +74,9 @@ export class AIAnalysisService {
     challengeDescription: string,
     testResults: any[],
   ): Promise<string> {
+    if (!this.openai) {
+      return 'AI analysis unavailable — GROQ_API_KEY not configured.';
+    }
     const allPassed = testResults.every((r: any) => r.passed);
     try {
       const prompt = allPassed
@@ -98,6 +112,9 @@ export class AIAnalysisService {
     challengeDescription: string,
     hintLevel: number,
   ): Promise<string> {
+    if (!this.openai) {
+      return 'Hints unavailable — AI service not configured.';
+    }
     try {
       let instructions = '';
       if (hintLevel === 1)
@@ -152,6 +169,9 @@ export class AIAnalysisService {
     codeQualityNotes?: string[];
   }> {
     const fallback = this.estimateSubmissionDetails(userCode);
+    if (!this.openai) {
+      return fallback;
+    }
     try {
       const completion = await this.openai.chat.completions.create({
         model: 'llama-3.3-70b-versatile',

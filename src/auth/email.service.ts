@@ -14,9 +14,17 @@ export class EmailService {
   private transporter: nodemailer.Transporter | null = null;
 
   constructor() {
-    this.logger.log(
-      'Brevo email service initialized. Ensure EMAIL_FROM is verified and SPF/DKIM are configured.',
-    );
+    const requiredVars = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS', 'EMAIL_FROM', 'EMAIL_FROM_NAME'];
+    const missing = requiredVars.filter((v) => !process.env[v]);
+    if (missing.length > 0) {
+      this.logger.warn(
+        `⚠️  SMTP env vars missing: ${missing.join(', ')} — emails will NOT be sent until these are configured on the deployment platform.`,
+      );
+    } else {
+      this.logger.log(
+        `SMTP configured: host=${process.env.SMTP_HOST}, port=${process.env.SMTP_PORT}, from=${process.env.EMAIL_FROM}`,
+      );
+    }
   }
 
   private getRequiredConfig() {
@@ -42,14 +50,18 @@ export class EmailService {
   }
 
   private getTransporter() {
-    const config = this.getRequiredConfig();
     if (this.transporter) return this.transporter;
 
+    const config = this.getRequiredConfig();
     const smtpPort = Number(config.SMTP_PORT);
     if (!Number.isFinite(smtpPort) || smtpPort <= 0) {
       this.logger.error(`Invalid SMTP_PORT value: ${config.SMTP_PORT}`);
       throw new InternalServerErrorException('Email service is not configured');
     }
+
+    this.logger.log(
+      `Creating SMTP transporter: host=${config.SMTP_HOST}, port=${smtpPort}, user=${config.SMTP_USER}, from=${config.EMAIL_FROM}`,
+    );
 
     this.transporter = nodemailer.createTransport({
       host: config.SMTP_HOST,

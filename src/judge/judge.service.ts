@@ -1,6 +1,8 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { I18nContext, I18nService } from 'nestjs-i18n';
 import { DockerExecutionService } from './services/docker-execution.service';
+import type { DockerExecutionResponse } from './services/docker-execution.service';
+import { GrokExecutionService } from './services/grok-execution.service';
 import { AIAnalysisService } from './services/ai-analysis.service';
 import { MlComplexityService } from './services/ml-complexity.service';
 import { ChallengeService } from '../challenges/challenge.service';
@@ -13,6 +15,7 @@ export class JudgeService {
 
   constructor(
     private readonly dockerService: DockerExecutionService,
+    private readonly grokExecution: GrokExecutionService,
     private readonly aiService: AIAnalysisService,
     private readonly mlComplexity: MlComplexityService,
     private readonly challengeService: ChallengeService,
@@ -20,6 +23,39 @@ export class JudgeService {
     private readonly auditLogService: AuditLogService,
     private readonly i18n: I18nService,
   ) {}
+
+  /**
+   * Try Docker sandbox first; if it returns a ServiceUnavailable error
+   * (Docker daemon not running), fall back to Grok/Groq AI execution.
+   */
+  private async executeWithFallback(
+    userCode: string,
+    language: string,
+    testCases: { input: unknown; expectedOutput: unknown }[],
+    context?: { challengeTitle?: string; challengeDescription?: string; challengeId?: string; userId?: string },
+  ): Promise<DockerExecutionResponse & { source: 'docker' | 'grok' }> {
+    const dockerResult = await this.dockerService.executeCode(
+      userCode,
+      language as any,
+      testCases,
+      context,
+    );
+
+    // If Docker succeeded (even with a runtime error from user code), return it
+    if (
+      !dockerResult.error ||
+      dockerResult.error.type !== 'ServiceUnavailable'
+    ) {
+      return { ...dockerResult, source: 'docker' };
+    }
+
+    // Docker unavailable — try Grok/Groq fallback
+    this.logger.warn(
+      'Docker sandbox unavailable, falling back to AI execution',
+    );
+    const grokResult = await this.grokExecution.executeCode(userCode, language, testCases);
+    return { ...grokResult, source: 'grok' };
+  }
 
   private tr(key: string): string {
     const lang = I18nContext.current()?.lang ?? 'en';
@@ -373,8 +409,8 @@ export class JudgeService {
       };
     }
 
-    // Docker Execution
-    const dockerResult = await this.dockerService.executeCode(
+    // Code Execution (Docker → Grok fallback)
+    const dockerResult = await this.executeWithFallback(
       userCode,
       language,
       testCases,
@@ -410,7 +446,7 @@ export class JudgeService {
           'A runtime error prevented completion. Review the error message.',
         results: [],
         error: dockerResult.error,
-        source: 'docker',
+        source: dockerResult.source,
       };
       if (mode === 'submit') {
         await this.userService.recordChallengeSubmission(
@@ -450,7 +486,7 @@ export class JudgeService {
         error: dockerResult.error,
         aiAnalysis:
           'A runtime error prevented completion. Review the error message.',
-        source: 'docker',
+        source: dockerResult.source,
         executionTime: `${dockerResult.executionTimeMs}ms`,
         submissionDetails,
       };
@@ -469,7 +505,7 @@ export class JudgeService {
       error: r.error,
       executionTime: r.executionTime ?? `${r.executionTimeMs ?? 0}ms`,
       executionTimeMs: r.executionTimeMs ?? 0,
-      source: 'docker',
+      source: dockerResult.source,
     }));
 
     const passedCount = results.filter((r) => r.passed).length;
@@ -561,7 +597,7 @@ export class JudgeService {
       aiAnalysis,
       results,
       error: null,
-      source: 'docker',
+      source: dockerResult.source,
       solveTimeSeconds: solveSecondsValue,
     };
     let xpGranted = 0;
@@ -635,7 +671,7 @@ export class JudgeService {
       results,
       error: null,
       aiAnalysis,
-      source: 'docker',
+      source: dockerResult.source,
       executionTime: `${dockerResult.executionTimeMs}ms`,
       submissionDetails,
       solveTimeSeconds: solveSecondsValue,
