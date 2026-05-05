@@ -3,7 +3,7 @@ export const welcomeEmailTemplate = (
   ctaUrl?: string,
   logoUrl?: string,
 ) => {
-  const safeCtaUrl = ctaUrl || 'http://localhost:5173/signin';
+  const safeCtaUrl = ctaUrl || 'https://algoarenatn.vercel.app/signin';
   const safeLogoUrl =
     logoUrl || 'https://dummyimage.com/180x48/0f172a/8be9fd.png&text=NextGen';
 

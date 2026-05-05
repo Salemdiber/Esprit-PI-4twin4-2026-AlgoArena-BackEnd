@@ -6,6 +6,7 @@ import {
 import Stripe from 'stripe';
 import { ConfigService } from '@nestjs/config';
 import { UserService } from '../user/user.service';
+import { resolveFrontendUrl } from '../common/server-config';
 
 type CheckoutSessionLike = {
   id: string;
@@ -14,9 +15,6 @@ type CheckoutSessionLike = {
   currency?: string | null;
   payment_status?: string;
 };
-
-const normalizeFrontendUrl = (value?: string | null) =>
-  (value || 'http://localhost:5173').replaceAll(/\/+$/g, '');
 
 @Injectable()
 export class BillingService {
@@ -40,7 +38,7 @@ export class BillingService {
     const unitAmount = 199;
     const totalAmount = unitAmount * credits;
 
-    const frontendUrl = normalizeFrontendUrl(
+    const frontendUrl = resolveFrontendUrl(
       this.configService.get<string>('FRONTEND_URL'),
     );
     const session = await this.stripe.checkout.sessions.create({

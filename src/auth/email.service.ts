@@ -6,9 +6,7 @@ import {
 import * as nodemailer from 'nodemailer';
 import { resetPasswordEmailTemplate } from './templates/reset-password-email.template';
 import { welcomeEmailTemplate } from './templates/welcome-email.template';
-
-const normalizeFrontendUrl = (value?: string | null) =>
-  (value || 'http://localhost:5173').replaceAll(/\/+$/g, '');
+import { resolveFrontendUrl } from '../common/server-config';
 
 @Injectable()
 export class EmailService {
@@ -94,7 +92,8 @@ export class EmailService {
     confirmationCode: string,
   ) {
     // Reset link (frontend route)
-    const resetLink = `http://localhost:5173/reset-password/${token}`;
+    const frontendUrl = resolveFrontendUrl(process.env.FRONTEND_URL);
+    const resetLink = `${frontendUrl}/reset-password/${token}`;
     const htmlTemplate = resetPasswordEmailTemplate(
       resetLink,
       undefined,
@@ -110,7 +109,7 @@ export class EmailService {
   async sendWelcomeEmail(email: string, username: string) {
     const platformName = process.env.PLATFORM_NAME || 'AlgoArena';
     const logoUrl = process.env.PLATFORM_LOGO_URL;
-    const appUrl = normalizeFrontendUrl(process.env.FRONTEND_URL);
+    const appUrl = resolveFrontendUrl(process.env.FRONTEND_URL);
 
     const htmlTemplate = welcomeEmailTemplate(
       platformName,

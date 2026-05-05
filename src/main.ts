@@ -66,10 +66,18 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api');
   app.useWebSocketAdapter(new WsAdapter(app));
+  const allowAll = (process.env.CORS_ORIGIN || '').trim() === '*';
   const allowedOrigins = resolveAllowedOrigins(process.env.CORS_ORIGIN);
 
   app.enableCors({
-    origin: allowedOrigins,
+    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean | string) => void) => {
+      // Allow requests with no origin (server-to-server, curl, mobile apps)
+      if (!origin) return callback(null, true);
+      if (allowAll || allowedOrigins.includes(origin)) {
+        return callback(null, origin);
+      }
+      callback(null, false);
+    },
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept-Language'],
     exposedHeaders: ['Set-Cookie'],

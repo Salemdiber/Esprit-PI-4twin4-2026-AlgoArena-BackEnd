@@ -27,6 +27,7 @@ import type { Response } from 'express';
 import type { Request } from 'express';
 import { UserService } from '../user/user.service';
 import { I18nContext, I18nService } from 'nestjs-i18n';
+import { resolveFrontendUrl } from '../common/server-config';
 
 class LoginDto {
   @IsString()
@@ -49,7 +50,7 @@ export class AuthController {
   ) {}
 
   private getFrontendCallbackUrl(): string {
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const frontendUrl = resolveFrontendUrl(process.env.FRONTEND_URL);
     return `${frontendUrl}/auth/callback`;
   }
 
