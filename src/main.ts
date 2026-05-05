@@ -72,7 +72,9 @@ async function bootstrap() {
     origin: allowedOrigins,
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept-Language'],
+    exposedHeaders: ['Set-Cookie'],
     credentials: true,
+    maxAge: 86400,
   });
 
   app.useGlobalPipes(

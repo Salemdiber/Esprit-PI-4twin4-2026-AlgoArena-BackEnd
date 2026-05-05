@@ -18,12 +18,17 @@ export class GithubStrategy extends PassportStrategy(Strategy, 'github') {
         'GitHub OAuth credentials are missing (GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET).',
       );
     }
+    const isProduction = process.env.NODE_ENV === 'production';
+    const callbackURL =
+      process.env.GITHUB_CALLBACK_URL ||
+      (isProduction
+        ? 'https://esprit-pi-4twin4-2026-algoarena-backend.onrender.com/auth/github/callback'
+        : `${backendBaseUrl.replace(/\/$/, '')}/auth/github/callback`);
+    logger.log(`GitHub OAuth callbackURL → ${callbackURL}`);
     super({
       clientID: clientID || '',
       clientSecret: clientSecret || '',
-      callbackURL:
-        process.env.GITHUB_CALLBACK_URL ||
-        `${backendBaseUrl.replace(/\/$/, '')}/auth/github/callback`,
+      callbackURL,
       scope: ['user:email'],
     });
   }

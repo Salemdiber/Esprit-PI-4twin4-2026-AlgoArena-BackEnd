@@ -54,10 +54,11 @@ export class AuthController {
   }
 
   private getCookieOptions(httpOnly = true) {
+    const isProduction = process.env.NODE_ENV === 'production';
     return {
       path: '/',
-      sameSite: 'lax' as const,
-      secure: process.env.NODE_ENV === 'production',
+      sameSite: isProduction ? ('none' as const) : ('lax' as const),
+      secure: isProduction,
       httpOnly,
     };
   }
@@ -127,17 +128,12 @@ Content-Type: application/json
     const created = await this.authService.register(dto);
     const tokens = await this.authService.login(created);
     res.cookie('refresh_token', tokens.refresh_token, {
-      path: '/',
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
+      ...this.getCookieOptions(true),
     });
     res.cookie('access_token', tokens.access_token, {
-      path: '/',
       maxAge: 15 * 60 * 1000,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
+      ...this.getCookieOptions(false),
     });
     return { access_token: tokens.access_token };
   }
@@ -264,11 +260,8 @@ Content-Type: application/json
       throw new UnauthorizedException(this.tr('auth.invalidCredentials'));
     const tokens = await this.authService.login(user);
     res.cookie('refresh_token', tokens.refresh_token, {
-      path: '/',
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
+      ...this.getCookieOptions(true),
     });
     return { access_token: tokens.access_token };
   }
@@ -374,7 +367,9 @@ Content-Type: application/json
       maxAge: 15 * 60 * 1000,
       ...this.getCookieOptions(false),
     });
-    return res.redirect(this.getFrontendCallbackUrl());
+    return res.redirect(
+      `${this.getFrontendCallbackUrl()}?access_token=${encodeURIComponent(tokens.access_token)}`,
+    );
   }
 
   @ApiOperation({
@@ -478,7 +473,9 @@ Content-Type: application/json
       maxAge: 15 * 60 * 1000,
       ...this.getCookieOptions(false),
     });
-    return res.redirect(this.getFrontendCallbackUrl());
+    return res.redirect(
+      `${this.getFrontendCallbackUrl()}?access_token=${encodeURIComponent(tokens.access_token)}`,
+    );
   }
 
   @ApiOperation({
@@ -528,11 +525,8 @@ Content-Type: application/json
       throw new UnauthorizedException(this.tr('auth.noRefreshToken'));
     const tokens = await this.authService.refreshTokens(refreshToken);
     res.cookie('refresh_token', tokens.refresh_token, {
-      httpOnly: true,
-      path: '/',
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
+      ...this.getCookieOptions(true),
     });
     return res.json({ access_token: tokens.access_token });
   }
@@ -581,7 +575,17 @@ Content-Type: application/json
   async logout(@Req() req: Request, @Res() res: Response) {
     const refreshToken = req.cookies?.refresh_token;
     if (refreshToken) await this.authService.logout(refreshToken);
-    res.clearCookie('refresh_token', { path: '/' });
+    const isProduction = process.env.NODE_ENV === 'production';
+    res.clearCookie('refresh_token', {
+      path: '/',
+      sameSite: isProduction ? 'none' : 'lax',
+      secure: isProduction,
+    });
+    res.clearCookie('access_token', {
+      path: '/',
+      sameSite: isProduction ? 'none' : 'lax',
+      secure: isProduction,
+    });
     return res.json({ ok: true });
   }
 

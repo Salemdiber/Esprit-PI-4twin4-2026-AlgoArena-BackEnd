@@ -6,8 +6,8 @@ metadata:
 data:
   NODE_ENV: production
   PORT: "3000"
-  CORS_ORIGIN: http://algoarena.local
-  FRONTEND_URL: http://algoarena.local
+  CORS_ORIGIN: "http://algoarena.local,https://algoarenatn.vercel.app,https://esprit-pi-4twin4-2026-algoarena-backend.onrender.com"
+  FRONTEND_URL: https://algoarenatn.vercel.app
   COMPLEXITY_MODEL_URL: https://codecomplexity-model.onrender.com
 ---
 apiVersion: v1

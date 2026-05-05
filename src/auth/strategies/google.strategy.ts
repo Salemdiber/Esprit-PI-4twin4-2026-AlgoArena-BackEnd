@@ -20,12 +20,17 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
         'Google OAuth credentials are missing (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET).',
       );
     }
+    const isProduction = process.env.NODE_ENV === 'production';
+    const callbackURL =
+      process.env.GOOGLE_CALLBACK_URL ||
+      (isProduction
+        ? 'https://esprit-pi-4twin4-2026-algoarena-backend.onrender.com/auth/google/callback'
+        : `${backendBaseUrl.replace(/\/$/, '')}/auth/google/callback`);
+    logger.log(`Google OAuth callbackURL → ${callbackURL}`);
     super({
       clientID: clientID || '',
       clientSecret: clientSecret || '',
-      callbackURL:
-        process.env.GOOGLE_CALLBACK_URL ||
-        `${backendBaseUrl.replace(/\/$/, '')}/auth/google/callback`,
+      callbackURL,
       scope: ['email', 'profile'],
       proxy,
     });
