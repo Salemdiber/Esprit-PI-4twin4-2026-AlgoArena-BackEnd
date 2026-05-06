@@ -17,8 +17,8 @@ pipeline {
     DOCKER_REGISTRY = 'docker.io'
     DOCKER_CREDENTIALS_ID = 'dockerhub-creds'
     CD_JOB_NAME = 'AlgoArena-Back-CD'
-    PROMETHEUS_PUSHGATEWAY = 'prometheus-pushgateway.monitoring.svc.cluster.local:9091'
-    ALERTMANAGER_URL = 'http://alertmanager.monitoring.svc.cluster.local:9093/api/v1/alerts'
+    PROMETHEUS_PUSHGATEWAY = 'http://127.0.0.1:9091'
+    ALERTMANAGER_URL = 'http://127.0.0.1:9093/api/v1/alerts'
     CI_JOB_NAME = 'algoarena-backend-ci'
   }
 
@@ -37,7 +37,7 @@ pipeline {
 
     stage('Test and coverage') {
       steps {
-        sh 'npm run test:cov -- --runInBand'
+        sh 'npm run test:cov -- --runInBand --coverageReporters=text --coverageReporters=lcov --coverageReporters=json-summary'
       }
     }
 
@@ -95,18 +95,24 @@ pipeline {
       archiveArtifacts artifacts: 'coverage/**', allowEmptyArchive: false
       
       script {
-        def buildDuration = currentBuild.durationString ?: '0'
-        def buildStatus = currentBuild.result ?: 'SUCCESS'
+        def buildDurationSeconds = (currentBuild.duration ?: 0L) / 1000.0
 
-        // Export build metrics to Prometheus Pushgateway (ignore non-zero exit)
-        sh(script: '''
-        # Get test coverage percentage from coverage report
-        COVERAGE=$(grep -oP 'statements":\\s*\\{[^}]*"pct":\\s*\\K[^,]+' coverage/coverage-summary.json || echo "0")
+        withEnv(["BUILD_DURATION_SECONDS=${buildDurationSeconds}"]) {
+          sh(script: '''
+        set +e
 
-        cat << EOF | curl -d @- http://$PROMETHEUS_PUSHGATEWAY/metrics/job/$CI_JOB_NAME
+        if [ -f coverage/coverage-summary.json ]; then
+          COVERAGE=$(node -e "const fs=require('fs'); const summary=JSON.parse(fs.readFileSync('coverage/coverage-summary.json','utf8')); process.stdout.write(String(summary.total?.statements?.pct ?? 0));")
+        else
+          COVERAGE=0
+          echo "coverage/coverage-summary.json not found, exporting coverage=0"
+        fi
+
+        cat << EOF | curl -fsS --connect-timeout 5 --max-time 10 --data-binary @- "$PROMETHEUS_PUSHGATEWAY/metrics/job/$CI_JOB_NAME" >/dev/null || \
+          echo "Pushgateway unreachable at $PROMETHEUS_PUSHGATEWAY, skipping metric export"
 # HELP cicd_build_duration_seconds Build duration in seconds
 # TYPE cicd_build_duration_seconds gauge
-cicd_build_duration_seconds{job="backend"} $BUILD_NUMBER
+cicd_build_duration_seconds{job="backend"} $BUILD_DURATION_SECONDS
 # HELP cicd_test_coverage_percent Test coverage percentage
 # TYPE cicd_test_coverage_percent gauge
 cicd_test_coverage_percent{job="backend"} ${COVERAGE}
@@ -114,7 +120,8 @@ cicd_test_coverage_percent{job="backend"} ${COVERAGE}
 # TYPE cicd_build_timestamp gauge
 cicd_build_timestamp{job="backend"} $(date +%s)
 EOF
-        ''', returnStatus: true)
+          ''', returnStatus: true)
+        }
       }
     }
 
@@ -122,15 +129,17 @@ EOF
       script {
         // Send success metric (ignore non-zero exit)
         sh(script: '''
-        # Send success metric
-        cat << EOF | curl -d @- http://$PROMETHEUS_PUSHGATEWAY/metrics/job/$CI_JOB_NAME
+        set +e
+
+        cat << EOF | curl -fsS --connect-timeout 5 --max-time 10 --data-binary @- "$PROMETHEUS_PUSHGATEWAY/metrics/job/$CI_JOB_NAME" >/dev/null || \
+          echo "Pushgateway unreachable at $PROMETHEUS_PUSHGATEWAY, skipping success metric export"
 # HELP cicd_build_success_total Total successful builds
 # TYPE cicd_build_success_total counter
 cicd_build_success_total{job="backend"} 1
 EOF
 
 # Resolve any existing build failure alerts
-curl -X POST -H "Content-Type: application/json" \
+curl -fsS --connect-timeout 5 --max-time 10 -X POST -H "Content-Type: application/json" \
   -d '{
     "alerts": [{
       "status": "resolved",
@@ -145,7 +154,7 @@ curl -X POST -H "Content-Type: application/json" \
       }
     }]
   }' \
-  $ALERTMANAGER_URL || true
+  "$ALERTMANAGER_URL" >/dev/null || echo "Alertmanager unreachable at $ALERTMANAGER_URL, skipping resolved alert"
         ''', returnStatus: true)
         echo "✓ Build successful - metrics exported"
       }
@@ -155,15 +164,17 @@ curl -X POST -H "Content-Type: application/json" \
       script {
         // Send failure metric and alert (ignore non-zero exit)
         sh(script: '''
-        # Send failure metric
-        cat << EOF | curl -d @- http://$PROMETHEUS_PUSHGATEWAY/metrics/job/$CI_JOB_NAME
+        set +e
+
+        cat << EOF | curl -fsS --connect-timeout 5 --max-time 10 --data-binary @- "$PROMETHEUS_PUSHGATEWAY/metrics/job/$CI_JOB_NAME" >/dev/null || \
+          echo "Pushgateway unreachable at $PROMETHEUS_PUSHGATEWAY, skipping failure metric export"
 # HELP cicd_build_failures_total Total failed builds
 # TYPE cicd_build_failures_total counter
 cicd_build_failures_total{job="backend"} 1
 EOF
 
 # Send alert to Alertmanager
-curl -X POST -H "Content-Type: application/json" \
+curl -fsS --connect-timeout 5 --max-time 10 -X POST -H "Content-Type: application/json" \
   -d '{
     "alerts": [{
       "status": "firing",
@@ -178,7 +189,7 @@ curl -X POST -H "Content-Type: application/json" \
       }
     }]
   }' \
-  $ALERTMANAGER_URL || true
+  "$ALERTMANAGER_URL" >/dev/null || echo "Alertmanager unreachable at $ALERTMANAGER_URL, skipping failure alert"
         ''', returnStatus: true)
         echo "✗ Build failed - alert sent to monitoring"
       }
